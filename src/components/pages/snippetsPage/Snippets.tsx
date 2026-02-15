@@ -38,9 +38,14 @@ const fetchSnippets = async (): Promise<FileNode[]> => {
 };
 
 export default function Snippets() {
+    // Integrated background refresh and cache management
     const { data: rootFileSystem, isLoading } = useQuery({ 
         queryKey: ["snippets"], 
-        queryFn: fetchSnippets 
+        queryFn: fetchSnippets,
+        refetchInterval: 1000 * 60 * 30,           // 30 mins
+        refetchIntervalInBackground: true,
+        staleTime: 1000 * 60 * 30,                 // 30 mins
+        gcTime: 1000 * 60 * 35,                    // 35 mins
     });
 
     const [currentPathStr, setCurrentPathStr] = useState<string>("/snippets");

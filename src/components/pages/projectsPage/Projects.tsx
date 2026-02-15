@@ -47,10 +47,14 @@ export default function Projects() {
     const [selectedProject, setSelectedProject] = useState<MediaItem | null>(null);
     const [showModal, setShowModal] = useState(false);
 
+    // Integrated your specific React Query caching logic
     const { data: projects = [], isLoading, isError } = useQuery({
         queryKey: ['projects'],
         queryFn: fetchProjects,
-        staleTime: 1000 * 60 * 30,             
+        refetchInterval: 1000 * 60 * 30,           // 30 mins
+        refetchIntervalInBackground: true,
+        staleTime: 1000 * 60 * 30,                 // 30 mins
+        gcTime: 1000 * 60 * 35,                    // 35 mins
     });
 
     const displayProjects = useMemo(() => {
@@ -92,7 +96,7 @@ export default function Projects() {
     return (
         <CookingArea>
             <div className="container py-3">
-                <h1 className="mb-4 responsive-header">Light and easy things that I've been working on.</h1>
+                <h1 className="mb-4">Light and easy things that I've been working on.</h1>
 
                 {isLoading && (
                     <div className="d-flex justify-content-center my-5">
