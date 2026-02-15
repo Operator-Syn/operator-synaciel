@@ -1,8 +1,8 @@
 /* =========================================
-   1. GLOBAL VARIABLES (Single Source of Truth)
+   1. GLOBAL VARIABLES & RESET
    ========================================= */
 :root {
-    /* Define your responsive math once here. */
+    /* Responsive math for base text */
     --base-font-size: clamp(0.9rem, 1.5vw, 1.125rem);
 }
 
@@ -18,13 +18,10 @@
 }
 
 /* =========================================
-   2. GLOBAL TYPOGRAPHY
+   2. GLOBAL LAYOUT & TYPOGRAPHY
    ========================================= */
-
-/* Apply the variable to the body */
 body {
     font-size: var(--base-font-size);
-    /* ... background styles ... */
     background-color: rgba(28, 87, 137, 0.7);
     display: block;
     position: relative; 
@@ -47,22 +44,15 @@ body::before {
     pointer-events: none;
 }
 
-/* THE "MAGIC" GLOBAL FIX 
-   Target generic elements to force them to use your variable.
-   We use !important to override Bootstrap's specific defaults (like 1rem).
-*/
+/* Force global variables on standard elements */
 p, span, a, li, button, input, textarea, select, .btn, .accordion-button {
     font-size: var(--base-font-size) !important;
 }
 
-/* THE HEADING INHERITANCE FIX 
-   This is the specific rule that fixes your Accordion/40px bug.
-   It says: "Anything nested INSIDE a header (h1-h6) must NOT inherit 
-   the header's size. It must reset to the base body size."
-*/
+/* Heading Inheritance Fix */
 h1 *, h2 *, h3 *, h4 *, h5 *, h6 * {
     font-size: var(--base-font-size) !important;
-    font-weight: normal; /* Optional: Resets bold inside headers */
+    font-weight: normal; 
 }
 
 /* Relative sizing for small text */
@@ -71,7 +61,7 @@ small, .small, .text-muted {
 }
 
 /* =========================================
-   3. HEADINGS SCALING
+   3. HEADINGS SCALING (Global)
    ========================================= */
 h1 { font-size: clamp(2rem, 5vw, 3rem); }
 h2 { font-size: clamp(1.75rem, 4vw, 2.50rem); }
@@ -81,7 +71,65 @@ h5 { font-size: clamp(1.1rem, 2vw, 1.5rem); font-weight: 700; }
 h6 { font-size: clamp(1rem, 1.5vw, 1.25rem); }
 
 /* =========================================
-   4. UTILITIES
+   4. COMPONENT STYLES (Projects & Cards)
+   ========================================= */
+.cursor-pointer {
+    cursor: pointer;
+    transition: transform 0.25s ease-out;
+    -webkit-tap-highlight-color: transparent; /* Fix for mobile tap highlight */
+}
+
+/* Hover effect ONLY for mouse users to prevent "sticky" zoom on mobile */
+@media (hover: hover) {
+    .cursor-pointer:hover {
+        transform: scale(1.05); 
+    }
+}
+
+/* Active "press" feedback for mobile users */
+.cursor-pointer:active {
+    transform: scale(0.98);
+}
+
+/* =========================================
+   5. COMPONENT STYLES (Modal & Carousel)
+   ========================================= */
+.custom-carousel-controls .carousel-control-prev,
+.custom-carousel-controls .carousel-control-next {
+    background-color: rgba(0, 0, 0, 0.3); 
+    border-radius: 50%;
+    width: 50px;
+    height: 50px !important;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.custom-carousel-controls .carousel-control-prev-icon,
+.custom-carousel-controls .carousel-control-next-icon {
+    width: 20px;
+    height: 20px;
+}
+
+/* Hide carousel arrows on mobile for better visibility (favoring swiping) */
+@media (max-width: 768px) {
+    .custom-carousel-controls .carousel-control-prev,
+    .custom-carousel-controls .carousel-control-next {
+        display: none;
+    }
+}
+
+/* GPU OPTIMIZATION */
+.modal.fade .modal-dialog {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+}
+
+.carousel-item {
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* =========================================
+   6. UTILITIES & RESPONSIVE PADDING
    ========================================= */
 html {
     overflow-y: scroll;
@@ -96,10 +144,9 @@ html::-webkit-scrollbar { display: none; }
 .rounded-border { border-radius: 1rem; }
 .global-font-color { color: rgb(227, 242, 253); }
 
-/* Navbar inherits correctly now */
+/* Navbar inherits correctly */
 .navbar, .navbar * { font-size: inherit; }
 
-/* Responsive Padding */
 @media (max-width: 1400px) {
     body { padding-left: 3rem; padding-right: 3rem; }
 }
@@ -110,5 +157,5 @@ html::-webkit-scrollbar { display: none; }
 }
 
 @media (max-width: 576px) {
-    body { padding-top: 7rem; padding-left: 0rem; padding-right: 0rem; }
+    body { padding-top: 7rem; padding-left: 0.5rem; padding-right: 0.5rem; }
 }

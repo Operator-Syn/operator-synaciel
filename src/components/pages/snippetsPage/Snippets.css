@@ -4,9 +4,39 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-.snippet-card { max-height: calc(100vh - 16rem); overflow-y: auto; }
+/* Strictly contain the card to prevent any horizontal scroll overflow */
+.snippet-card { 
+  max-height: calc(100vh - 16rem); 
+  overflow-y: auto; 
+  overflow-x: hidden; 
+  border: 1px solid #edf2f7;
+}
 
-/* Modal Content Styling */
+/* Force a fixed layout so columns can't wiggle or resize */
+.table-fixed {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+/* KILL ALL HOVER EFFECTS: Explicitly disable background shifts */
+.table tbody tr, 
+.table tbody tr td {
+  background-color: transparent !important;
+  transition: none !important;
+  transform: none !important;
+}
+
+.table tbody tr:hover, 
+.table tbody tr:hover td {
+  background-color: transparent !important;
+}
+
+/* Define fixed widths for columns */
+.col-name { width: 60%; }
+.col-modified { width: 25%; }
+.col-size { width: 15%; }
+
+/* Modal & Markdown Styling */
 .markdown-modal-content {
   border-radius: 16px !important;
   border: none !important;
@@ -72,7 +102,7 @@
 }
 
 .copy-btn.copied {
-  background: #2f855a !important; /* Forest Green */
+  background: #2f855a !important;
   border-color: #38a169 !important;
   color: #ffffff;
 }

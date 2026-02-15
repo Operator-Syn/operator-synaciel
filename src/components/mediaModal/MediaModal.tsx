@@ -26,13 +26,14 @@ export default function MediaModal({ project, show, onClose }: MediaModalProps) 
             show={show}
             onHide={onClose}
             size="xl" 
+            fullscreen="sm-down" 
             centered
             backdrop="static"
             keyboard={true}
             animation={true} 
-            contentClassName='light-glass-blue-hue-opaque'
+            contentClassName='light-glass-blue-hue-opaque border-0'
         >
-            <Modal.Header className='border-0' closeButton>
+            <Modal.Header className='border-0 px-4' closeButton>
                 <Modal.Title>{project.title}</Modal.Title>
             </Modal.Header>
 
@@ -42,13 +43,13 @@ export default function MediaModal({ project, show, onClose }: MediaModalProps) 
                     interval={isVideoPlaying || !hasMultipleSlides ? null : 5000}
                     pause="hover"
                     controls={hasMultipleSlides}   
-                    indicators={false} 
-                    touch={hasMultipleSlides} 
+                    indicators={hasMultipleSlides} 
+                    touch={true} 
                     onSlide={() => setIsVideoPlaying(false)}
                 >
                     {project.gallery.map((media, index) => (
                         <Carousel.Item key={index}>
-                            <div className="ratio ratio-16x9 bg-transparent border-0">
+                            <div className="ratio ratio-16x9 bg-dark border-0">
                                 <MediaRenderer
                                     type={media.type}
                                     url={media.url}
@@ -67,7 +68,7 @@ export default function MediaModal({ project, show, onClose }: MediaModalProps) 
                 </div>
             </Modal.Body>
 
-            <Modal.Footer className='border-0'>
+            <Modal.Footer className='border-0 p-4 pt-0'>
                 <Button variant="secondary" onClick={onClose}>Close</Button>
                 {project.projectLink && (
                     <Button variant="primary" href={project.projectLink} target="_blank" rel="noopener noreferrer">

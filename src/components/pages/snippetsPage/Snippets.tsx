@@ -7,7 +7,6 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Modal } from "react-bootstrap";
 import "./Snippets.css";
 
-// --- Types & Utils ---
 type FileNode = { id: number; name: string; type: "dir" | "file"; modified: string; size?: number; format?: 'pdf' | 'md'; path?: string | null; children?: FileNode[]; };
 
 const formatBytes = (bytes?: number) => {
@@ -39,7 +38,6 @@ const fetchSnippets = async (): Promise<FileNode[]> => {
 };
 
 export default function Snippets() {
-    // TanStack Query for data management
     const { data: rootFileSystem, isLoading } = useQuery({ 
         queryKey: ["snippets"], 
         queryFn: fetchSnippets 
@@ -77,58 +75,48 @@ export default function Snippets() {
         setPreviewContent(await res.text());
     };
 
-    if (isLoading) return <div className="p-5">Loading...</div>;
+    if (isLoading) return <div className="p-5 text-center text-muted">Loading...</div>;
 
     return (
-        <div className="p-5 autoindex-page">
+        <div className="p-3 p-md-5 autoindex-page">
             <div className="bg-white px-4 pb-4 pt-0 rounded shadow-sm snippet-card">
                 <h5 className="mb-4 mt-4 text-dark fw-bold">Index of {currentPathStr}/</h5>
-                <table className="table table-hover align-middle mb-0">
+                
+                <table className="table align-middle mb-0 table-fixed">
                     <thead className="text-muted small">
                         <tr>
-                            <th style={{ width: "50%" }}>NAME</th>
-                            <th style={{ width: "30%" }}>MODIFIED</th>
-                            <th className="text-end">SIZE</th>
+                            <th className="col-name">NAME</th>
+                            <th className="d-none d-md-table-cell col-modified">MODIFIED</th>
+                            <th className="text-end d-none d-md-table-cell col-size">SIZE</th>
                         </tr>
                     </thead>
                     <tbody>
                         {currentPathStr !== "/snippets" && (
-                            <tr className="autoindex-row" onClick={() => setCurrentPathStr(currentPathStr.substring(0, currentPathStr.lastIndexOf("/")) || "/snippets")}>
+                            <tr className="cursor-pointer" onClick={() => setCurrentPathStr(currentPathStr.substring(0, currentPathStr.lastIndexOf("/")) || "/snippets")}>
                                 <td className="text-dark fw-bold" colSpan={3}>📁 ../</td>
                             </tr>
                         )}
                         {currentItems.map((item) => (
-                            <tr key={item.id} className="autoindex-row" onClick={() => item.type === "dir" ? setCurrentPathStr(`${currentPathStr}/${item.name}`) : handleFileClick(item)}>
-                                <td className="text-dark"><span>{item.type === "dir" ? "📁" : "📄"}</span> {item.name}</td>
-                                <td className="text-muted small">{formatDate(item.modified)}</td>
-                                <td className="text-end text-muted small">{item.type === "dir" ? "—" : formatBytes(item.size)}</td>
+                            <tr key={item.id} className="cursor-pointer" onClick={() => item.type === "dir" ? setCurrentPathStr(`${currentPathStr}/${item.name}`) : handleFileClick(item)}>
+                                <td className="text-dark text-truncate">
+                                    <span className="me-2">{item.type === "dir" ? "📁" : "📄"}</span> 
+                                    {item.name}
+                                </td>
+                                <td className="text-muted small d-none d-md-table-cell">{formatDate(item.modified)}</td>
+                                <td className="text-end text-muted small d-none d-md-table-cell">{item.type === "dir" ? "—" : formatBytes(item.size)}</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
 
-            <Modal 
-                show={!!previewContent} 
-                onHide={() => setPreviewContent(null)} 
-                size="lg" 
-                centered 
-                animation={true}
-                contentClassName="markdown-modal-content"
-            >
+            <Modal show={!!previewContent} onHide={() => setPreviewContent(null)} size="lg" centered contentClassName="markdown-modal-content">
                 <Modal.Header closeButton className="px-4 py-3 border-bottom-0">
                     <div className="d-flex justify-content-between align-items-center w-100 me-3">
-                        <Modal.Title as="h6" className="fw-bold text-dark m-0">
-                            Markdown Preview 
-                            <span className="ms-2 text-muted fw-normal small d-none d-sm-inline">
-                                — {previewFileName}
-                            </span>
+                        <Modal.Title as="h6" className="fw-bold text-dark m-0 text-truncate" style={{ maxWidth: '70%' }}>
+                            {previewFileName}
                         </Modal.Title>
-                        <button 
-                            className="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold shadow-sm"
-                            style={{ fontSize: '11px' }}
-                            onClick={handleDownloadFullFile}
-                        >
+                        <button className="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold shadow-sm" style={{ fontSize: '10px' }} onClick={handleDownloadFullFile}>
                             Download .md
                         </button>
                     </div>
@@ -140,18 +128,13 @@ export default function Snippets() {
                             code({ node, inline, className, children, ...props }: any) {
                                 const match = /language-(\w+)/.exec(className || '');
                                 const codeString = String(children).replace(/\n$/, '');
-                                
-                                // Stable ID derived from content to maintain state across re-renders
                                 const blockId = useMemo(() => btoa(codeString).substring(0, 16), [codeString]);
 
                                 return !inline && match ? (
                                     <div className="code-block-wrapper">
                                         <div className="code-header">
                                             <span>{match[1].toUpperCase()}</span>
-                                            <button 
-                                                className={`copy-btn shadow-sm ${copiedId === blockId ? 'copied' : ''}`} 
-                                                onClick={() => handleCopy(codeString, blockId)}
-                                            >
+                                            <button className={`copy-btn shadow-sm ${copiedId === blockId ? 'copied' : ''}`} onClick={() => handleCopy(codeString, blockId)}>
                                                 {copiedId === blockId ? "✓ Copied" : "Copy"}
                                             </button>
                                         </div>
@@ -160,9 +143,7 @@ export default function Snippets() {
                                             language={match[1]}
                                             PreTag="div"
                                             useInlineStyles={true}
-                                            codeTagProps={{ 
-                                                style: { display: 'block', whiteSpace: 'pre', width: 'max-content', minWidth: '100%', lineHeight: '1.5' } 
-                                            }}
+                                            codeTagProps={{ style: { display: 'block', whiteSpace: 'pre', width: 'max-content', minWidth: '100%', lineHeight: '1.5' } }}
                                             customStyle={{ margin: 0, padding: '1.25rem', fontSize: '13px', overflowX: 'auto', background: '#1e1e1e' }}
                                             {...props}
                                         >

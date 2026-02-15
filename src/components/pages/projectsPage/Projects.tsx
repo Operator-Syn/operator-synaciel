@@ -58,7 +58,6 @@ export default function Projects() {
         return [...projects, FUTURE_PROJECTS_CARD];
     }, [projects, isLoading, isError]);
 
-    // OPTIMIZATION: Silent prefetch on hover
     const handlePrefetch = (item: MediaItem) => {
         if (item.gallery?.length > 0) {
             item.gallery.forEach(media => {
@@ -81,10 +80,19 @@ export default function Projects() {
         setTimeout(() => setSelectedProject(null), 300);
     };
 
+    const triggerPrefetchFromEvent = (e: React.MouseEvent | React.TouchEvent) => {
+        const target = (e.target as HTMLElement).closest('[data-project-id]');
+        if (target) {
+            const id = target.getAttribute('data-project-id');
+            const project = displayProjects.find(p => p.id.toString() === id);
+            if (project) handlePrefetch(project);
+        }
+    }
+
     return (
         <CookingArea>
-            <div className="container">
-                <h1 className="mb-4">Light and easy things that I've been working on.</h1>
+            <div className="container py-3">
+                <h1 className="mb-4 responsive-header">Light and easy things that I've been working on.</h1>
 
                 {isLoading && (
                     <div className="d-flex justify-content-center my-5">
@@ -93,14 +101,10 @@ export default function Projects() {
                 )}
 
                 {!isLoading && !isError && (
-                    <div onMouseOver={(e) => {
-                        const target = (e.target as HTMLElement).closest('[data-project-id]');
-                        if (target) {
-                            const id = target.getAttribute('data-project-id');
-                            const project = displayProjects.find(p => p.id.toString() === id);
-                            if (project) handlePrefetch(project);
-                        }
-                    }}>
+                    <div 
+                        onMouseOver={triggerPrefetchFromEvent}
+                        onTouchStart={triggerPrefetchFromEvent}
+                    >
                         <Grid projects={displayProjects} onProjectClick={handleOpenProject} />
                     </div>
                 )}
