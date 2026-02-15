@@ -12,8 +12,7 @@ export class ProjectsPageController {
       return c.json(data);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      console.error("Error fetching projects:", errorMessage);
-      return c.json({ error: "Failed to fetch projects" }, 500);
+      return c.json({ error: errorMessage }, 500);
     }
   }
 }
