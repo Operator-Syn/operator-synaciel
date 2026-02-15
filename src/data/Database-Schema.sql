@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS Projects (
     short_description TEXT NOT NULL,
     long_description TEXT NOT NULL,
     project_link TEXT NOT NULL,
+    display_order INTEGER DEFAULT 0, -- Added here (idempotent)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -73,14 +74,6 @@ CREATE TABLE IF NOT EXISTS GalleryItems (
 -- Create indexes to ensure joins are fast when loading pages
 CREATE INDEX IF NOT EXISTS idx_gallery_project_id ON GalleryItems(project_id);
 CREATE INDEX IF NOT EXISTS idx_section_items_section_id ON section_items(section_id);
-
--- =====================================================
--- 5. SCHEMA UPDATES
--- =====================================================
-
--- Add a display_order column to Projects for custom sorting
--- We set a DEFAULT of 0 so existing rows get a value automatically.
-ALTER TABLE Projects ADD COLUMN display_order INTEGER DEFAULT 0;
 
 -- =====================================================
 -- 6. CERTIFICATES & CERTIFICATE ITEMS
@@ -112,3 +105,53 @@ CREATE TABLE IF NOT EXISTS CertificateItems (
 
 -- 6c. Index for performance
 CREATE INDEX IF NOT EXISTS idx_certificate_items_cert_id ON CertificateItems(certificate_id);
+
+-- =====================================================
+-- 7. SNIPPETS (File System / Knowledge Base)
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS Snippets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    
+    -- The Recursive Pointer: Points to the folder this item is inside.
+    -- If NULL, it is at the root level.
+    parent_id INTEGER, 
+    
+    -- Display Name (e.g., "Docker Basics")
+    name TEXT NOT NULL,
+    
+    -- Is it a Folder or a File?
+    type TEXT CHECK(type IN ('dir', 'file')) NOT NULL,
+    
+    -- BUCKET INTEGRATION:
+    -- Where is this file actually located? 
+    -- e.g. "snippets/docker/cheatsheet.pdf"
+    storage_path TEXT,
+    
+    -- AUTO-COMPUTED SIZE:
+    -- We store raw bytes (e.g. 120400). 
+    -- Your frontend converts this to "120 KB" on the fly.
+    size_bytes INTEGER DEFAULT 0,
+    
+    -- RESTRICTED FORMATS:
+    -- Only 'pdf' or 'md' allowed for files. NULL for directories.
+    file_format TEXT, 
+    
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    modified_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    -- Foreign Key linkage to itself
+    FOREIGN KEY (parent_id) REFERENCES Snippets(id) ON DELETE CASCADE,
+
+    -- LOGIC GUARD:
+    -- 1. If it's a DIR, the format MUST be NULL.
+    -- 2. If it's a FILE, the format MUST be 'pdf' or 'md'.
+    CONSTRAINT check_content_type CHECK (
+        (type = 'dir' AND file_format IS NULL) 
+        OR 
+        (type = 'file' AND file_format IN ('pdf', 'md'))
+    )
+);
+
+-- Index for fast lookups when opening a folder
+CREATE INDEX IF NOT EXISTS idx_snippets_parent_id ON Snippets(parent_id);
