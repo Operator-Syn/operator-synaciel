@@ -8,6 +8,9 @@
     margin-right: auto;
     color: rgb(227, 242, 253);
     font-weight: bold;
+    
+    /* CHANGED: Responsive scaling (Min: 21px, Max: 29px) */
+    font-size: clamp(1.3rem, 2.5vw, 1.8rem) !important;
 }
 
 .custom-nav .container-fluid {
@@ -18,6 +21,9 @@
 .custom-nav .nav-link {
     color: rgb(227, 242, 253);
     font-weight: bold;
+
+    /* CHANGED: Responsive scaling (Min: 18px, Max: 24px) */
+    font-size: clamp(1.1rem, 2vw, 1.5rem) !important;
 }
 
 .custom-nav .nav-link:hover {

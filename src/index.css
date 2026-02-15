@@ -1,3 +1,11 @@
+/* =========================================
+   1. GLOBAL VARIABLES (Single Source of Truth)
+   ========================================= */
+:root {
+    /* Define your responsive math once here. */
+    --base-font-size: clamp(0.9rem, 1.5vw, 1.125rem);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -9,41 +17,21 @@
     scrollbar-color: rgba(185, 220, 235, 0.5) transparent;
 }
 
-/* Ensure all elements inherit responsive base font size */
-body,
-body * {
-    font-size: clamp(1rem, 3vw, 1.5rem);
-}
+/* =========================================
+   2. GLOBAL TYPOGRAPHY
+   ========================================= */
 
-html {
-    height: calc(100% + 1px);
-    overflow-y: scroll;
-    scrollbar-gutter: stable;
-}
-
-html::-webkit-scrollbar {
-    display: none;
-}
-
-html {
-    scrollbar-width: none;
-    /* Firefox */
-}
-
-html {
-    scroll-behavior: smooth;
-}
-
+/* Apply the variable to the body */
 body {
+    font-size: var(--base-font-size);
+    /* ... background styles ... */
     background-color: rgba(28, 87, 137, 0.7);
+    display: block;
+    position: relative; 
     padding-top: 7rem;
     padding-bottom: 3rem;
     padding-left: 10rem;
     padding-right: 10rem;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow-y: auto;
 }
 
 body::before {
@@ -59,89 +47,68 @@ body::before {
     pointer-events: none;
 }
 
-.text-justify {
-    text-align: justify;
+/* THE "MAGIC" GLOBAL FIX 
+   Target generic elements to force them to use your variable.
+   We use !important to override Bootstrap's specific defaults (like 1rem).
+*/
+p, span, a, li, button, input, textarea, select, .btn, .accordion-button {
+    font-size: var(--base-font-size) !important;
 }
 
-.glass {
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+/* THE HEADING INHERITANCE FIX 
+   This is the specific rule that fixes your Accordion/40px bug.
+   It says: "Anything nested INSIDE a header (h1-h6) must NOT inherit 
+   the header's size. It must reset to the base body size."
+*/
+h1 *, h2 *, h3 *, h4 *, h5 *, h6 * {
+    font-size: var(--base-font-size) !important;
+    font-weight: normal; /* Optional: Resets bold inside headers */
 }
 
-.rounded-border {
-    border-radius: 1rem;
+/* Relative sizing for small text */
+small, .small, .text-muted {
+    font-size: 0.85em !important; 
 }
 
-/* Heading overrides for better scaling */
-h1 {
-    font-size: clamp(1.25rem, 4vw, 3.125rem);
-}
+/* =========================================
+   3. HEADINGS SCALING
+   ========================================= */
+h1 { font-size: clamp(2rem, 5vw, 3rem); }
+h2 { font-size: clamp(1.75rem, 4vw, 2.50rem); }
+h3 { font-size: clamp(1.5rem, 3vw, 2.25rem); }
+h4 { font-size: clamp(1.25rem, 2.5vw, 1.8rem); }
+h5 { font-size: clamp(1.1rem, 2vw, 1.5rem); font-weight: 700; }
+h6 { font-size: clamp(1rem, 1.5vw, 1.25rem); }
 
-h2 {
-    font-size: clamp(1.25rem, 3.5vw, 2.25rem);
+/* =========================================
+   4. UTILITIES
+   ========================================= */
+html {
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+    scrollbar-width: none;
+    scroll-behavior: smooth;
 }
+html::-webkit-scrollbar { display: none; }
 
-h3 {
-    font-size: clamp(1.125rem, 3vw, 2rem);
-}
+.text-justify { text-align: justify; }
+.glass { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.rounded-border { border-radius: 1rem; }
+.global-font-color { color: rgb(227, 242, 253); }
 
-h4 {
-    font-size: clamp(1rem, 2.5vw, 1.75rem);
-}
+/* Navbar inherits correctly now */
+.navbar, .navbar * { font-size: inherit; }
 
-h5 {
-    font-size: clamp(0.9rem, 2vw, 1.5rem);
-}
-
-h6 {
-    font-size: clamp(0.8rem, 1.8vw, 1.25rem);
-}
-
-p {
-    font-size: clamp(0.95rem, 2vw, 1.20rem);
-    line-height: clamp(1.2, 2vw, 1.5);
-}
-
-.global-font-color {
-    color: rgb(227, 242, 253);
-}
-
-small {
-    font-size: clamp(0.75rem, 1.5vw, 0.875rem);
-    line-height: 1.25;
-}
-
-/* Navbar specific adjustments */
-.navbar,
-.navbar * {
-    font-size: inherit;
-    /* inherit from body to respect responsive sizing */
-}
-
-/* Custom responsive adjustments */
+/* Responsive Padding */
 @media (max-width: 1400px) {
-    body {
-        padding-left: 3rem;
-        padding-right: 3rem;
-    }
+    body { padding-left: 3rem; padding-right: 3rem; }
 }
 
 @media (max-width: 992px) {
-    body {
-        padding-top: 7rem;
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
-
-    .rounded-border {
-        border-radius: 0.45rem;
-    }
+    body { padding-top: 7rem; padding-left: 1rem; padding-right: 1rem; }
+    .rounded-border { border-radius: 0.45rem; }
 }
 
 @media (max-width: 576px) {
-    body {
-        padding-top: 7rem;
-        padding-left: 0rem;
-        padding-right: 0rem;
-    }
+    body { padding-top: 7rem; padding-left: 0rem; padding-right: 0rem; }
 }
