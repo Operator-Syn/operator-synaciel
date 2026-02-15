@@ -7,6 +7,10 @@ binding = "DB"
 database_name = "my-personal-portfolio"
 database_id = "6663c46e-f2ab-4da4-9af0-ccd03afcb3e3"
 
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "personal-portfolio"
+
 [[routes]]
 pattern = "personal-portfolio.syn-forge.com"
 custom_domain = true
