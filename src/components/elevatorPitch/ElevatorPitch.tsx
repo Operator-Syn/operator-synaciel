@@ -22,7 +22,7 @@ export default function ElevatorPitchComponent(props: ElevatorPitchProps) {
         <div className="light-glass-blue-hue flex-grow-1 p-3 rounded shadow-sm">
             {items.map((item, index) => (
                 <div key={index}>
-                    <h2 className="m-0">{item.title}</h2>
+                    <h3 className="m-0">{item.title}</h3>
                     <hr />
                     <p className="text-justify m-0">{item.content}</p>
                 </div>
