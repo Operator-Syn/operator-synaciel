@@ -33,6 +33,25 @@ export class SnippetsPageController {
     }
   }
 
+  // GET /api/snippets/:id/content
+  // Retrieves the actual file content (Download)
+  static async downloadSnippet(c: Context<{ Bindings: Bindings }>) {
+    const id = Number(c.req.param('id'));
+    if (isNaN(id)) return c.json({ error: "Invalid ID" }, 400);
+
+    const model = new SnippetsPageModel(c.env.DB, c.env.BUCKET);
+    try {
+      const result = await model.getFileContent(id);
+      if (!result) return c.json({ error: "File not found or empty" }, 404);
+      
+      // We use a double cast (unknown -> ReadableStream) to bridge the definition 
+      // mismatch between @cloudflare/workers-types and the standard DOM types Hono expects.
+      return c.body(result.stream as unknown as ReadableStream, 200, result.headers);
+    } catch (err: unknown) {
+      return c.json({ error: err instanceof Error ? err.message : "Download failed" }, 500);
+    }
+  }
+
   // POST /api/snippets
   // Creates a new resource (File OR Folder)
   static async createSnippet(c: Context<{ Bindings: Bindings }>) {
@@ -60,6 +79,28 @@ export class SnippetsPageController {
       }
     } catch (err: unknown) {
       return c.json({ error: err instanceof Error ? err.message : "Creation failed" }, 500);
+    }
+  }
+
+  // PATCH /api/snippets/:id
+  // Updates metadata (Rename or Move)
+  static async updateSnippet(c: Context<{ Bindings: Bindings }>) {
+    const id = Number(c.req.param('id'));
+    if (isNaN(id)) return c.json({ error: "Invalid ID" }, 400);
+
+    const model = new SnippetsPageModel(c.env.DB, c.env.BUCKET);
+    try {
+      const { name, parent_id } = await c.req.json<{ name?: string; parent_id?: number | null }>();
+      
+      if (name === undefined && parent_id === undefined) {
+        return c.json({ error: "No changes provided" }, 400);
+      }
+
+      const updatedNode = await model.updateNode(id, { name, parent_id });
+      return c.json(updatedNode);
+
+    } catch (err: unknown) {
+      return c.json({ error: err instanceof Error ? err.message : "Update failed" }, 500);
     }
   }
 

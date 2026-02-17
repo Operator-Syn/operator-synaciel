@@ -70,6 +70,24 @@ export class SnippetsPageModel {
     return this.buildTree(results);
   }
 
+  // --- NEW: DOWNLOAD FILE CONTENT ---
+  async getFileContent(id: number) {
+    const node = await this.getSnippetById(id);
+    if (!node || node.type === 'dir' || !node.path) return null;
+
+    const object = await this.bucket.get(node.path);
+    if (!object) return null;
+
+    return {
+      stream: object.body, // Naming this 'stream' to match Controller usage
+      headers: {
+        'Content-Type': node.format === 'pdf' ? 'application/pdf' : 'text/markdown',
+        'Content-Disposition': `attachment; filename="${node.name}"`,
+        'Content-Length': node.size?.toString() || '',
+      }
+    };
+  }
+
   async createFolder(name: string, parentId: number | null): Promise<SnippetNode> {
     const query = `
       INSERT INTO Snippets (parent_id, name, type, size_bytes, modified_at)
@@ -111,6 +129,29 @@ export class SnippetsPageModel {
       await this.bucket.delete(storagePath);
       throw new Error("Database insert failed.");
     }
+  }
+
+  // --- NEW: UPDATE (Rename/Move) ---
+  async updateNode(id: number, updates: { name?: string; parent_id?: number | null }): Promise<SnippetNode | null> {
+    const { name, parent_id } = updates;
+    
+    if (parent_id !== undefined && parent_id === id) {
+      throw new Error("Cannot move a folder into itself.");
+    }
+
+    const parts: string[] = [];
+    const args: any[] = [];
+
+    if (name !== undefined) { parts.push("name = ?"); args.push(name); }
+    if (parent_id !== undefined) { parts.push("parent_id = ?"); args.push(parent_id); }
+
+    if (parts.length > 0) {
+      args.push(id);
+      const query = `UPDATE Snippets SET ${parts.join(', ')}, modified_at = datetime('now') WHERE id = ?`;
+      await this.db.prepare(query).bind(...args).run();
+    }
+    
+    return this.getSnippetById(id);
   }
 
   async deleteNode(id: number): Promise<void> {
