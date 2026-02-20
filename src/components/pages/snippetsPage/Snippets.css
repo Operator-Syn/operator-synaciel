@@ -4,12 +4,13 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* Strictly contain the card to prevent any horizontal scroll overflow */
+/* Strictly contain the card, transparent background and border */
 .snippet-card { 
   max-height: calc(100vh - 16rem); 
   overflow-y: auto; 
   overflow-x: hidden; 
-  border: 1px solid #edf2f7;
+  background-color: transparent !important;
+  border: 1px solid transparent !important; 
 }
 
 /* Force a fixed layout so columns can't wiggle or resize */
@@ -18,10 +19,20 @@
   width: 100% !important;
 }
 
-/* KILL ALL HOVER EFFECTS: Explicitly disable background shifts */
+/* 1. HEADER: Transparent background, white text, faint bottom line */
+.table thead,
+.table thead th {
+  background-color: transparent !important;
+  color: #ffffff !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important; /* BROUGHT THE LINE BACK HERE */
+}
+
+/* 2. BODY & HOVER: Transparent background, white text, faint bottom line, dead hover */
 .table tbody tr, 
 .table tbody tr td {
   background-color: transparent !important;
+  color: #ffffff !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important; /* BROUGHT THE LINE BACK HERE */
   transition: none !important;
   transform: none !important;
 }
@@ -29,6 +40,7 @@
 .table tbody tr:hover, 
 .table tbody tr:hover td {
   background-color: transparent !important;
+  color: #ffffff !important;
 }
 
 /* Define fixed widths for columns */

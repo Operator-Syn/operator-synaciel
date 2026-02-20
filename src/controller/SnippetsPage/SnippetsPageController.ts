@@ -1,7 +1,7 @@
 // src/controller/SnippetsPageController.ts
 import type { Context } from "hono";
-import { SnippetsPageModel } from "../model/SnippetsPageModel";
-import type { Bindings } from "../Api";
+import { SnippetsPageModel } from "../../model/SnippetsPage/SnippetsPageModel";
+import type { Bindings } from "../../Api";
 
 export class SnippetsPageController {
   
