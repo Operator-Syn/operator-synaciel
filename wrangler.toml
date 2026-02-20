@@ -1,6 +1,11 @@
+# wrangler.toml
 name = "portfolio-api"
 main = "src/Api.ts" 
 compatibility_date = "2024-01-01"
+
+[vars]
+# The API worker needs this to know where to verify the auth_token cookie
+AUTH_WORKER_URL = "https://auth.syn-forge.com"
 
 [[d1_databases]]
 binding = "DB"
