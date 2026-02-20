@@ -13,7 +13,8 @@ export class SettingsModel {
   }
 
   async create(key: string, value: string) {
-    await this.db.prepare("INSERT INTO site_settings (key, value) VALUES (?, ?)").bind(key, value).run();
+    // FIX: Use INSERT OR REPLACE to avoid UNIQUE constraint errors
+    await this.db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").bind(key, value).run();
   }
 
   async update(key: string, value: string) {

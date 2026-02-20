@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+// src/pages/Home/Home.tsx
+import { useQueries } from "@tanstack/react-query";
 import type { HomePageTypes } from "../../../types/HomePageTypes";
 import "./Home.css";
 import HeaderComponent from "../../headerComponent/HeaderComponent";
@@ -8,74 +9,121 @@ import ColumnPanels from "../../columnPanels/ColumnPanels";
 import ProfileImageComponent from "../../profileImageComponent/ProfileImageComponent";
 import DevelopmentLoadoutsComponent from "../../developmentLoadoutsComponent/DevelopmentLoadoutsComponent";
 
-// 1. The Fetch Function
-const fetchHomeData = async (): Promise<HomePageTypes> => {
-    const apiUrl = import.meta.env.VITE_API_URL;
+const apiUrl = import.meta.env.VITE_API_URL;
 
-    const response = await fetch(`${apiUrl}/home`);
-    if (!response.ok) {
-        throw new Error("Failed to fetch home data");
-    }
-    return response.json();
+const fetchSettings = async () => {
+    const res = await fetch(`${apiUrl}/settings`);
+    if (!res.ok) throw new Error("Failed to fetch site settings");
+    return res.json();
+};
+
+const fetchProfile = async () => {
+    const res = await fetch(`${apiUrl}/profile`);
+    if (!res.ok) throw new Error("Failed to fetch profile");
+    return res.json();
+};
+
+const fetchSections = async () => {
+    const res = await fetch(`${apiUrl}/sections`);
+    if (!res.ok) throw new Error("Failed to fetch sections");
+    const sections = await res.json();
+
+    const sectionItemsPromises = sections.map(async (section: any) => {
+        const itemsRes = await fetch(`${apiUrl}/sections/${section.id}/items`);
+        if (!itemsRes.ok) throw new Error(`Failed to fetch items for section ${section.title}`);
+        const items = await itemsRes.json();
+        return { ...section, items };
+    });
+
+    return Promise.all(sectionItemsPromises);
 };
 
 export default function Home() {
-    // 2. The React Query Hook
-    const { data, isLoading, isError } = useQuery({
-        queryKey: ["homeData"],
-        queryFn: fetchHomeData,
-        refetchInterval: 1000 * 60 * 30,
-        refetchIntervalInBackground: true,
-        staleTime: 1000 * 60 * 30,
-        gcTime: 1000 * 60 * 35,
+    const results = useQueries({
+        queries: [
+            { queryKey: ["settings"], queryFn: fetchSettings, staleTime: 1000 * 60 * 30 },
+            { queryKey: ["profile"], queryFn: fetchProfile, staleTime: 1000 * 60 * 30 },
+            { queryKey: ["sections"], queryFn: fetchSections, staleTime: 1000 * 60 * 30 },
+        ]
     });
 
+    const isLoading = results.some(r => r.isLoading);
+    const isError = results.some(r => r.isError);
+
     if (isError) return <div className="p-5 text-center text-danger">Error loading portfolio data.</div>;
+
+    const site = results[0].data ?? {};
+    const profile = results[1].data ?? [];
+    const rawSections = results[2].data ?? [];
+
+    // ASSEMBLY BLOCK: This now collects ALL matching sections from the DB
+    const sections = {
+        pitch: { items: [] as any[] },
+        social: { items: [] as any[] },
+        loadouts: [] as any[],
+    };
+
+    rawSections.forEach((section: any) => {
+        switch (section.section_type) {
+            case "pitch":
+                // If you add a new 'pitch' section in DB, it appends here
+                section.items.forEach((item: any) => {
+                    sections.pitch.items.push({ 
+                        title: section.title, 
+                        content: item.content 
+                    });
+                });
+                break;
+            case "social":
+                // If you add a new 'social' section in DB, it appends here
+                section.items.forEach((item: any) => sections.social.items.push({
+                    label: item.label,
+                    image_url: item.image_url,
+                    target_url: item.target_url
+                }));
+                break;
+            case "loadout":
+                // If you add a new 'loadout' section (e.g. "Tools"), it appends here
+                const cat = { 
+                    category: section.title, 
+                    badges: section.items.map((i: any) => i.image_url).filter(Boolean) 
+                };
+                sections.loadouts.push(cat);
+                break;
+        }
+    });
+
+    const data: HomePageTypes = { site, profile, sections };
 
     return (
         <CookingArea>
             <div className="container-fluid py-3">
-                {/* Row 1: Header & Profile */}
                 <div className="row g-3 mb-3 d-flex align-items-stretch stack-on-mobile">
-
                     <HeaderComponent
                         isLoading={isLoading}
-                        headerPhrase={data?.site?.headerPhrase}
-                        mobileHeaderPhrase={data?.site?.mobileHeaderPhrase}
+                        headerPhrase={data.site?.headerPhrase}
+                        mobileHeaderPhrase={data.site?.mobileHeaderPhrase}
                     />
-
                     <ProfileImageComponent
                         isLoading={isLoading}
-                        src={data?.site?.profileImage}
+                        src={data.site?.profileImage}
                         className="order-first-on-mobile"
                     />
                 </div>
 
-                {/* Row 2: Content Sections */}
+                {/* THE GRID: Kept exactly the same to prevent breaking layout */}
                 <div className="row g-3 stack-on-mobile">
-
-                    {/* Elevator Pitch */}
                     <div className="col-4 d-flex flex-column">
-                        <ElevatorPitchComponent
-                            isLoading={isLoading}
-                            items={data?.sections.pitch.items}
-                        />
+                        <ElevatorPitchComponent isLoading={isLoading} items={data.sections.pitch.items} />
                     </div>
-
-                    {/* Development Loadouts */}
                     <DevelopmentLoadoutsComponent
                         isLoading={isLoading}
-                        content={data ? {
-                            header: "Development Loadouts",
-                            sections: data.sections.loadouts
-                        } : undefined}
+                        content={data ? { header: "Development Loadouts", sections: data.sections.loadouts } : undefined}
                     />
-
-                    {/* Socials & Profile Info */}
                     <ColumnPanels
                         isLoading={isLoading}
-                        profileInfo={data?.profile}
-                        socialLinks={data?.sections.social.items.map((link) => ({
+                        profileInfo={data.profile}
+                        socialLinks={data.sections.social.items.map(link => ({
                             href: link.target_url,
                             img: link.image_url,
                             alt: link.label
