@@ -3,8 +3,6 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { D1Database, R2Bucket } from "@cloudflare/workers-types";
 
-import { HomePageController } from "./controller/HomePageController";
-import { ProjectsPageController } from './controller/ProjectsPageController';
 import { SnippetsPageController } from './controller/SnippetsPage/SnippetsPageController';
 import { ProjectsController } from './controller/ProjectPage/ProjectsController';
 import { GalleryController } from './controller/ProjectPage/GalleryController';
@@ -55,8 +53,9 @@ app.get('/', (c) => c.redirect('https://www.syn-forge.com', 301));
 //   PUBLIC APIS (No Auth Required)
 // ==========================================
 
-app.get('/api/home', HomePageController.handleHome);
-app.get('/api/projects', ProjectsPageController.handleProjects);
+// THIS WAS THE MISSING PIECE: It registers the list of all projects
+app.get('/api/projects', ProjectsController.list);
+
 app.get('/api/project/:id', ProjectsController.get);
 app.get('/api/project/:projectId/gallery', GalleryController.listByProject);
 app.get('/api/snippets/:id', SnippetsPageController.getSnippet);
