@@ -12,6 +12,8 @@ import { SettingsController } from './controller/HomePage/SettingsController';
 import { ProfileController } from './controller/HomePage/ProfileController';
 import { SectionsController } from './controller/HomePage/SectionsController';
 import { SectionItemsController } from './controller/HomePage/SectionsItemsController';
+import { CertificatesController } from './controller/CertificatesPage/CertificatesController';
+import { CertificateItemsController } from './controller/CertificatesPage/CertificateItemsController';
 
 export type Bindings = {
   DB: D1Database;
@@ -63,6 +65,9 @@ app.get('/api/settings', SettingsController.list);
 app.get('/api/profile', ProfileController.list);
 app.get('/api/sections', SectionsController.list);
 app.get('/api/sections/:sectionId/items', SectionItemsController.list);
+app.get('/api/certificates', CertificatesController.listAll);
+app.get('/api/certificates/:id', CertificatesController.getById);
+app.get('/api/certificates/:certId/items', CertificateItemsController.listByCertificate);
 
 
 // ==========================================
@@ -88,7 +93,6 @@ app.use('/api/*', async (c, next) => {
     });
 
     if (!authRes.ok) {
-      // MODIFIED: Parse as JSON instead of text for cleaner API response
       const errorJson = await authRes.json().catch(() => ({ error: "Unknown error" }));
       console.error(`[API DEBUG] Auth Worker returned error ${authRes.status}`, errorJson);
       return c.json({ error: 'Forbidden', details: errorJson }, 403);
@@ -111,6 +115,16 @@ app.delete('/api/project/:id', ProjectsController.delete);
 app.post('/api/gallery', GalleryController.create);
 app.put('/api/gallery/:id', GalleryController.update);
 app.delete('/api/gallery/:id', GalleryController.delete);
+
+// NEW: CERTIFICATES CRUD (Write)
+app.post('/api/certificates', CertificatesController.create);
+app.put('/api/certificates/:id', CertificatesController.update);
+app.delete('/api/certificates/:id', CertificatesController.delete);
+
+// NEW: CERTIFICATE ITEMS (Write)
+app.post('/api/certificates/items', CertificateItemsController.create);
+app.put('/api/certificates/items/:id', CertificateItemsController.update);
+app.delete('/api/certificates/items/:id', CertificateItemsController.delete);
 
 // --- SNIPPETS (Write) ---
 app.post('/api/snippets', SnippetsPageController.createSnippet);
