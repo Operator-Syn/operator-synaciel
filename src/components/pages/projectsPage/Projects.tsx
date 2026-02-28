@@ -7,12 +7,16 @@ import { type MediaItem } from '../../../types/MediaCardTypes';
 import Grid from '../../grid/Grid';
 import MediaModal from '../../mediaModal/MediaModal';
 
+// --- UPDATED INTERFACE: Matches ProjectsModel.ts flat structure ---
 interface ApiProject {
     id: number;
     title: string;
-    thumbnail: { type: 'video' | 'image'; url: string };
-    description: { short: string; long: string };
-    link: string;
+    type: 'video' | 'image';
+    url: string;
+    short_description: string;
+    long_description: string;
+    project_link: string;
+    display_order: number;
 }
 
 interface ApiGalleryItem {
@@ -90,17 +94,17 @@ export default function Projects() {
         })),
     });
 
-    // --- transform projects into MediaItem shape ---
+    // --- transform flat ApiProject into MediaItem shape ---
     const displayProjects: MediaItem[] = useMemo(() => {
         return [
             ...projects.map((p, i) => ({
                 id: p.id,
                 title: p.title,
-                type: p.thumbnail.type,
-                url: p.thumbnail.url,
-                shortDescription: p.description.short,
-                longDescription: p.description.long,
-                projectLink: p.link,
+                type: p.type, // Map directly
+                url: p.url,   // Map directly
+                shortDescription: p.short_description, // Map directly
+                longDescription: p.long_description,   // Map directly
+                projectLink: p.project_link,           // Map directly
                 gallery: galleryQueries[i]?.data?.sort((a, b) => a.display_order - b.display_order).map(g => ({
                     id: g.id,
                     title: '',

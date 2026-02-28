@@ -13,7 +13,6 @@ export interface Project {
   created_at: string;
 }
 
-// For creating a project (no ID, no created_at)
 export interface ProjectCreate {
   title: string;
   type: 'video' | 'image';
@@ -36,7 +35,6 @@ export class ProjectsModel {
 
     if (!results) return [];
 
-    // Map manually to Project
     return results.map((r) => ({
       id: Number(r.id),
       title: String(r.title),
@@ -52,7 +50,7 @@ export class ProjectsModel {
 
   async getById(id: number): Promise<Project | null> {
     const query = `SELECT * FROM Projects WHERE id=?`;
-    const { results } = await this.db.prepare(query).bind([id]).all();
+    const { results } = await this.db.prepare(query).bind(id).all();
 
     if (!results || results.length === 0) return null;
 
@@ -76,7 +74,9 @@ export class ProjectsModel {
         (title, type, url, short_description, long_description, project_link, display_order)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
-    await this.db.prepare(query).bind([
+    
+    // FIX: Removed the array brackets so they are passed as distinct arguments
+    await this.db.prepare(query).bind(
       project.title,
       project.type,
       project.url,
@@ -84,9 +84,8 @@ export class ProjectsModel {
       project.long_description,
       project.project_link,
       project.display_order ?? 0
-    ]).run();
+    ).run();
 
-    // Fetch last inserted ID safely
     const { results } = await this.db.prepare(`SELECT id FROM Projects ORDER BY id DESC LIMIT 1`).all();
     return results?.[0]?.id ? Number(results[0].id) : 0;
   }
@@ -95,17 +94,24 @@ export class ProjectsModel {
     const fields: string[] = [];
     const values: any[] = [];
 
+    // Filter out id and created_at if they accidentally get passed in the body
     for (const [key, value] of Object.entries(project)) {
-      fields.push(`${key}=?`);
-      values.push(value);
+      if (key !== 'id' && key !== 'created_at') {
+        fields.push(`${key}=?`);
+        values.push(value);
+      }
     }
+    
     if (!fields.length) return;
 
     const query = `UPDATE Projects SET ${fields.join(', ')} WHERE id=?`;
-    await this.db.prepare(query).bind([...values, id]).run();
+    
+    // FIX: Replaced [...values, id] with ...values, id
+    await this.db.prepare(query).bind(...values, id).run();
   }
 
   async delete(id: number): Promise<void> {
-    await this.db.prepare(`DELETE FROM Projects WHERE id=?`).bind([id]).run();
+    // FIX: Removed the array brackets around id
+    await this.db.prepare(`DELETE FROM Projects WHERE id=?`).bind(id).run();
   }
 }
