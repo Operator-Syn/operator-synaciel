@@ -1,3 +1,4 @@
+// src/components/pages/certificationsPage/Certifications.tsx
 import { useState, useMemo, useEffect } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import CookingArea from "../../cookingArea/CookingArea";
@@ -59,14 +60,12 @@ export default function Certifications() {
 
     // --- dynamic header logic ---
     useEffect(() => {
-        // 768px is the standard Bootstrap 'md' breakpoint
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
         checkMobile();
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // Directly renders as h3 or h1 to trigger your custom CSS
     const HeaderTag = isMobile ? 'h3' : 'h1';
 
     // --- fetch certificates ---
@@ -135,7 +134,6 @@ export default function Certifications() {
     return (
         <CookingArea>
             <div className="container py-3">
-                {/* Dynamic tag based on screen size */}
                 <HeaderTag className="mb-4">
                     Credentials and specialized training I've completed.
                 </HeaderTag>
@@ -151,9 +149,11 @@ export default function Certifications() {
                 )}
 
                 <MediaModal
-                    project={selectedCert}
+                    item={selectedCert}
                     show={showModal}
                     onClose={handleCloseModal}
+                    detailsLabel="Certification Details"
+                    ctaLabel="View Credential"
                 />
             </div>
         </CookingArea>
