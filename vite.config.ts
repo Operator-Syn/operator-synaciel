@@ -13,7 +13,7 @@ export default defineConfig({
   base: "/",
   server: {
     host: true,
-    allowedHosts: ["yashindo.local", "dev.syn-forge.com"]
+    allowedHosts: ["yashindo.local", "dev.syn-forge.com", "yashindo.syn-forge.netbird", "portfolio.yashindo.syn-forge.com"]
   },
   build: {
     rollupOptions: {

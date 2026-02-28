@@ -1,10 +1,24 @@
 /* Projects.css */
 
-/* Makes the card look clickable */
+/* Component specific behavior for project cards */
 .cursor-pointer {
     cursor: pointer;
-    transition: transform 0.25s;
+    transition: transform 0.25s ease-out;
+    -webkit-tap-highlight-color: transparent; /* Removes the blue box on mobile tap */
 }
-.cursor-pointer:hover {
-    transform: scale(1.05); 
+
+/* The Fix: Only scale on desktop. 
+   On mobile, a scale hover often gets "stuck" after you tap.
+*/
+@media (hover: hover) {
+    .cursor-pointer:hover {
+        transform: scale(1.05); 
+    }
+}
+
+/* The Mobile Feedack: Instead of hover, 
+   give it a "pressed" look when the user taps.
+*/
+.cursor-pointer:active {
+    transform: scale(0.98);
 }

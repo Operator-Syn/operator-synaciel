@@ -1,3 +1,4 @@
+// src/components/elevatorPitch/ElevatorPitch.tsx
 import ElevatorPitchPlaceholder from "./ElevatorPitchPlaceholder";
 import "./ElevatorPitch.css"; 
 
@@ -14,18 +15,22 @@ interface ElevatorPitchProps {
 export default function ElevatorPitchComponent(props: ElevatorPitchProps) {
     const { items, isLoading } = props;
 
-    if (isLoading || !items) {
+    if (isLoading || !items || items.length === 0) {
         return <ElevatorPitchPlaceholder />;
     }
 
+    // Since every item in this section currently gets the same title 
+    // from the database, we display it once at the top.
+    const displayTitle = items[0]?.title || "Know 'lil more about me";
+
     return (
         <div className="light-glass-blue-hue flex-grow-1 p-3 rounded shadow-sm">
+            <h3 className="m-0">{displayTitle}</h3>
+            <hr />
             {items.map((item, index) => (
-                <div key={index}>
-                    <h2 className="m-0">{item.title}</h2>
-                    <hr />
-                    <p className="text-justify m-0">{item.content}</p>
-                </div>
+                <p key={index} className="text-justify m-0 mb-3">
+                    {item.content}
+                </p>
             ))}
         </div>
     );

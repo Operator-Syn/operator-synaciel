@@ -21,7 +21,7 @@ export default function DevelopmentLoadoutsComponentForDesktop({ content }: Deve
     return (
         <div className="col-4 d-flex flex-column">
             <div className="light-glass-blue-hue flex-grow-1 p-3 rounded shadow-sm">
-                <h2 className="mb-3">{header}</h2>
+                <h3 className="mb-3">{header}</h3>
                 <hr />
                 <div className="dev-accordion-wrapper">
                     <div className="accordion accordion-flush" id="devLoadoutsAccordion">

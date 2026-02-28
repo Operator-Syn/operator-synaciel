@@ -1,4 +1,3 @@
-// MediaCard.tsx
 import { type MediaItem } from '../../types/MediaCardTypes';
 import MediaRenderer from '../mediaRenderer/MediaRenderer';
 
@@ -12,6 +11,7 @@ export default function MediaCard({ project, onClick }: MediaCardProps) {
         <div 
             className="card light-glass-blue-hue h-100 shadow-sm overflow-hidden cursor-pointer"
             onClick={() => onClick(project)}
+            data-project-id={project.id} 
         >
             <div className="ratio ratio-16x9 bg-dark">
                 <MediaRenderer 
