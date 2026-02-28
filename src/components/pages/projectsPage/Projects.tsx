@@ -1,5 +1,5 @@
 // src/components/pages/projectsPage/Projects.tsx
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react'; // Added useEffect
 import { useQueries } from '@tanstack/react-query';
 import CookingArea from "../../cookingArea/CookingArea";
 import './Projects.css';
@@ -53,6 +53,17 @@ const fetchGalleryByProject = async (projectId: number): Promise<ApiGalleryItem[
 export default function Projects() {
     const [selectedProject, setSelectedProject] = useState<MediaItem | null>(null);
     const [showModal, setShowModal] = useState(false);
+    const [isMobile, setIsMobile] = useState(false); // Mobile state
+
+    // --- responsive header logic ---
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    const HeaderTag = isMobile ? 'h3' : 'h1'; // Dynamic Tag
 
     // --- fetch projects ---
     const projectsQuery = useQueries({
@@ -119,7 +130,7 @@ export default function Projects() {
     return (
         <CookingArea>
             <div className="container py-3">
-                <h1 className="mb-4">Light and easy things that I've been working on.</h1>
+                <HeaderTag className="mb-4">Light and easy things that I've been working on.</HeaderTag>
 
                 {isLoading && (
                     <div className="d-flex justify-content-center my-5">
