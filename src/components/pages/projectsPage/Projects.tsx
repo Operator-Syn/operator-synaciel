@@ -1,5 +1,5 @@
 // src/components/pages/projectsPage/Projects.tsx
-import { useState, useMemo, useEffect } from 'react'; // Added useEffect
+import { useState, useMemo, useEffect } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import CookingArea from "../../cookingArea/CookingArea";
 import './Projects.css';
@@ -53,7 +53,7 @@ const fetchGalleryByProject = async (projectId: number): Promise<ApiGalleryItem[
 export default function Projects() {
     const [selectedProject, setSelectedProject] = useState<MediaItem | null>(null);
     const [showModal, setShowModal] = useState(false);
-    const [isMobile, setIsMobile] = useState(false); // Mobile state
+    const [isMobile, setIsMobile] = useState(false);
 
     // --- responsive header logic ---
     useEffect(() => {
@@ -63,7 +63,7 @@ export default function Projects() {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    const HeaderTag = isMobile ? 'h3' : 'h1'; // Dynamic Tag
+    const HeaderTag = isMobile ? 'h3' : 'h1';
 
     // --- fetch projects ---
     const projectsQuery = useQueries({
@@ -86,7 +86,7 @@ export default function Projects() {
             queryKey: ['gallery', project.id],
             queryFn: () => fetchGalleryByProject(project.id),
             staleTime: 1000 * 60 * 30,
-            enabled: !!projects.length, // only if projects exist
+            enabled: !!projects.length,
         })),
     });
 
@@ -143,9 +143,11 @@ export default function Projects() {
                 )}
 
                 <MediaModal
-                    project={selectedProject}
+                    item={selectedProject}
                     show={showModal}
                     onClose={handleCloseModal}
+                    detailsLabel="About this Project"
+                    ctaLabel="View Project Source"
                 />
             </div>
         </CookingArea>

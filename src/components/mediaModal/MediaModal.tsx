@@ -1,3 +1,4 @@
+// src/components/mediaModal/MediaModal.tsx
 import { useState, useEffect } from 'react';
 import { Modal, Button, Carousel } from 'react-bootstrap';
 import { type MediaItem } from '../../types/MediaCardTypes';
@@ -5,21 +6,29 @@ import MediaRenderer from '../mediaRenderer/MediaRenderer';
 import './MediaModal.css'
 
 interface MediaModalProps {
-    project: MediaItem | null;
+    item: MediaItem | null;
     show: boolean;
     onClose: () => void;
+    detailsLabel?: string;
+    ctaLabel?: string;
 }
 
-export default function MediaModal({ project, show, onClose }: MediaModalProps) {
+export default function MediaModal({ 
+    item, 
+    show, 
+    onClose, 
+    detailsLabel = "Details", 
+    ctaLabel = "View" 
+}: MediaModalProps) {
     const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
     useEffect(() => {
         if (!show) setIsVideoPlaying(false);
     }, [show]);
 
-    if (!project) return <Modal show={show} onHide={onClose} centered animation={true} />;
+    if (!item) return <Modal show={show} onHide={onClose} centered animation={true} />;
 
-    const hasMultipleSlides = project.gallery.length > 1;
+    const hasMultipleSlides = item.gallery.length > 1;
 
     return (
         <Modal
@@ -34,7 +43,7 @@ export default function MediaModal({ project, show, onClose }: MediaModalProps) 
             contentClassName='light-glass-blue-hue-opaque border-0'
         >
             <Modal.Header className='border-0 px-4' closeButton>
-                <Modal.Title>{project.title}</Modal.Title>
+                <Modal.Title>{item.title}</Modal.Title>
             </Modal.Header>
 
             <Modal.Body className="p-0 border-0">
@@ -47,7 +56,7 @@ export default function MediaModal({ project, show, onClose }: MediaModalProps) 
                     touch={true} 
                     onSlide={() => setIsVideoPlaying(false)}
                 >
-                    {project.gallery.map((media, index) => (
+                    {item.gallery.map((media, index) => (
                         <Carousel.Item key={index}>
                             <div className="ratio ratio-16x9 bg-dark border-0">
                                 <MediaRenderer
@@ -63,16 +72,16 @@ export default function MediaModal({ project, show, onClose }: MediaModalProps) 
                 </Carousel>
 
                 <div className="p-4">
-                    <h5>About this Project</h5>
-                    <p className="global-font-color">{project.longDescription}</p>
+                    <h5>{detailsLabel}</h5>
+                    <p className="global-font-color">{item.longDescription}</p>
                 </div>
             </Modal.Body>
 
             <Modal.Footer className='border-0 p-4 pt-0'>
                 <Button variant="secondary" onClick={onClose}>Close</Button>
-                {project.projectLink && (
-                    <Button variant="primary" href={project.projectLink} target="_blank" rel="noopener noreferrer">
-                        View Project Source
+                {item.projectLink && (
+                    <Button variant="primary" href={item.projectLink} target="_blank" rel="noopener noreferrer">
+                        {ctaLabel}
                     </Button>
                 )}
             </Modal.Footer>
