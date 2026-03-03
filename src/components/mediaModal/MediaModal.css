@@ -1,28 +1,64 @@
 /* MediaModal.css */
 
+.media-modal-content {
+    /* Deep midnight blue that pulls color from your background */
+    background: rgba(10, 20, 35, 0.9) !important; 
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    
+    /* Subtle glow border to match the blue accents in your screenshot */
+    border: 1px solid rgba(100, 200, 255, 0.15) !important;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+    color: #ffffff;
+}
+
+.bg-media-container {
+    background: rgba(0, 0, 0, 0.4);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.modal-title-custom {
+    color: #ffffff;
+    letter-spacing: 0.5px;
+}
+
+.details-label-custom {
+    color: #60a5fa; /* A soft blue that matches your active nav link */
+}
+
+.description-text {
+    color: #d1d5db; /* Light gray for perfect contrast without being harsh */
+    font-size: 1rem;
+    line-height: 1.7;
+    font-weight: 400;
+}
+
+.cta-button-custom {
+    background-color: #3b82f6 !important;
+    border: none;
+}
+
+.cta-button-custom:hover {
+    background-color: #2563eb !important;
+    filter: brightness(1.1);
+}
+
 .custom-carousel-controls .carousel-control-prev,
 .custom-carousel-controls .carousel-control-next {
-    background-color: rgba(0, 0, 0, 0.3); 
+    background-color: rgba(0, 0, 0, 0.4); 
     border-radius: 50%;
-    width: 45px;
-    height: 45px !important;
+    width: 42px;
+    height: 42px !important;
     top: 50%;
     transform: translateY(-50%);
 }
 
-/* Hide arrows on mobile: users will swipe instead */
-@media (max-width: 768px) {
-    .custom-carousel-controls .carousel-control-prev,
-    .custom-carousel-controls .carousel-control-next {
-        display: none;
-    }
+.btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+    opacity: 0.7;
+    transition: opacity 0.2s;
 }
 
-.modal.fade .modal-dialog {
-    will-change: transform, opacity;
-    transform: translateZ(0);
-}
-
-.carousel-item {
-    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
+.btn-close:hover {
+    opacity: 1;
 }
