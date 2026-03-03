@@ -1,64 +1,72 @@
 /* MediaModal.css */
 
 .media-modal-content {
-    /* Deep midnight blue that pulls color from your background */
-    background: rgba(10, 20, 35, 0.9) !important; 
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-    
-    /* Subtle glow border to match the blue accents in your screenshot */
-    border: 1px solid rgba(100, 200, 255, 0.15) !important;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+    background: rgba(10, 20, 35, 0.95) !important; 
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(100, 200, 255, 0.2) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
     color: #ffffff;
 }
 
+/* SCOPED CLOSE BUTTON: Only affects this modal */
+.media-modal-custom .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+    opacity: 0.8;
+    transition: all 0.2s ease;
+    padding: 1.25rem;
+}
+
+.media-modal-custom .btn-close:hover {
+    opacity: 1;
+    transform: rotate(90deg);
+}
+
 .bg-media-container {
-    background: rgba(0, 0, 0, 0.4);
+    background: #000000;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .modal-title-custom {
     color: #ffffff;
-    letter-spacing: 0.5px;
+    font-size: 1.75rem;
+    letter-spacing: -0.02em;
 }
 
 .details-label-custom {
-    color: #60a5fa; /* A soft blue that matches your active nav link */
+    color: #60a5fa;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
 }
 
 .description-text {
-    color: #d1d5db; /* Light gray for perfect contrast without being harsh */
-    font-size: 1rem;
-    line-height: 1.7;
-    font-weight: 400;
+    color: #94a3b8; 
+    font-size: 1.05rem;
+    line-height: 1.8;
 }
 
-.cta-button-custom {
-    background-color: #3b82f6 !important;
-    border: none;
-}
-
-.cta-button-custom:hover {
-    background-color: #2563eb !important;
-    filter: brightness(1.1);
+/* Intelligent Thumbnail Seek Logic via CSS if needed, 
+   but primarily handled by the MediaRenderer's video tag */
+.intelligent-video-thumbnail {
+    background-color: #000;
 }
 
 .custom-carousel-controls .carousel-control-prev,
 .custom-carousel-controls .carousel-control-next {
-    background-color: rgba(0, 0, 0, 0.4); 
+    background-color: rgba(0, 0, 0, 0.5); 
     border-radius: 50%;
-    width: 42px;
-    height: 42px !important;
+    width: 48px;
+    height: 48px !important;
     top: 50%;
+    margin: 0 20px;
     transform: translateY(-50%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
 }
 
-.btn-close {
-    filter: invert(1) grayscale(100%) brightness(200%);
-    opacity: 0.7;
-    transition: opacity 0.2s;
-}
-
-.btn-close:hover {
-    opacity: 1;
+.custom-carousel-controls .carousel-control-prev:hover,
+.custom-carousel-controls .carousel-control-next:hover {
+    background-color: #3b82f6;
+    border-color: #3b82f6;
 }
