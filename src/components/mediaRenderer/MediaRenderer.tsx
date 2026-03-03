@@ -1,6 +1,6 @@
 // MediaRenderer.tsx
 import AsyncImage from "../asyncImageLoader/AsyncImage";
-import "./MediaRenderer.css"; // Make sure to create this file
+import "./MediaRenderer.css"; 
 
 interface MediaRendererProps {
     type: 'video' | 'image';
@@ -33,8 +33,18 @@ export default function MediaRenderer({
                 onPlay={onPlay}   
                 onPause={onPause}
                 onEnded={onPause}
+                playsInline
+                preload="metadata"
+                crossOrigin="anonymous"
+                onLoadedMetadata={(e) => {
+                    // Intelligent Thumbnailing: 
+                    // If not autoplaying, seek to 0.5s to show a preview frame
+                    if (!autoPlay) {
+                        e.currentTarget.currentTime = 0.5;
+                    }
+                }}
             >
-                <source src={url} type="video/mp4" />
+                <source src={url} />
                 Your browser does not support the video tag.
             </video>
         );

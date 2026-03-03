@@ -1,3 +1,4 @@
+// src/components/pages/adminProjects/MediaModal.tsx
 import { useState, useEffect } from 'react';
 import { Modal, Button, Carousel } from 'react-bootstrap';
 import { type MediaItem } from '../../types/MediaCardTypes';
@@ -38,6 +39,8 @@ export default function MediaModal({
             backdrop="static"
             keyboard={true}
             animation={true} 
+            // Scoped class name here
+            className="media-modal-custom"
             contentClassName='media-modal-content border-0 overflow-hidden'
         >
             <Modal.Header className='border-0 px-4 pt-4 pb-2' closeButton>
@@ -56,11 +59,12 @@ export default function MediaModal({
                     >
                         {item.gallery.map((media, index) => (
                             <Carousel.Item key={index}>
-                                <div className="ratio ratio-16x9">
+                                <div className="ratio ratio-16x9 bg-black">
                                     <MediaRenderer
                                         type={media.type}
                                         url={media.url}
-                                        className="object-fit-contain w-100 h-100"
+                                        // Pass a class that we can use for the 0.5s seek logic
+                                        className="object-fit-contain w-100 h-100 intelligent-video-thumbnail"
                                         onPlay={() => setIsVideoPlaying(true)}
                                         onPause={() => setIsVideoPlaying(false)}
                                     />
