@@ -6,6 +6,8 @@ compatibility_date = "2024-01-01"
 [vars]
 # The API worker needs this to know where to verify the auth_token cookie
 AUTH_WORKER_URL = "https://auth.syn-forge.com"
+VITE_CDN_URL = "https://personal-portfolio-bucket.syn-forge.com"
+R2_BUCKET_NAME = "personal-portfolio"
 
 [[d1_databases]]
 binding = "DB"

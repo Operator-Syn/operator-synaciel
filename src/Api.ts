@@ -12,11 +12,17 @@ import { SectionsController } from './controller/HomePage/SectionsController';
 import { SectionItemsController } from './controller/HomePage/SectionsItemsController';
 import { CertificatesController } from './controller/CertificatesPage/CertificatesController';
 import { CertificateItemsController } from './controller/CertificatesPage/CertificateItemsController';
+import { MediaController } from './controller/Media/MediaController'; 
 
 export type Bindings = {
   DB: D1Database;
   BUCKET: R2Bucket;
   AUTH_WORKER_URL: string;
+  VITE_CDN_URL: string;
+  ACCOUNT_ID: string;
+  R2_ACCESS_KEY_ID: string;
+  R2_SECRET_ACCESS_KEY: string;
+  R2_BUCKET_NAME: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -24,7 +30,7 @@ const app = new Hono<{ Bindings: Bindings }>();
 // --- CORS MIDDLEWARE ---
 app.use('/*', cors({
   origin: (origin) => {
-    if (!origin) return ''; 
+    if (!origin) return '';
 
     const allowedOrigins = [
       'http://localhost:5173',
@@ -40,7 +46,7 @@ app.use('/*', cors({
   },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
-  credentials: true, 
+  credentials: true,
 }));
 
 // --- OPTIONS handler for preflight requests ---
@@ -53,9 +59,7 @@ app.get('/', (c) => c.redirect('https://www.syn-forge.com', 301));
 //   PUBLIC APIS (No Auth Required)
 // ==========================================
 
-// THIS WAS THE MISSING PIECE: It registers the list of all projects
 app.get('/api/projects', ProjectsController.list);
-
 app.get('/api/project/:id', ProjectsController.get);
 app.get('/api/project/:projectId/gallery', GalleryController.listByProject);
 app.get('/api/snippets/:id', SnippetsPageController.getSnippet);
@@ -75,9 +79,6 @@ app.get('/api/certificates/:certId/items', CertificateItemsController.listByCert
 
 app.use('/api/*', async (c, next) => {
   const cookie = c.req.header('Cookie');
-  
-  console.log(`[API DEBUG] Request to: ${c.req.path}`);
-  console.log(`[API DEBUG] Cookie Header: ${cookie}`);
 
   if (!cookie || !cookie.includes('auth_token')) {
     return c.json({ error: 'Unauthorized' }, 401);
@@ -85,25 +86,27 @@ app.use('/api/*', async (c, next) => {
 
   try {
     const authWorkerUrl = `${c.env.AUTH_WORKER_URL}/auth/user`;
-    console.log(`[API DEBUG] Attempting fetch to: ${authWorkerUrl}`);
-
     const authRes = await fetch(authWorkerUrl, {
       headers: { 'Cookie': cookie }
     });
 
     if (!authRes.ok) {
-      const errorJson = await authRes.json().catch(() => ({ error: "Unknown error" }));
-      console.error(`[API DEBUG] Auth Worker returned error ${authRes.status}`, errorJson);
-      return c.json({ error: 'Forbidden', details: errorJson }, 403);
+      return c.json({ error: 'Forbidden' }, 403);
     }
-    
-    console.log(`[API DEBUG] Auth Success`);
+
     await next();
   } catch (err: any) {
-    console.error(`[API DEBUG] CRITICAL FETCH ERROR: ${err.message}`);
     return c.json({ error: 'Auth service unreachable', message: err.message }, 500);
   }
 });
+
+// --- MEDIA (Full CRUDL) ---
+app.get('/api/media', MediaController.list);           
+app.get('/api/media/:key{.+}', MediaController.get);
+app.post('/api/media', MediaController.upload);
+app.put('/api/media/:key{.+}', MediaController.update); 
+app.delete('/api/media/:key{.+}', MediaController.delete); 
+app.post('/api/media/presign', MediaController.presign);
 
 // --- PROJECTS CRUD (Write) ---
 app.post('/api/project', ProjectsController.create);
@@ -115,12 +118,12 @@ app.post('/api/gallery', GalleryController.create);
 app.put('/api/gallery/:id', GalleryController.update);
 app.delete('/api/gallery/:id', GalleryController.delete);
 
-// NEW: CERTIFICATES CRUD (Write)
+// --- CERTIFICATES CRUD (Write) ---
 app.post('/api/certificates', CertificatesController.create);
 app.put('/api/certificates/:id', CertificatesController.update);
 app.delete('/api/certificates/:id', CertificatesController.delete);
 
-// NEW: CERTIFICATE ITEMS (Write)
+// --- CERTIFICATE ITEMS (Write) ---
 app.post('/api/certificates/items', CertificateItemsController.create);
 app.put('/api/certificates/items/:id', CertificateItemsController.update);
 app.delete('/api/certificates/items/:id', CertificateItemsController.delete);
