@@ -12,7 +12,10 @@ import { SectionsController } from './controller/HomePage/SectionsController';
 import { SectionItemsController } from './controller/HomePage/SectionsItemsController';
 import { CertificatesController } from './controller/CertificatesPage/CertificatesController';
 import { CertificateItemsController } from './controller/CertificatesPage/CertificateItemsController';
-import { MediaController } from './controller/Media/MediaController'; 
+import { MediaController, createMediaController } from './controller/Media/MediaController'; 
+
+const ProjectsMedia = MediaController;
+const CertificatesMedia = createMediaController('Certificates/');
 
 export type Bindings = {
   DB: D1Database;
@@ -68,6 +71,10 @@ app.get('/api/settings', SettingsController.list);
 app.get('/api/profile', ProfileController.list);
 app.get('/api/sections', SectionsController.list);
 app.get('/api/sections/:sectionId/items', SectionItemsController.list);
+app.get('/api/projects/media', ProjectsMedia.list);           
+app.get('/api/projects/media/:key{.+}', ProjectsMedia.get);
+app.get('/api/certificates/media', CertificatesMedia.list);           
+app.get('/api/certificates/media/:key{.+}', CertificatesMedia.get);
 app.get('/api/certificates', CertificatesController.listAll);
 app.get('/api/certificates/:id', CertificatesController.getById);
 app.get('/api/certificates/:certId/items', CertificateItemsController.listByCertificate);
@@ -100,13 +107,16 @@ app.use('/api/*', async (c, next) => {
   }
 });
 
-// --- MEDIA (Full CRUDL) ---
-app.get('/api/media', MediaController.list);           
-app.get('/api/media/:key{.+}', MediaController.get);
-app.post('/api/media', MediaController.upload);
-app.put('/api/media/:key{.+}', MediaController.update); 
-app.delete('/api/media/:key{.+}', MediaController.delete); 
-app.post('/api/media/presign', MediaController.presign);
+// --- MEDIA (Private CRUD) ---
+app.post('/api/projects/media', ProjectsMedia.upload);
+app.put('/api/projects/media/:key{.+}', ProjectsMedia.update); 
+app.delete('/api/projects/media/:key{.+}', ProjectsMedia.delete); 
+app.post('/api/projects/media/presign', ProjectsMedia.presign);
+
+app.post('/api/certificates/media', CertificatesMedia.upload);
+app.put('/api/certificates/media/:key{.+}', CertificatesMedia.update); 
+app.delete('/api/certificates/media/:key{.+}', CertificatesMedia.delete); 
+app.post('/api/certificates/media/presign', CertificatesMedia.presign);
 
 // --- PROJECTS CRUD (Write) ---
 app.post('/api/project', ProjectsController.create);
@@ -149,7 +159,7 @@ app.delete('/api/sections/:id', SectionsController.delete);
 
 // --- SECTION ITEMS (Write) ---
 app.post('/api/sections/items', SectionItemsController.create);
-app.put('/api/sections/items', SectionItemsController.update);
+app.put('/api/sections/items/:id', SectionItemsController.update);
 app.delete('/api/sections/items/:id', SectionItemsController.delete);
 
 export default app;
