@@ -52,7 +52,8 @@ export class CertificatesModel {
 
   async getById(id: number): Promise<Certificate | null> {
     const query = `SELECT * FROM Certificates WHERE id=?`;
-    const { results } = await this.db.prepare(query).bind([id]).all();
+    // FIX: Remove array brackets from .bind()
+    const { results } = await this.db.prepare(query).bind(id).all();
 
     if (!results || results.length === 0) return null;
 
@@ -76,7 +77,9 @@ export class CertificatesModel {
         (title, type, url, short_description, long_description, certificate_link, display_order)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
-    await this.db.prepare(query).bind([
+    
+    // FIX: Pass arguments individually (remove array brackets)
+    await this.db.prepare(query).bind(
       cert.title,
       cert.type,
       cert.url,
@@ -84,7 +87,7 @@ export class CertificatesModel {
       cert.long_description,
       cert.certificate_link ?? null,
       cert.display_order ?? 0
-    ]).run();
+    ).run();
 
     const { results } = await this.db.prepare(`SELECT id FROM Certificates ORDER BY id DESC LIMIT 1`).all();
     return results?.[0]?.id ? Number(results[0].id) : 0;
@@ -94,18 +97,25 @@ export class CertificatesModel {
     const fields: string[] = [];
     const values: any[] = [];
 
+    // Filter out internal properties that might come from the frontend
+    const allowedKeys = ['title', 'type', 'url', 'short_description', 'long_description', 'certificate_link', 'display_order'];
+
     for (const [key, value] of Object.entries(cert)) {
-      fields.push(`${key}=?`);
-      values.push(value);
+      if (allowedKeys.includes(key)) {
+        fields.push(`${key}=?`);
+        values.push(value);
+      }
     }
+    
     if (!fields.length) return;
 
     const query = `UPDATE Certificates SET ${fields.join(', ')} WHERE id=?`;
-    await this.db.prepare(query).bind([...values, id]).run();
+    // FIX: Use spread operator directly on .bind() (remove array brackets)
+    await this.db.prepare(query).bind(...values, id).run();
   }
 
   async delete(id: number): Promise<void> {
-    // Note: CertificateItems are deleted via ON DELETE CASCADE in the DB schema
-    await this.db.prepare(`DELETE FROM Certificates WHERE id=?`).bind([id]).run();
+    // FIX: Remove array brackets from .bind()
+    await this.db.prepare(`DELETE FROM Certificates WHERE id=?`).bind(id).run();
   }
 }
