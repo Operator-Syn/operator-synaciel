@@ -8,6 +8,7 @@ import CookingArea from "../../cookingArea/CookingArea";
 import ColumnPanels from "../../columnPanels/ColumnPanels";
 import ProfileImageComponent from "../../profileImageComponent/ProfileImageComponent";
 import DevelopmentLoadoutsComponent from "../../developmentLoadoutsComponent/DevelopmentLoadoutsComponent";
+import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -68,9 +69,9 @@ export default function Home() {
             case "pitch":
                 // If you add a new 'pitch' section in DB, it appends here
                 section.items.forEach((item: any) => {
-                    sections.pitch.items.push({ 
-                        title: section.title, 
-                        content: item.content 
+                    sections.pitch.items.push({
+                        title: section.title,
+                        content: item.content
                     });
                 });
                 break;
@@ -84,9 +85,9 @@ export default function Home() {
                 break;
             case "loadout":
                 // If you add a new 'loadout' section (e.g. "Tools"), it appends here
-                const cat = { 
-                    category: section.title, 
-                    badges: section.items.map((i: any) => i.image_url).filter(Boolean) 
+                const cat = {
+                    category: section.title,
+                    badges: section.items.map((i: any) => i.image_url).filter(Boolean)
                 };
                 sections.loadouts.push(cat);
                 break;
@@ -96,42 +97,51 @@ export default function Home() {
     const data: HomePageTypes = { site, profile, sections };
 
     return (
-        <CookingArea>
-            <div className="container-fluid py-3">
-                <div className="row g-3 mb-3 d-flex align-items-stretch stack-on-mobile">
-                    <HeaderComponent
-                        isLoading={isLoading}
-                        headerPhrase={data.site?.headerPhrase}
-                        mobileHeaderPhrase={data.site?.mobileHeaderPhrase}
-                    />
-                    <ProfileImageComponent
-                        isLoading={isLoading}
-                        src={data.site?.profileImage}
-                        className="order-first-on-mobile"
-                    />
-                </div>
+        <>
+            <GlobalHeadManager
+                title="Home"
+                description="This software development portfolio presents a comprehensive showcase of full-stack projects, development tools, and technical expertise. It highlights web applications, open-source contributions, and innovative solutions, providing insight into the developer’s professional experience, programming skills, and problem-solving capabilities. Visitors can explore detailed project implementations, development loadouts, and software engineering achievements designed to demonstrate proficiency in modern web and software development practices."
+                image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
+                url="https://syn-forge.com/"
+            />
 
-                {/* THE GRID: Kept exactly the same to prevent breaking layout */}
-                <div className="row g-3 stack-on-mobile">
-                    <div className="col-4 d-flex flex-column">
-                        <ElevatorPitchComponent isLoading={isLoading} items={data.sections.pitch.items} />
+            <CookingArea>
+                <div className="container-fluid py-3">
+                    <div className="row g-3 mb-3 d-flex align-items-stretch stack-on-mobile">
+                        <HeaderComponent
+                            isLoading={isLoading}
+                            headerPhrase={data.site?.headerPhrase}
+                            mobileHeaderPhrase={data.site?.mobileHeaderPhrase}
+                        />
+                        <ProfileImageComponent
+                            isLoading={isLoading}
+                            src={data.site?.profileImage}
+                            className="order-first-on-mobile"
+                        />
                     </div>
-                    <DevelopmentLoadoutsComponent
-                        isLoading={isLoading}
-                        content={data ? { header: "Development Loadouts", sections: data.sections.loadouts } : undefined}
-                    />
-                    <ColumnPanels
-                        isLoading={isLoading}
-                        profileInfo={data.profile}
-                        socialLinks={data.sections.social.items.map(link => ({
-                            href: link.target_url,
-                            img: link.image_url,
-                            alt: link.label
-                        }))}
-                        className="order-first-on-mobile"
-                    />
+
+                    {/* THE GRID: Kept exactly the same to prevent breaking layout */}
+                    <div className="row g-3 stack-on-mobile">
+                        <div className="col-4 d-flex flex-column">
+                            <ElevatorPitchComponent isLoading={isLoading} items={data.sections.pitch.items} />
+                        </div>
+                        <DevelopmentLoadoutsComponent
+                            isLoading={isLoading}
+                            content={data ? { header: "Development Loadouts", sections: data.sections.loadouts } : undefined}
+                        />
+                        <ColumnPanels
+                            isLoading={isLoading}
+                            profileInfo={data.profile}
+                            socialLinks={data.sections.social.items.map(link => ({
+                                href: link.target_url,
+                                img: link.image_url,
+                                alt: link.label
+                            }))}
+                            className="order-first-on-mobile"
+                        />
+                    </div>
                 </div>
-            </div>
-        </CookingArea>
+            </CookingArea>
+        </>
     );
 }

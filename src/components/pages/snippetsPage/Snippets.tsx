@@ -7,6 +7,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Modal } from "react-bootstrap";
 import CookingArea from "../../cookingArea/CookingArea";
 import "./Snippets.css";
+import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
 
 type FileNode = {
     id: number;
@@ -162,243 +163,250 @@ export default function Snippets() {
     }
 
     return (
-        <CookingArea>
-            <div className="p-3 p-md-5 autoindex-page">
-                <div className="px-4 pb-4 pt-0 rounded snippet-card">
-                    <h5 className="mb-4 mt-4 text-white fw-bold">
-                        Index of {currentPathStr}/
-                    </h5>
+        <>
+            <GlobalHeadManager
+                title="Snippets"
+                description="A collection of code snippets, technical notes, and markdown files showcasing various programming techniques, solutions, and insights. This Snippets page serves as a resource for developers to explore and learn from a curated selection of coding examples and technical documentation, demonstrating proficiency in software development practices and problem-solving approaches."
+                image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
+                url="https://syn-forge.com/snippets"
+            />
+            
+            <CookingArea>
+                <div className="p-3 p-md-5 autoindex-page">
+                    <div className="px-4 pb-4 pt-0 rounded snippet-card">
+                        <h5 className="mb-4 mt-4 text-white fw-bold">
+                            Index of {currentPathStr}/
+                        </h5>
 
-                    <table className="table align-middle mb-0 table-fixed">
-                        <thead className="text-white-50 small">
-                            <tr>
-                                <th className="col-name">NAME</th>
-                                <th className="d-none d-md-table-cell col-modified">
-                                    MODIFIED
-                                </th>
-                                <th className="text-end d-none d-md-table-cell col-size">
-                                    SIZE
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {currentPathStr !== "/snippets" && (
-                                <tr
-                                    className="cursor-pointer"
-                                    onClick={() =>
-                                        setCurrentPathStr(
-                                            currentPathStr.substring(
-                                                0,
-                                                currentPathStr.lastIndexOf("/")
-                                            ) || "/snippets"
-                                        )
-                                    }
-                                >
-                                    <td
-                                        className="text-white fw-bold"
-                                        colSpan={3}
-                                    >
-                                        📁 ../
-                                    </td>
+                        <table className="table align-middle mb-0 table-fixed">
+                            <thead className="text-white-50 small">
+                                <tr>
+                                    <th className="col-name">NAME</th>
+                                    <th className="d-none d-md-table-cell col-modified">
+                                        MODIFIED
+                                    </th>
+                                    <th className="text-end d-none d-md-table-cell col-size">
+                                        SIZE
+                                    </th>
                                 </tr>
+                            </thead>
+                            <tbody>
+                                {currentPathStr !== "/snippets" && (
+                                    <tr
+                                        className="cursor-pointer"
+                                        onClick={() =>
+                                            setCurrentPathStr(
+                                                currentPathStr.substring(
+                                                    0,
+                                                    currentPathStr.lastIndexOf("/")
+                                                ) || "/snippets"
+                                            )
+                                        }
+                                    >
+                                        <td
+                                            className="text-white fw-bold"
+                                            colSpan={3}
+                                        >
+                                            📁 ../
+                                        </td>
+                                    </tr>
+                                )}
+
+                                {currentItems.map((item) => (
+                                    <tr
+                                        key={item.id}
+                                        className={`cursor-pointer ${isPreviewLoading
+                                                ? "opacity-50"
+                                                : ""
+                                            }`}
+                                        onClick={() => {
+                                            if (isPreviewLoading) return;
+
+                                            item.type === "dir"
+                                                ? setCurrentPathStr(
+                                                    `${currentPathStr}/${item.name}`
+                                                )
+                                                : handleFileClick(item);
+                                        }}
+                                    >
+                                        <td className="text-white text-truncate">
+                                            <span className="me-2">
+                                                {item.type === "dir"
+                                                    ? "📁"
+                                                    : "📄"}
+                                            </span>
+                                            {item.name}
+                                        </td>
+
+                                        <td className="text-white-50 small d-none d-md-table-cell">
+                                            {formatDate(item.modified)}
+                                        </td>
+
+                                        <td className="text-end text-white-50 small d-none d-md-table-cell">
+                                            {item.type === "dir"
+                                                ? "—"
+                                                : formatBytes(item.size)}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <Modal
+                        show={isModalOpen}
+                        onHide={() => {
+                            setPreviewContent(null);
+                            setPreviewError(null);
+                            setIsPreviewLoading(false);
+                        }}
+                        size="lg"
+                        centered
+                        contentClassName="markdown-modal-content"
+                    >
+                        <Modal.Header
+                            closeButton
+                            className="px-4 py-3 border-bottom-0"
+                        >
+                            <div className="d-flex justify-content-between align-items-center w-100 me-3">
+                                <Modal.Title
+                                    as="h6"
+                                    className="fw-bold text-dark m-0 text-truncate"
+                                    style={{ maxWidth: "70%" }}
+                                >
+                                    {previewFileName}
+                                </Modal.Title>
+
+                                <button
+                                    className="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold shadow-sm"
+                                    style={{ fontSize: "10px" }}
+                                    onClick={handleDownloadFullFile}
+                                    disabled={!previewContent}
+                                >
+                                    Download .md
+                                </button>
+                            </div>
+                        </Modal.Header>
+
+                        <Modal.Body className="markdown-body-container px-4">
+                            {isPreviewLoading && (
+                                <div className="text-center py-5">
+                                    <div
+                                        className="spinner-border text-dark mb-3"
+                                        role="status"
+                                    />
+                                    <div className="small text-muted">
+                                        Loading {previewFileName}...
+                                    </div>
+                                </div>
                             )}
 
-                            {currentItems.map((item) => (
-                                <tr
-                                    key={item.id}
-                                    className={`cursor-pointer ${
-                                        isPreviewLoading
-                                            ? "opacity-50"
-                                            : ""
-                                    }`}
-                                    onClick={() => {
-                                        if (isPreviewLoading) return;
-
-                                        item.type === "dir"
-                                            ? setCurrentPathStr(
-                                                  `${currentPathStr}/${item.name}`
-                                              )
-                                            : handleFileClick(item);
-                                    }}
-                                >
-                                    <td className="text-white text-truncate">
-                                        <span className="me-2">
-                                            {item.type === "dir"
-                                                ? "📁"
-                                                : "📄"}
-                                        </span>
-                                        {item.name}
-                                    </td>
-
-                                    <td className="text-white-50 small d-none d-md-table-cell">
-                                        {formatDate(item.modified)}
-                                    </td>
-
-                                    <td className="text-end text-white-50 small d-none d-md-table-cell">
-                                        {item.type === "dir"
-                                            ? "—"
-                                            : formatBytes(item.size)}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                <Modal
-                    show={isModalOpen}
-                    onHide={() => {
-                        setPreviewContent(null);
-                        setPreviewError(null);
-                        setIsPreviewLoading(false);
-                    }}
-                    size="lg"
-                    centered
-                    contentClassName="markdown-modal-content"
-                >
-                    <Modal.Header
-                        closeButton
-                        className="px-4 py-3 border-bottom-0"
-                    >
-                        <div className="d-flex justify-content-between align-items-center w-100 me-3">
-                            <Modal.Title
-                                as="h6"
-                                className="fw-bold text-dark m-0 text-truncate"
-                                style={{ maxWidth: "70%" }}
-                            >
-                                {previewFileName}
-                            </Modal.Title>
-
-                            <button
-                                className="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold shadow-sm"
-                                style={{ fontSize: "10px" }}
-                                onClick={handleDownloadFullFile}
-                                disabled={!previewContent}
-                            >
-                                Download .md
-                            </button>
-                        </div>
-                    </Modal.Header>
-
-                    <Modal.Body className="markdown-body-container px-4">
-                        {isPreviewLoading && (
-                            <div className="text-center py-5">
-                                <div
-                                    className="spinner-border text-dark mb-3"
-                                    role="status"
-                                />
-                                <div className="small text-muted">
-                                    Loading {previewFileName}...
+                            {!isPreviewLoading && previewError && (
+                                <div className="text-danger text-center py-5">
+                                    {previewError}
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {!isPreviewLoading && previewError && (
-                            <div className="text-danger text-center py-5">
-                                {previewError}
-                            </div>
-                        )}
+                            {!isPreviewLoading &&
+                                previewContent && (
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        components={{
+                                            code({
+                                                inline,
+                                                className,
+                                                children,
+                                                ...props
+                                            }: any) {
+                                                const match =
+                                                    /language-(\w+)/.exec(
+                                                        className || ""
+                                                    );
 
-                        {!isPreviewLoading &&
-                            previewContent && (
-                                <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    components={{
-                                        code({
-                                            inline,
-                                            className,
-                                            children,
-                                            ...props
-                                        }: any) {
-                                            const match =
-                                                /language-(\w+)/.exec(
-                                                    className || ""
-                                                );
+                                                const codeString =
+                                                    String(children).replace(
+                                                        /\n$/,
+                                                        ""
+                                                    );
 
-                                            const codeString =
-                                                String(children).replace(
-                                                    /\n$/,
-                                                    ""
-                                                );
+                                                const blockId =
+                                                    btoa(codeString).substring(
+                                                        0,
+                                                        16
+                                                    );
 
-                                            const blockId =
-                                                btoa(codeString).substring(
-                                                    0,
-                                                    16
-                                                );
-
-                                            return !inline &&
-                                                match ? (
-                                                <div className="code-block-wrapper">
-                                                    <div className="code-header">
-                                                        <span>
-                                                            {match[1].toUpperCase()}
-                                                        </span>
-                                                        <button
-                                                            className={`copy-btn shadow-sm ${
-                                                                copiedId ===
-                                                                blockId
-                                                                    ? "copied"
-                                                                    : ""
-                                                            }`}
-                                                            onClick={() =>
-                                                                handleCopy(
-                                                                    codeString,
+                                                return !inline &&
+                                                    match ? (
+                                                    <div className="code-block-wrapper">
+                                                        <div className="code-header">
+                                                            <span>
+                                                                {match[1].toUpperCase()}
+                                                            </span>
+                                                            <button
+                                                                className={`copy-btn shadow-sm ${copiedId ===
+                                                                        blockId
+                                                                        ? "copied"
+                                                                        : ""
+                                                                    }`}
+                                                                onClick={() =>
+                                                                    handleCopy(
+                                                                        codeString,
+                                                                        blockId
+                                                                    )
+                                                                }
+                                                            >
+                                                                {copiedId ===
                                                                     blockId
-                                                                )
-                                                            }
-                                                        >
-                                                            {copiedId ===
-                                                            blockId
-                                                                ? "✓ Copied"
-                                                                : "Copy"}
-                                                        </button>
-                                                    </div>
+                                                                    ? "✓ Copied"
+                                                                    : "Copy"}
+                                                            </button>
+                                                        </div>
 
-                                                    <SyntaxHighlighter
-                                                        style={
-                                                            vscDarkPlus
-                                                        }
-                                                        language={
-                                                            match[1]
-                                                        }
-                                                        PreTag="div"
-                                                        useInlineStyles={
-                                                            true
-                                                        }
-                                                        customStyle={{
-                                                            margin: 0,
-                                                            padding:
-                                                                "1.25rem",
-                                                            fontSize:
-                                                                "13px",
-                                                            overflowX:
-                                                                "auto",
-                                                            background:
-                                                                "#1e1e1e",
-                                                        }}
+                                                        <SyntaxHighlighter
+                                                            style={
+                                                                vscDarkPlus
+                                                            }
+                                                            language={
+                                                                match[1]
+                                                            }
+                                                            PreTag="div"
+                                                            useInlineStyles={
+                                                                true
+                                                            }
+                                                            customStyle={{
+                                                                margin: 0,
+                                                                padding:
+                                                                    "1.25rem",
+                                                                fontSize:
+                                                                    "13px",
+                                                                overflowX:
+                                                                    "auto",
+                                                                background:
+                                                                    "#1e1e1e",
+                                                            }}
+                                                            {...props}
+                                                        >
+                                                            {codeString}
+                                                        </SyntaxHighlighter>
+                                                    </div>
+                                                ) : (
+                                                    <code
+                                                        className="inline-code"
                                                         {...props}
                                                     >
-                                                        {codeString}
-                                                    </SyntaxHighlighter>
-                                                </div>
-                                            ) : (
-                                                <code
-                                                    className="inline-code"
-                                                    {...props}
-                                                >
-                                                    {children}
-                                                </code>
-                                            );
-                                        },
-                                    }}
-                                >
-                                    {previewContent}
-                                </ReactMarkdown>
-                            )}
-                    </Modal.Body>
-                </Modal>
-            </div>
-        </CookingArea>
+                                                        {children}
+                                                    </code>
+                                                );
+                                            },
+                                        }}
+                                    >
+                                        {previewContent}
+                                    </ReactMarkdown>
+                                )}
+                        </Modal.Body>
+                    </Modal>
+                </div>
+            </CookingArea>
+        </>
     );
 }
