@@ -1,13 +1,14 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Modal } from "react-bootstrap";
 import CookingArea from "../../cookingArea/CookingArea";
 import "./Snippets.css";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
+
+// Lazy load the heavy syntax engine to split the bundle
+const SyntaxRenderer = lazy(() => import("./SyntaxRenderer"));
 
 type FileNode = {
     id: number;
@@ -20,6 +21,7 @@ type FileNode = {
     children?: FileNode[];
 };
 
+// ... [Keep your helper functions: formatBytes, formatDate, generateFileIndex, fetchSnippets] ...
 const formatBytes = (bytes?: number) => {
     if (!bytes) return "—";
     const k = 1024;
@@ -30,38 +32,21 @@ const formatBytes = (bytes?: number) => {
 
 const formatDate = (dateString: string) =>
     new Date(dateString)
-        .toLocaleString("en-US", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-        })
+        .toLocaleString("en-US", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true })
         .replace(",", "");
 
-const generateFileIndex = (
-    nodes: FileNode[],
-    prefix = "/snippets"
-): Record<string, FileNode[]> => {
+const generateFileIndex = (nodes: FileNode[], prefix = "/snippets"): Record<string, FileNode[]> => {
     let index: Record<string, FileNode[]> = { [prefix]: nodes };
-
     nodes.forEach((node) => {
         if (node.type === "dir" && node.children) {
-            index = {
-                ...index,
-                ...generateFileIndex(node.children, `${prefix}/${node.name}`),
-            };
+            index = { ...index, ...generateFileIndex(node.children, `${prefix}/${node.name}`) };
         }
     });
-
     return index;
 };
 
 const fetchSnippets = async (): Promise<FileNode[]> => {
-    const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/snippets`
-    );
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/snippets`);
     if (!response.ok) throw new Error("Failed to fetch snippets");
     return response.json();
 };
@@ -71,37 +56,17 @@ export default function Snippets() {
         queryKey: ["snippets"],
         queryFn: fetchSnippets,
         refetchInterval: 1000 * 60 * 30,
-        refetchIntervalInBackground: true,
         staleTime: 1000 * 60 * 30,
-        gcTime: 1000 * 60 * 35,
     });
 
-    const [currentPathStr, setCurrentPathStr] =
-        useState<string>("/snippets");
+    const [currentPathStr, setCurrentPathStr] = useState<string>("/snippets");
+    const [previewContent, setPreviewContent] = useState<string | null>(null);
+    const [previewFileName, setPreviewFileName] = useState<string>("");
+    const [isPreviewLoading, setIsPreviewLoading] = useState<boolean>(false);
+    const [previewError, setPreviewError] = useState<string | null>(null);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
 
-    const [previewContent, setPreviewContent] =
-        useState<string | null>(null);
-
-    const [previewFileName, setPreviewFileName] =
-        useState<string>("");
-
-    const [isPreviewLoading, setIsPreviewLoading] =
-        useState<boolean>(false);
-
-    const [previewError, setPreviewError] =
-        useState<string | null>(null);
-
-    const [copiedId, setCopiedId] =
-        useState<string | null>(null);
-
-    const fileIndex = useMemo(
-        () =>
-            rootFileSystem
-                ? generateFileIndex(rootFileSystem)
-                : {},
-        [rootFileSystem]
-    );
-
+    const fileIndex = useMemo(() => (rootFileSystem ? generateFileIndex(rootFileSystem) : {}), [rootFileSystem]);
     const currentItems = fileIndex[currentPathStr] || [];
 
     const handleCopy = (code: string, id: string) => {
@@ -112,12 +77,8 @@ export default function Snippets() {
 
     const handleDownloadFullFile = () => {
         if (!previewContent) return;
-
         const element = document.createElement("a");
-        const file = new Blob([previewContent], {
-            type: "text/markdown",
-        });
-
+        const file = new Blob([previewContent], { type: "text/markdown" });
         element.href = URL.createObjectURL(file);
         element.download = previewFileName || "snippet.md";
         document.body.appendChild(element);
@@ -127,46 +88,30 @@ export default function Snippets() {
 
     const handleFileClick = async (file: FileNode) => {
         if (!file.path || file.format !== "md") return;
-
         setPreviewFileName(file.name);
         setPreviewContent(null);
         setPreviewError(null);
         setIsPreviewLoading(true);
-
         try {
-            const res = await fetch(
-                `${import.meta.env.VITE_CDN_URL}/${file.path}`
-            );
-
+            const res = await fetch(`${import.meta.env.VITE_CDN_URL}/${file.path}`);
             if (!res.ok) throw new Error("Failed to fetch file");
-
-            const text = await res.text();
-            setPreviewContent(text);
-        } catch (err) {
+            setPreviewContent(await res.text());
+        } catch {
             setPreviewError("Failed to load file.");
         } finally {
             setIsPreviewLoading(false);
         }
     };
 
-    const isModalOpen =
-        isPreviewLoading ||
-        !!previewContent ||
-        !!previewError;
+    const isModalOpen = isPreviewLoading || !!previewContent || !!previewError;
 
-    if (isLoading) {
-        return (
-            <div className="p-5 text-center text-white-50">
-                Loading...
-            </div>
-        );
-    }
+    if (isLoading) return <div className="p-5 text-center text-white-50">Loading...</div>;
 
     return (
         <>
             <GlobalHeadManager
                 title="Snippets"
-                description="A collection of code snippets, technical notes, and markdown files showcasing various programming techniques, solutions, and insights. This Snippets page serves as a resource for developers to explore and learn from a curated selection of coding examples and technical documentation, demonstrating proficiency in software development practices and problem-solving approaches."
+                description="A collection of code snippets..."
                 image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
                 url="https://syn-forge.com/snippets"
             />
@@ -174,235 +119,57 @@ export default function Snippets() {
             <CookingArea>
                 <div className="p-3 p-md-5 autoindex-page">
                     <div className="px-4 pb-4 pt-0 rounded snippet-card">
-                        <h5 className="mb-4 mt-4 text-white fw-bold">
-                            Index of {currentPathStr}/
-                        </h5>
-
+                        <h5 className="mb-4 mt-4 text-white fw-bold">Index of {currentPathStr}/</h5>
                         <table className="table align-middle mb-0 table-fixed">
                             <thead className="text-white-50 small">
-                                <tr>
-                                    <th className="col-name">NAME</th>
-                                    <th className="d-none d-md-table-cell col-modified">
-                                        MODIFIED
-                                    </th>
-                                    <th className="text-end d-none d-md-table-cell col-size">
-                                        SIZE
-                                    </th>
-                                </tr>
+                                <tr><th className="col-name">NAME</th><th className="d-none d-md-table-cell col-modified">MODIFIED</th><th className="text-end d-none d-md-table-cell col-size">SIZE</th></tr>
                             </thead>
                             <tbody>
                                 {currentPathStr !== "/snippets" && (
-                                    <tr
-                                        className="cursor-pointer"
-                                        onClick={() =>
-                                            setCurrentPathStr(
-                                                currentPathStr.substring(
-                                                    0,
-                                                    currentPathStr.lastIndexOf("/")
-                                                ) || "/snippets"
-                                            )
-                                        }
-                                    >
-                                        <td
-                                            className="text-white fw-bold"
-                                            colSpan={3}
-                                        >
-                                            📁 ../
-                                        </td>
+                                    <tr className="cursor-pointer" onClick={() => setCurrentPathStr(currentPathStr.substring(0, currentPathStr.lastIndexOf("/")) || "/snippets")}>
+                                        <td className="text-white fw-bold" colSpan={3}>📁 ../</td>
                                     </tr>
                                 )}
-
                                 {currentItems.map((item) => (
-                                    <tr
-                                        key={item.id}
-                                        className={`cursor-pointer ${isPreviewLoading
-                                                ? "opacity-50"
-                                                : ""
-                                            }`}
-                                        onClick={() => {
-                                            if (isPreviewLoading) return;
-
-                                            item.type === "dir"
-                                                ? setCurrentPathStr(
-                                                    `${currentPathStr}/${item.name}`
-                                                )
-                                                : handleFileClick(item);
-                                        }}
-                                    >
-                                        <td className="text-white text-truncate">
-                                            <span className="me-2">
-                                                {item.type === "dir"
-                                                    ? "📁"
-                                                    : "📄"}
-                                            </span>
-                                            {item.name}
-                                        </td>
-
-                                        <td className="text-white-50 small d-none d-md-table-cell">
-                                            {formatDate(item.modified)}
-                                        </td>
-
-                                        <td className="text-end text-white-50 small d-none d-md-table-cell">
-                                            {item.type === "dir"
-                                                ? "—"
-                                                : formatBytes(item.size)}
-                                        </td>
+                                    <tr key={item.id} className="cursor-pointer" onClick={() => item.type === "dir" ? setCurrentPathStr(`${currentPathStr}/${item.name}`) : handleFileClick(item)}>
+                                        <td className="text-white text-truncate"><span className="me-2">{item.type === "dir" ? "📁" : "📄"}</span>{item.name}</td>
+                                        <td className="text-white-50 small d-none d-md-table-cell">{formatDate(item.modified)}</td>
+                                        <td className="text-end text-white-50 small d-none d-md-table-cell">{item.type === "dir" ? "—" : formatBytes(item.size)}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
 
-                    <Modal
-                        show={isModalOpen}
-                        onHide={() => {
-                            setPreviewContent(null);
-                            setPreviewError(null);
-                            setIsPreviewLoading(false);
-                        }}
-                        size="lg"
-                        centered
-                        contentClassName="markdown-modal-content"
-                    >
-                        <Modal.Header
-                            closeButton
-                            className="px-4 py-3 border-bottom-0"
-                        >
+                    <Modal show={isModalOpen} onHide={() => { setPreviewContent(null); setPreviewError(null); setIsPreviewLoading(false); }} size="lg" centered contentClassName="markdown-modal-content">
+                        <Modal.Header closeButton className="px-4 py-3 border-bottom-0">
                             <div className="d-flex justify-content-between align-items-center w-100 me-3">
-                                <Modal.Title
-                                    as="h6"
-                                    className="fw-bold text-dark m-0 text-truncate"
-                                    style={{ maxWidth: "70%" }}
-                                >
-                                    {previewFileName}
-                                </Modal.Title>
-
-                                <button
-                                    className="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold shadow-sm"
-                                    style={{ fontSize: "10px" }}
-                                    onClick={handleDownloadFullFile}
-                                    disabled={!previewContent}
-                                >
-                                    Download .md
-                                </button>
+                                <Modal.Title as="h6" className="fw-bold text-dark m-0 text-truncate" style={{ maxWidth: "70%" }}>{previewFileName}</Modal.Title>
+                                <button className="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold shadow-sm" onClick={handleDownloadFullFile} disabled={!previewContent}>Download .md</button>
                             </div>
                         </Modal.Header>
-
                         <Modal.Body className="markdown-body-container px-4">
-                            {isPreviewLoading && (
-                                <div className="text-center py-5">
-                                    <div
-                                        className="spinner-border text-dark mb-3"
-                                        role="status"
-                                    />
-                                    <div className="small text-muted">
-                                        Loading {previewFileName}...
-                                    </div>
-                                </div>
+                            {isPreviewLoading && <div className="text-center py-5"><div className="spinner-border text-dark mb-3" role="status" /></div>}
+                            {!isPreviewLoading && previewError && <div className="text-danger text-center py-5">{previewError}</div>}
+                            {!isPreviewLoading && previewContent && (
+                                <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+                                    code({ className, children, ...props }: any) {
+                                        const match = /language-(\w+)/.exec(className || "");
+                                        const codeString = String(children).replace(/\n$/, "");
+                                        const blockId = btoa(codeString).substring(0, 16);
+                                        return match ? (
+                                            <div className="code-block-wrapper">
+                                                <div className="code-header"><span>{match[1].toUpperCase()}</span>
+                                                    <button className={`copy-btn shadow-sm ${copiedId === blockId ? "copied" : ""}`} onClick={() => handleCopy(codeString, blockId)}>{copiedId === blockId ? "✓ Copied" : "Copy"}</button>
+                                                </div>
+                                                <Suspense fallback={<div className="p-3 text-muted">Loading Syntax...</div>}>
+                                                    <SyntaxRenderer language={match[1]} codeString={codeString} {...props} />
+                                                </Suspense>
+                                            </div>
+                                        ) : <code className="inline-code" {...props}>{children}</code>;
+                                    }
+                                }}>{previewContent}</ReactMarkdown>
                             )}
-
-                            {!isPreviewLoading && previewError && (
-                                <div className="text-danger text-center py-5">
-                                    {previewError}
-                                </div>
-                            )}
-
-                            {!isPreviewLoading &&
-                                previewContent && (
-                                    <ReactMarkdown
-                                        remarkPlugins={[remarkGfm]}
-                                        components={{
-                                            code({
-                                                inline,
-                                                className,
-                                                children,
-                                                ...props
-                                            }: any) {
-                                                const match =
-                                                    /language-(\w+)/.exec(
-                                                        className || ""
-                                                    );
-
-                                                const codeString =
-                                                    String(children).replace(
-                                                        /\n$/,
-                                                        ""
-                                                    );
-
-                                                const blockId =
-                                                    btoa(codeString).substring(
-                                                        0,
-                                                        16
-                                                    );
-
-                                                return !inline &&
-                                                    match ? (
-                                                    <div className="code-block-wrapper">
-                                                        <div className="code-header">
-                                                            <span>
-                                                                {match[1].toUpperCase()}
-                                                            </span>
-                                                            <button
-                                                                className={`copy-btn shadow-sm ${copiedId ===
-                                                                        blockId
-                                                                        ? "copied"
-                                                                        : ""
-                                                                    }`}
-                                                                onClick={() =>
-                                                                    handleCopy(
-                                                                        codeString,
-                                                                        blockId
-                                                                    )
-                                                                }
-                                                            >
-                                                                {copiedId ===
-                                                                    blockId
-                                                                    ? "✓ Copied"
-                                                                    : "Copy"}
-                                                            </button>
-                                                        </div>
-
-                                                        <SyntaxHighlighter
-                                                            style={
-                                                                vscDarkPlus
-                                                            }
-                                                            language={
-                                                                match[1]
-                                                            }
-                                                            PreTag="div"
-                                                            useInlineStyles={
-                                                                true
-                                                            }
-                                                            customStyle={{
-                                                                margin: 0,
-                                                                padding:
-                                                                    "1.25rem",
-                                                                fontSize:
-                                                                    "13px",
-                                                                overflowX:
-                                                                    "auto",
-                                                                background:
-                                                                    "#1e1e1e",
-                                                            }}
-                                                            {...props}
-                                                        >
-                                                            {codeString}
-                                                        </SyntaxHighlighter>
-                                                    </div>
-                                                ) : (
-                                                    <code
-                                                        className="inline-code"
-                                                        {...props}
-                                                    >
-                                                        {children}
-                                                    </code>
-                                                );
-                                            },
-                                        }}
-                                    >
-                                        {previewContent}
-                                    </ReactMarkdown>
-                                )}
                         </Modal.Body>
                     </Modal>
                 </div>
