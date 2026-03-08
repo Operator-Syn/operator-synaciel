@@ -25,6 +25,7 @@ export class SettingsController {
 
   static async delete(c: Context<{ Bindings: Bindings }>) {
     const key = c.req.param("key");
+    if (!key) return c.json({ error: "Key is required" }, 400);
     const model = new SettingsModel(c.env.DB);
     await model.delete(key);
     return c.json({ success: true });
