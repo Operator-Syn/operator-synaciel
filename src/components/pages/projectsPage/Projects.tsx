@@ -6,6 +6,7 @@ import './Projects.css';
 import { type MediaItem } from '../../../types/MediaCardTypes';
 import Grid from '../../grid/Grid';
 import MediaModal from '../../mediaModal/MediaModal';
+import GlobalHeadManager from '../../globalHeadManager/GlobalHeadManager';
 
 // --- UPDATED INTERFACE: Matches ProjectsModel.ts flat structure ---
 interface ApiProject {
@@ -132,28 +133,37 @@ export default function Projects() {
     };
 
     return (
-        <CookingArea>
-            <div className="container py-3">
-                <HeaderTag className="mb-4">Light and easy things that I've been working on.</HeaderTag>
+        <>
+            <GlobalHeadManager
+                title="Projects"
+                description="This Projects page showcases a collection of full-stack and web development projects, demonstrating technical expertise, problem-solving abilities, and innovative solutions. Each project includes detailed implementations, development tools, and key achievements, providing insight into the developer’s professional experience and proficiency in modern software engineering, open-source contributions, and cloud-based technologies. Visitors can explore a variety of projects, from web applications to software engineering achievements, highlighting the developer’s skills and experience in the field."
+                image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
+                url="https://syn-forge.com/projects"
+            />
 
-                {isLoading && (
-                    <div className="d-flex justify-content-center my-5">
-                        <div className="spinner-border text-primary" role="status"></div>
-                    </div>
-                )}
+            <CookingArea>
+                <div className="container py-3">
+                    <HeaderTag className="mb-4">Light and easy things that I've been working on.</HeaderTag>
 
-                {!isLoading && !isError && (
-                    <Grid projects={displayProjects} onProjectClick={handleOpenProject} />
-                )}
+                    {isLoading && (
+                        <div className="d-flex justify-content-center my-5">
+                            <div className="spinner-border text-primary" role="status"></div>
+                        </div>
+                    )}
 
-                <MediaModal
-                    item={selectedProject}
-                    show={showModal}
-                    onClose={handleCloseModal}
-                    detailsLabel="About this Project"
-                    ctaLabel="View Project Source"
-                />
-            </div>
-        </CookingArea>
+                    {!isLoading && !isError && (
+                        <Grid projects={displayProjects} onProjectClick={handleOpenProject} />
+                    )}
+
+                    <MediaModal
+                        item={selectedProject}
+                        show={showModal}
+                        onClose={handleCloseModal}
+                        detailsLabel="About this Project"
+                        ctaLabel="View Project Source"
+                    />
+                </div>
+            </CookingArea>
+        </>
     );
 }
