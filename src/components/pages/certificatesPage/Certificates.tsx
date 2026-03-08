@@ -6,6 +6,7 @@ import './Certificates.css';
 import { type MediaItem } from '../../../types/MediaCardTypes';
 import Grid from '../../grid/Grid';
 import MediaModal from '../../mediaModal/MediaModal';
+import GlobalHeadManager from '../../globalHeadManager/GlobalHeadManager';
 
 interface ApiCertification {
     id: number;
@@ -132,30 +133,38 @@ export default function Certifications() {
     };
 
     return (
-        <CookingArea>
-            <div className="container py-3">
-                <HeaderTag className="mb-4">
-                    Credentials and specialized training I've completed.
-                </HeaderTag>
+        <>
+            <GlobalHeadManager
+                title="Certifications"
+                description="A showcase of my credentials and specialized training, highlighting completed certifications in software development, cloud technologies, and industry-recognized programs. This Certifications page provides insight into my commitment to continuous learning and professional growth, featuring detailed information about each certification, including issuing organizations, completion dates, and credential links for verification."
+                image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
+                url="https://syn-forge.com/certificates"
+            />
+            <CookingArea>
+                <div className="container py-3">
+                    <HeaderTag className="mb-4">
+                        Credentials and specialized training I've completed.
+                    </HeaderTag>
 
-                {isLoading && (
-                    <div className="d-flex justify-content-center my-5">
-                        <div className="spinner-border text-primary" role="status"></div>
-                    </div>
-                )}
+                    {isLoading && (
+                        <div className="d-flex justify-content-center my-5">
+                            <div className="spinner-border text-primary" role="status"></div>
+                        </div>
+                    )}
 
-                {!isLoading && !isError && (
-                    <Grid projects={displayCerts} onProjectClick={handleOpenCert} />
-                )}
+                    {!isLoading && !isError && (
+                        <Grid projects={displayCerts} onProjectClick={handleOpenCert} />
+                    )}
 
-                <MediaModal
-                    item={selectedCert}
-                    show={showModal}
-                    onClose={handleCloseModal}
-                    detailsLabel="Certification Details"
-                    ctaLabel="View Credential"
-                />
-            </div>
-        </CookingArea>
+                    <MediaModal
+                        item={selectedCert}
+                        show={showModal}
+                        onClose={handleCloseModal}
+                        detailsLabel="Certification Details"
+                        ctaLabel="View Credential"
+                    />
+                </div>
+            </CookingArea>
+        </>
     );
 }
