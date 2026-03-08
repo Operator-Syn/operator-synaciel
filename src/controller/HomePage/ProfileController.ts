@@ -30,6 +30,9 @@ export class ProfileController {
     // Note: ensure your useAdminHomeData.ts wraps the label in encodeURIComponent(label) 
     // when making the DELETE request, otherwise labels with spaces will 404!
     const label = c.req.param("label");
+    // Minimal change: Guard clause to ensure label is a string
+    if (!label) return c.json({ error: "Label is required" }, 400);
+    
     const model = new ProfileModel(c.env.DB);
     await model.delete(label);
     return c.json({ success: true });
