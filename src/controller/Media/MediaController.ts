@@ -75,6 +75,8 @@ export const createMediaController = (prefix: string) => ({
 
   get: async (c: Context<{ Bindings: Bindings }>) => {
     const key = c.req.param('key');
+    if (!key) return c.json({ error: 'Key is required' }, 400);
+    
     const object = await c.env.BUCKET.get(key);
     if (!object) return c.json({ error: 'Object not found' }, 404);
 
@@ -90,6 +92,8 @@ export const createMediaController = (prefix: string) => ({
   update: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const key = c.req.param('key');
+      if (!key) return c.json({ error: 'Key is required' }, 400);
+
       const formData = await c.req.formData();
       const file = formData.get('file');
       if (!file || !(file instanceof File)) return c.json({ error: 'No replacement file provided' }, 400);
@@ -105,6 +109,8 @@ export const createMediaController = (prefix: string) => ({
   delete: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const key = c.req.param('key');
+      if (!key) return c.json({ error: 'Key is required' }, 400);
+
       const object = await c.env.BUCKET.head(key);
       if (!object) return c.json({ error: 'Resource not found' }, 404);
       await c.env.BUCKET.delete(key);
