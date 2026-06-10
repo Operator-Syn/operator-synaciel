@@ -1,6 +1,8 @@
 // src/Api.ts
 import { Hono } from 'hono';
+import { cache } from 'hono/cache';
 import { cors } from 'hono/cors';
+import type { MiddlewareHandler } from 'hono';
 import type { D1Database, R2Bucket } from "@cloudflare/workers-types";
 
 import { SnippetsPageController } from './controller/SnippetsPage/SnippetsPageController';
@@ -30,6 +32,42 @@ export type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+const PUBLIC_DATA_CACHE_CONTROL = 'public, max-age=60, s-maxage=180, stale-while-revalidate=300';
+const PUBLIC_FILE_CACHE_CONTROL = 'public, max-age=30, s-maxage=120, stale-while-revalidate=300';
+const PUBLIC_MEDIA_CACHE_CONTROL = 'public, max-age=120, s-maxage=600, stale-while-revalidate=900';
+
+const noStoreByDefault: MiddlewareHandler<{ Bindings: Bindings }> = async (c, next) => {
+  await next();
+
+  if (!c.res.headers.has('Cache-Control')) {
+    c.header('Cache-Control', 'no-store');
+  }
+};
+
+const publicDataCache = cache({
+  cacheName: 'operator-synaciel-public-data-v1',
+  cacheControl: PUBLIC_DATA_CACHE_CONTROL,
+  vary: 'Origin',
+  cacheableStatusCodes: [200],
+  onCacheNotAvailable: false,
+});
+
+const publicFileCache = cache({
+  cacheName: 'operator-synaciel-public-files-v1',
+  cacheControl: PUBLIC_FILE_CACHE_CONTROL,
+  vary: 'Origin',
+  cacheableStatusCodes: [200],
+  onCacheNotAvailable: false,
+});
+
+const publicMediaCache = cache({
+  cacheName: 'operator-synaciel-public-media-v1',
+  cacheControl: PUBLIC_MEDIA_CACHE_CONTROL,
+  vary: 'Origin',
+  cacheableStatusCodes: [200],
+  onCacheNotAvailable: false,
+});
+
 // --- CORS MIDDLEWARE ---
 app.use('/*', cors({
   origin: (origin) => {
@@ -56,6 +94,8 @@ app.use('/*', cors({
 // --- OPTIONS handler for preflight requests ---
 app.options('/api/*', (c) => c.json({}));
 
+app.use('/api/*', noStoreByDefault);
+
 // --- ROOT REDIRECT ---
 app.get('/', (c) => c.redirect('https://www.syn-forge.com', 301));
 
@@ -63,23 +103,23 @@ app.get('/', (c) => c.redirect('https://www.syn-forge.com', 301));
 //   PUBLIC APIS (No Auth Required)
 // ==========================================
 
-app.get('/api/projects', ProjectsController.list);
-app.get('/api/project/:id', ProjectsController.get);
-app.get('/api/project/:projectId/gallery', GalleryController.listByProject);
-app.get('/api/snippets/:id', SnippetsPageController.getSnippet);
-app.get('/api/snippets/:id/content', SnippetsPageController.downloadSnippet);
-app.get('/api/snippets', SnippetsPageController.getSnippets);
-app.get('/api/settings', SettingsController.list);
-app.get('/api/profile', ProfileController.list);
-app.get('/api/sections', SectionsController.list);
-app.get('/api/sections/:sectionId/items', SectionItemsController.list);
-app.get('/api/projects/media', ProjectsMedia.list);           
-app.get('/api/projects/media/:key{.+}', ProjectsMedia.get);
-app.get('/api/certificates/media', CertificatesMedia.list);           
-app.get('/api/certificates/media/:key{.+}', CertificatesMedia.get);
-app.get('/api/certificates', CertificatesController.listAll);
-app.get('/api/certificates/:id', CertificatesController.getById);
-app.get('/api/certificates/:certId/items', CertificateItemsController.listByCertificate);
+app.get('/api/projects', publicDataCache, ProjectsController.list);
+app.get('/api/project/:id', publicDataCache, ProjectsController.get);
+app.get('/api/project/:projectId/gallery', publicDataCache, GalleryController.listByProject);
+app.get('/api/snippets/:id', publicDataCache, SnippetsPageController.getSnippet);
+app.get('/api/snippets/:id/content', publicFileCache, SnippetsPageController.downloadSnippet);
+app.get('/api/snippets', publicDataCache, SnippetsPageController.getSnippets);
+app.get('/api/settings', publicDataCache, SettingsController.list);
+app.get('/api/profile', publicDataCache, ProfileController.list);
+app.get('/api/sections', publicDataCache, SectionsController.list);
+app.get('/api/sections/:sectionId/items', publicDataCache, SectionItemsController.list);
+app.get('/api/projects/media', publicMediaCache, ProjectsMedia.list);           
+app.get('/api/projects/media/:key{.+}', publicMediaCache, ProjectsMedia.get);
+app.get('/api/certificates/media', publicMediaCache, CertificatesMedia.list);           
+app.get('/api/certificates/media/:key{.+}', publicMediaCache, CertificatesMedia.get);
+app.get('/api/certificates', publicDataCache, CertificatesController.listAll);
+app.get('/api/certificates/:id', publicDataCache, CertificatesController.getById);
+app.get('/api/certificates/:certId/items', publicDataCache, CertificateItemsController.listByCertificate);
 
 
 // ==========================================
