@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     Sitemap({
       hostname: 'https://syn-forge.com',
-      dynamicRoutes: ['/projects', '/certificates', '/snippets'],
+      dynamicRoutes: ['/projects', '/certificates', '/snippets', '/snippets/root/'],
     })
   ],
   base: "/",
