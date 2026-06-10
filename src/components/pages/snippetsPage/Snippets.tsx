@@ -1,4 +1,4 @@
-import { useState, useMemo, lazy, Suspense } from "react";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -48,7 +48,8 @@ const generateFileIndex = (nodes: FileNode[], prefix = "/snippets"): Record<stri
 const fetchSnippets = async (): Promise<FileNode[]> => {
     const response = await fetch(`${import.meta.env.VITE_API_URL}/snippets`);
     if (!response.ok) throw new Error("Failed to fetch snippets");
-    return response.json();
+    const payload = await response.json();
+    return payload.data;
 };
 
 export default function Snippets() {
@@ -61,13 +62,23 @@ export default function Snippets() {
 
     const [currentPathStr, setCurrentPathStr] = useState<string>("/snippets");
     const [previewContent, setPreviewContent] = useState<string | null>(null);
+    const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null);
     const [previewFileName, setPreviewFileName] = useState<string>("");
+    const [previewFileFormat, setPreviewFileFormat] = useState<FileNode["format"]>(undefined);
     const [isPreviewLoading, setIsPreviewLoading] = useState<boolean>(false);
     const [previewError, setPreviewError] = useState<string | null>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
     const fileIndex = useMemo(() => (rootFileSystem ? generateFileIndex(rootFileSystem) : {}), [rootFileSystem]);
     const currentItems = fileIndex[currentPathStr] || [];
+
+    useEffect(() => {
+        return () => {
+            if (previewFileUrl) {
+                URL.revokeObjectURL(previewFileUrl);
+            }
+        };
+    }, [previewFileUrl]);
 
     const handleCopy = (code: string, id: string) => {
         navigator.clipboard.writeText(code);
@@ -76,26 +87,44 @@ export default function Snippets() {
     };
 
     const handleDownloadFullFile = () => {
-        if (!previewContent) return;
+        if (!previewContent && !previewFileUrl) return;
+
         const element = document.createElement("a");
-        const file = new Blob([previewContent], { type: "text/markdown" });
-        element.href = URL.createObjectURL(file);
-        element.download = previewFileName || "snippet.md";
+
+        if (previewFileFormat === "pdf" && previewFileUrl) {
+            element.href = previewFileUrl;
+            element.download = previewFileName || "snippet.pdf";
+        } else if (previewContent) {
+            const file = new Blob([previewContent], { type: "text/markdown" });
+            element.href = URL.createObjectURL(file);
+            element.download = previewFileName || "snippet.md";
+        }
+
         document.body.appendChild(element);
         element.click();
         document.body.removeChild(element);
     };
 
     const handleFileClick = async (file: FileNode) => {
-        if (!file.path || file.format !== "md") return;
+        if (!file.format) return;
+
         setPreviewFileName(file.name);
+        setPreviewFileFormat(file.format);
         setPreviewContent(null);
+        setPreviewFileUrl(null);
         setPreviewError(null);
         setIsPreviewLoading(true);
+
         try {
-            const res = await fetch(`${import.meta.env.VITE_CDN_URL}/${file.path}`);
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/snippets/${file.id}/content`);
             if (!res.ok) throw new Error("Failed to fetch file");
-            setPreviewContent(await res.text());
+
+            if (file.format === "pdf") {
+                const blob = await res.blob();
+                setPreviewFileUrl(URL.createObjectURL(blob));
+            } else {
+                setPreviewContent(await res.text());
+            }
         } catch {
             setPreviewError("Failed to load file.");
         } finally {
@@ -103,7 +132,15 @@ export default function Snippets() {
         }
     };
 
-    const isModalOpen = isPreviewLoading || !!previewContent || !!previewError;
+    const handleClosePreview = () => {
+        setPreviewContent(null);
+        setPreviewFileUrl(null);
+        setPreviewFileFormat(undefined);
+        setPreviewError(null);
+        setIsPreviewLoading(false);
+    };
+
+    const isModalOpen = isPreviewLoading || !!previewContent || !!previewFileUrl || !!previewError;
 
     if (isLoading) return <div className="p-5 text-center text-white-50">Loading...</div>;
 
@@ -119,7 +156,10 @@ export default function Snippets() {
             <CookingArea>
                 <div className="p-3 p-md-5 autoindex-page">
                     <div className="px-4 pb-4 pt-0 rounded snippet-card">
-                        <h5 className="mb-4 mt-4 text-white fw-bold">Index of {currentPathStr}/</h5>
+                        <h5 className="mb-4 mt-4 text-white fw-bold snippet-path-heading">
+                            <span>Index of&nbsp;</span>
+                            <span className="snippet-path-text" title={`${currentPathStr}/`}>{currentPathStr}/</span>
+                        </h5>
                         <table className="table align-middle mb-0 table-fixed">
                             <thead className="text-white-50 small">
                                 <tr><th className="col-name">NAME</th><th className="d-none d-md-table-cell col-modified">MODIFIED</th><th className="text-end d-none d-md-table-cell col-size">SIZE</th></tr>
@@ -141,16 +181,19 @@ export default function Snippets() {
                         </table>
                     </div>
 
-                    <Modal show={isModalOpen} onHide={() => { setPreviewContent(null); setPreviewError(null); setIsPreviewLoading(false); }} size="lg" centered contentClassName="markdown-modal-content">
+                    <Modal show={isModalOpen} onHide={handleClosePreview} size="xl" fullscreen="sm-down" centered contentClassName="markdown-modal-content">
                         <Modal.Header closeButton className="px-4 py-3 border-bottom-0">
                             <div className="d-flex justify-content-between align-items-center w-100 me-3">
                                 <Modal.Title as="h6" className="fw-bold text-dark m-0 text-truncate" style={{ maxWidth: "70%" }}>{previewFileName}</Modal.Title>
-                                <button className="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold shadow-sm" onClick={handleDownloadFullFile} disabled={!previewContent}>Download .md</button>
+                                <button className="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold shadow-sm" onClick={handleDownloadFullFile} disabled={!previewContent && !previewFileUrl}>Download</button>
                             </div>
                         </Modal.Header>
-                        <Modal.Body className="markdown-body-container px-4">
+                        <Modal.Body className={`markdown-body-container px-4 ${previewFileFormat === "pdf" ? "pdf-modal-body" : ""}`}>
                             {isPreviewLoading && <div className="text-center py-5"><div className="spinner-border text-dark mb-3" role="status" /></div>}
                             {!isPreviewLoading && previewError && <div className="text-danger text-center py-5">{previewError}</div>}
+                            {!isPreviewLoading && previewFileUrl && previewFileFormat === "pdf" && (
+                                <iframe className="pdf-preview-frame" src={previewFileUrl} title={previewFileName} />
+                            )}
                             {!isPreviewLoading && previewContent && (
                                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
                                     code({ className, children, ...props }: any) {
