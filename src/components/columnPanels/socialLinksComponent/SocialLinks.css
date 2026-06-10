@@ -1,51 +1,41 @@
-/* SocialLinks.css */
+/* src/components/columnPanels/socialLinksComponent/SocialLinks.css */
 
-/* 1. The Header Title */
-.social-placeholder-title {
-    height: 2.25rem; /* Slightly taller to match a header */
-    display: block;
-    opacity: 0.15;
+.social-links-panel {
+    min-height: 0;
 }
 
-/* 2. The Bricks (Icons) */
-.social-placeholder-icon {
-    /* KEY TO THE BRICK LAYOUT: */
-    width: 30%;       /* Tries to fit 3 items per row (30% * 3 = 90%) */
-    min-width: 100px; /* Prevents them from becoming too tiny on mobile */
-    height: 2rem;     /* Fixed height makes them look like "bricks" or buttons */
-    
-    display: inline-block;
-    
-    /* Ensuring the placeholder isn't pitch black */
-    opacity: 0.15; 
-    
-    /* Optional: Makes them fill the remaining tiny gaps for a solid look */
-    flex-grow: 1;
+.social-links-badge-grid {
+    min-height: 0;
+    line-height: 0;
 }
 
-/* SocialLinks.css */
+.social-link-anchor {
+    line-height: 0;
+}
+
 .badge-hidden {
     display: none;
-}
-
-/* Ensure your placeholder icon size matches your actual images */
-.social-placeholder-icon {
-    width: 30px;  /* Adjust to match your badge.img size */
-    height: 30px;
 }
 
 .badge-img-hidden {
     display: none;
 }
 
+.social-placeholder-title {
+    height: 2.25rem;
+    display: block;
+    opacity: 0.15;
+}
+
 .social-placeholder-icon {
-    width: 30px; 
+    width: 30px;
     height: 30px;
     display: inline-block;
+    opacity: 0.15;
 }
 
 @media (max-width: 1400px) {
-    .social-placeholder-icon:nth-child(n+4) {
+    .social-placeholder-icon:nth-child(n + 4) {
         display: none;
     }
 }
