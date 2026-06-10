@@ -37,6 +37,7 @@ app.use('/*', cors({
 
     const allowedOrigins = [
       'http://localhost:5173',
+      'http://localhost:5174',
       'http://localhost:3000',
       'https://www.syn-forge.com',
       'https://syn-forge.com',
@@ -47,7 +48,7 @@ app.use('/*', cors({
     if (allowedOrigins.includes(origin)) return origin;
     return '';
   },
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
@@ -66,6 +67,7 @@ app.get('/api/projects', ProjectsController.list);
 app.get('/api/project/:id', ProjectsController.get);
 app.get('/api/project/:projectId/gallery', GalleryController.listByProject);
 app.get('/api/snippets/:id', SnippetsPageController.getSnippet);
+app.get('/api/snippets/:id/content', SnippetsPageController.downloadSnippet);
 app.get('/api/snippets', SnippetsPageController.getSnippets);
 app.get('/api/settings', SettingsController.list);
 app.get('/api/profile', ProfileController.list);
@@ -140,6 +142,7 @@ app.delete('/api/certificates/items/:id', CertificateItemsController.delete);
 
 // --- SNIPPETS (Write) ---
 app.post('/api/snippets', SnippetsPageController.createSnippet);
+app.patch('/api/snippets/:id', SnippetsPageController.updateSnippet);
 app.delete('/api/snippets/:id', SnippetsPageController.deleteSnippet);
 
 // --- SETTINGS (Write) ---
