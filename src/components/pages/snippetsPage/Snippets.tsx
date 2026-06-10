@@ -1,14 +1,19 @@
-import { useState, useMemo, useEffect, lazy, Suspense } from "react";
+import { useState, useMemo, useEffect, useRef, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation, useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Modal } from "react-bootstrap";
 import CookingArea from "../../cookingArea/CookingArea";
 import "./Snippets.css";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
+import { SNIPPETS_REFETCH_INTERVAL_MS, SNIPPETS_STALE_TIME_MS } from "../../../data/cacheSettings";
 
 // Lazy load the heavy syntax engine to split the bundle
 const SyntaxRenderer = lazy(() => import("./SyntaxRenderer"));
+
+const INTERNAL_ROOT_PATH = "/snippets";
+const ROUTE_ROOT_PATH = "/snippets/root";
 
 type FileNode = {
     id: number;
@@ -45,6 +50,47 @@ const generateFileIndex = (nodes: FileNode[], prefix = "/snippets"): Record<stri
     return index;
 };
 
+const getInternalPathFromRoutePath = (pathname: string) => {
+    const normalizedPathname = pathname.replace(/\/+$/, "");
+
+    if (normalizedPathname === "/snippets" || normalizedPathname === ROUTE_ROOT_PATH) {
+        return INTERNAL_ROOT_PATH;
+    }
+
+    if (!normalizedPathname.startsWith(`${ROUTE_ROOT_PATH}/`)) {
+        return INTERNAL_ROOT_PATH;
+    }
+
+    const relativePath = normalizedPathname.slice(`${ROUTE_ROOT_PATH}/`.length);
+    const decodedSegments = relativePath
+        .split("/")
+        .filter(Boolean)
+        .map((segment) => {
+            try {
+                return decodeURIComponent(segment);
+            } catch {
+                return segment;
+            }
+        });
+
+    return [INTERNAL_ROOT_PATH, ...decodedSegments].join("/");
+};
+
+const getRoutePathFromInternalPath = (internalPath: string) => {
+    const relativePath = internalPath
+        .replace(/^\/snippets\/?/, "")
+        .split("/")
+        .filter(Boolean)
+        .map((segment) => encodeURIComponent(segment))
+        .join("/");
+
+    return `${ROUTE_ROOT_PATH}/${relativePath ? `${relativePath}/` : ""}`;
+};
+
+const getCanonicalRoutePath = (pathname: string) => (
+    getRoutePathFromInternalPath(getInternalPathFromRoutePath(pathname))
+);
+
 const fetchSnippets = async (): Promise<FileNode[]> => {
     const response = await fetch(`${import.meta.env.VITE_API_URL}/snippets`);
     if (!response.ok) throw new Error("Failed to fetch snippets");
@@ -53,14 +99,16 @@ const fetchSnippets = async (): Promise<FileNode[]> => {
 };
 
 export default function Snippets() {
+    const location = useLocation();
+    const navigate = useNavigate();
+
     const { data: rootFileSystem, isLoading } = useQuery({
         queryKey: ["snippets"],
         queryFn: fetchSnippets,
-        refetchInterval: 1000 * 60 * 30,
-        staleTime: 1000 * 60 * 30,
+        refetchInterval: SNIPPETS_REFETCH_INTERVAL_MS,
+        staleTime: SNIPPETS_STALE_TIME_MS,
     });
 
-    const [currentPathStr, setCurrentPathStr] = useState<string>("/snippets");
     const [previewContent, setPreviewContent] = useState<string | null>(null);
     const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null);
     const [previewFileName, setPreviewFileName] = useState<string>("");
@@ -68,9 +116,26 @@ export default function Snippets() {
     const [isPreviewLoading, setIsPreviewLoading] = useState<boolean>(false);
     const [previewError, setPreviewError] = useState<string | null>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const previewRequestIdRef = useRef(0);
+    const previewAbortControllerRef = useRef<AbortController | null>(null);
 
     const fileIndex = useMemo(() => (rootFileSystem ? generateFileIndex(rootFileSystem) : {}), [rootFileSystem]);
+    const currentPathStr = useMemo(() => getInternalPathFromRoutePath(location.pathname), [location.pathname]);
     const currentItems = fileIndex[currentPathStr] || [];
+
+    useEffect(() => {
+        const canonicalPath = getCanonicalRoutePath(location.pathname);
+
+        if (location.pathname !== canonicalPath) {
+            navigate(canonicalPath, { replace: true });
+        }
+    }, [location.pathname, navigate]);
+
+    useEffect(() => {
+        if (!isLoading && rootFileSystem && !fileIndex[currentPathStr]) {
+            navigate(getRoutePathFromInternalPath(INTERNAL_ROOT_PATH), { replace: true });
+        }
+    }, [currentPathStr, fileIndex, isLoading, navigate, rootFileSystem]);
 
     useEffect(() => {
         return () => {
@@ -79,6 +144,12 @@ export default function Snippets() {
             }
         };
     }, [previewFileUrl]);
+
+    useEffect(() => {
+        return () => {
+            previewAbortControllerRef.current?.abort();
+        };
+    }, []);
 
     const handleCopy = (code: string, id: string) => {
         navigator.clipboard.writeText(code);
@@ -108,6 +179,12 @@ export default function Snippets() {
     const handleFileClick = async (file: FileNode) => {
         if (!file.format) return;
 
+        previewAbortControllerRef.current?.abort();
+        const requestId = previewRequestIdRef.current + 1;
+        previewRequestIdRef.current = requestId;
+        const controller = new AbortController();
+        previewAbortControllerRef.current = controller;
+
         setPreviewFileName(file.name);
         setPreviewFileFormat(file.format);
         setPreviewContent(null);
@@ -116,33 +193,66 @@ export default function Snippets() {
         setIsPreviewLoading(true);
 
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/snippets/${file.id}/content`);
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/snippets/${file.id}/content`, {
+                signal: controller.signal,
+            });
             if (!res.ok) throw new Error("Failed to fetch file");
 
             if (file.format === "pdf") {
                 const blob = await res.blob();
-                setPreviewFileUrl(URL.createObjectURL(blob));
+                const fileUrl = URL.createObjectURL(blob);
+
+                if (previewRequestIdRef.current !== requestId || controller.signal.aborted) {
+                    URL.revokeObjectURL(fileUrl);
+                    return;
+                }
+
+                setPreviewFileUrl(fileUrl);
             } else {
-                setPreviewContent(await res.text());
+                const content = await res.text();
+
+                if (previewRequestIdRef.current !== requestId || controller.signal.aborted) {
+                    return;
+                }
+
+                setPreviewContent(content);
             }
         } catch {
+            if (previewRequestIdRef.current !== requestId || controller.signal.aborted) {
+                return;
+            }
+
             setPreviewError("Failed to load file.");
         } finally {
-            setIsPreviewLoading(false);
+            if (previewRequestIdRef.current === requestId) {
+                previewAbortControllerRef.current = null;
+                setIsPreviewLoading(false);
+            }
         }
     };
 
     const handleClosePreview = () => {
+        previewRequestIdRef.current += 1;
+        previewAbortControllerRef.current?.abort();
+        previewAbortControllerRef.current = null;
         setPreviewContent(null);
         setPreviewFileUrl(null);
+        setPreviewFileName("");
         setPreviewFileFormat(undefined);
         setPreviewError(null);
         setIsPreviewLoading(false);
     };
 
-    const isModalOpen = isPreviewLoading || !!previewContent || !!previewFileUrl || !!previewError;
+    const handleFolderClick = (folderName: string) => {
+        navigate(getRoutePathFromInternalPath(`${currentPathStr}/${folderName}`));
+    };
 
-    if (isLoading) return <div className="p-5 text-center text-white-50">Loading...</div>;
+    const handleParentClick = () => {
+        const parentPath = currentPathStr.substring(0, currentPathStr.lastIndexOf("/")) || INTERNAL_ROOT_PATH;
+        navigate(getRoutePathFromInternalPath(parentPath));
+    };
+
+    const isModalOpen = isPreviewLoading || !!previewContent || !!previewFileUrl || !!previewError;
 
     return (
         <>
@@ -155,31 +265,39 @@ export default function Snippets() {
             
             <CookingArea>
                 <div className="p-3 p-md-5 autoindex-page">
-                    <div className="px-4 pb-4 pt-0 rounded snippet-card">
-                        <h5 className="mb-4 mt-4 text-white fw-bold snippet-path-heading">
-                            <span>Index of&nbsp;</span>
-                            <span className="snippet-path-text" title={`${currentPathStr}/`}>{currentPathStr}/</span>
-                        </h5>
-                        <table className="table align-middle mb-0 table-fixed">
-                            <thead className="text-white-50 small">
-                                <tr><th className="col-name">NAME</th><th className="d-none d-md-table-cell col-modified">MODIFIED</th><th className="text-end d-none d-md-table-cell col-size">SIZE</th></tr>
-                            </thead>
-                            <tbody>
-                                {currentPathStr !== "/snippets" && (
-                                    <tr className="cursor-pointer" onClick={() => setCurrentPathStr(currentPathStr.substring(0, currentPathStr.lastIndexOf("/")) || "/snippets")}>
-                                        <td className="text-white fw-bold" colSpan={3}>📁 ../</td>
-                                    </tr>
-                                )}
-                                {currentItems.map((item) => (
-                                    <tr key={item.id} className="cursor-pointer" onClick={() => item.type === "dir" ? setCurrentPathStr(`${currentPathStr}/${item.name}`) : handleFileClick(item)}>
-                                        <td className="text-white text-truncate"><span className="me-2">{item.type === "dir" ? "📁" : "📄"}</span>{item.name}</td>
-                                        <td className="text-white-50 small d-none d-md-table-cell">{formatDate(item.modified)}</td>
-                                        <td className="text-end text-white-50 small d-none d-md-table-cell">{item.type === "dir" ? "—" : formatBytes(item.size)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    {isLoading && (
+                        <div className="d-flex justify-content-center my-5">
+                            <div className="spinner-border text-primary" role="status"></div>
+                        </div>
+                    )}
+
+                    {!isLoading && (
+                        <div className="px-4 pb-4 pt-0 rounded snippet-card">
+                            <h5 className="mb-4 mt-4 text-white fw-bold snippet-path-heading">
+                                <span>Index of&nbsp;</span>
+                                <span className="snippet-path-text" title={`${currentPathStr}/`}>{currentPathStr}/</span>
+                            </h5>
+                            <table className="table align-middle mb-0 table-fixed">
+                                <thead className="text-white-50 small">
+                                    <tr><th className="col-name">NAME</th><th className="d-none d-md-table-cell col-modified">MODIFIED</th><th className="text-end d-none d-md-table-cell col-size">SIZE</th></tr>
+                                </thead>
+                                <tbody>
+                                    {currentPathStr !== "/snippets" && (
+                                        <tr className="cursor-pointer" onClick={handleParentClick}>
+                                            <td className="text-white fw-bold" colSpan={3}>📁 ../</td>
+                                        </tr>
+                                    )}
+                                    {currentItems.map((item) => (
+                                        <tr key={item.id} className="cursor-pointer" onClick={() => item.type === "dir" ? handleFolderClick(item.name) : handleFileClick(item)}>
+                                            <td className="text-white text-truncate"><span className="me-2">{item.type === "dir" ? "📁" : "📄"}</span>{item.name}</td>
+                                            <td className="text-white-50 small d-none d-md-table-cell">{formatDate(item.modified)}</td>
+                                            <td className="text-end text-white-50 small d-none d-md-table-cell">{item.type === "dir" ? "—" : formatBytes(item.size)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
                     <Modal show={isModalOpen} onHide={handleClosePreview} size="xl" fullscreen="sm-down" centered contentClassName="markdown-modal-content">
                         <Modal.Header closeButton className="px-4 py-3 border-bottom-0">
