@@ -1,56 +1,53 @@
+// src/components/developmentLoadoutsComponent/DevelopmentLoadoutsPlaceholder.tsx
+
 import "./DevelopmentLoadoutsComponent.css";
 
 interface PlaceholderProps {
-    isMobile?: boolean; // Made optional to prevent strict type errors if omitted
+    isMobile?: boolean;
 }
 
-export default function DevelopmentLoadoutsPlaceholder({ isMobile = false }: PlaceholderProps) {
-    // Desktop: 5 items to simulate accordion
-    const skeletonSections = Array(5).fill(null);
-    // Mobile: 5 badges to simulate grid
-    const skeletonBadges = Array(5).fill(null);
+export default function DevelopmentLoadoutsPlaceholder({
+    isMobile = false,
+}: PlaceholderProps) {
+    const skeletonTabs = Array(6).fill(null);
+    const skeletonBadges = Array(isMobile ? 4 : 8).fill(null);
 
     return (
-        <div className="col-4 d-flex flex-column">
-            {/* Added h-100 to ensure the outer card takes full height if needed */}
-            <div 
-                className="light-glass-blue-hue flex-grow-1 p-3 rounded shadow-sm placeholder-glow d-flex flex-column h-100"
+        <div className="col-4 d-flex flex-column development-loadouts-column">
+            <div
+                className="light-glass-blue-hue development-loadouts-panel p-3 rounded shadow-sm placeholder-glow"
                 aria-hidden="true"
             >
-                {/* Header Title */}
-                <div className="mb-3">
+                <h3 className="m-0">
                     <span className="placeholder dev-loadouts-placeholder-title rounded"></span>
-                </div>
-                
+                </h3>
                 <hr />
 
-                {/* CONDITIONAL LAYOUT */}
-                {isMobile ? (
-                    /* MOBILE SKELETON */
-                    <div className="d-flex flex-column gap-3">
-                        {skeletonSections.map((_, i) => (
-                            <div key={i}>
-                                <span className="placeholder col-5 mb-2 rounded opacity-25"></span>
-                                <div className="d-flex flex-wrap gap-2">
-                                    {skeletonBadges.map((_, j) => (
-                                        <span key={j} className="placeholder dev-loadouts-placeholder-badge rounded"></span>
-                                    ))}
-                                </div>
-                            </div>
+                <div className="loadout-tabs">
+                    {skeletonTabs.map((_, index) => (
+                        <span
+                            key={index}
+                            className={`loadout-tab dev-loadouts-placeholder-tab ${
+                                index === 0 ? "is-active" : ""
+                            }`}
+                        >
+                            <span className="placeholder dev-loadouts-placeholder-tab-icon rounded"></span>
+                        </span>
+                    ))}
+                </div>
+
+                <div className="loadout-active-card">
+                    <div className="loadout-badge-grid">
+                        {skeletonBadges.map((_, index) => (
+                            <span
+                                key={index}
+                                className="badge-grid-item dev-loadouts-placeholder-badge-shell"
+                            >
+                                <span className="placeholder dev-loadouts-placeholder-badge rounded"></span>
+                            </span>
                         ))}
                     </div>
-                ) : (
-                    /* DESKTOP SKELETON */
-                    /* ADDED 'flex-grow-1' here so this wrapper fills the card */
-                    <div className="d-flex flex-column gap-2 flex-grow-1">
-                        {skeletonSections.map((_, index) => (
-                            <span 
-                                key={index} 
-                                className="placeholder dev-loadouts-placeholder-item rounded"
-                            ></span>
-                        ))}
-                    </div>
-                )}
+                </div>
             </div>
         </div>
     );
