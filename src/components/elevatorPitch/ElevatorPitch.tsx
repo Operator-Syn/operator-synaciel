@@ -28,7 +28,7 @@ export default function ElevatorPitchComponent(props: ElevatorPitchProps) {
             <h3 className="m-0">{displayTitle}</h3>
             <hr />
             {items.map((item, index) => (
-                <p key={index} className="text-justify m-0 mb-3">
+                <p key={index} className="elevator-pitch-content m-0 mb-3">
                     {item.content}
                 </p>
             ))}
