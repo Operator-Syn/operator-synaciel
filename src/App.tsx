@@ -12,7 +12,7 @@ export default function App() {
         {NavLinks.map((link) => (
           <Route
             key={link.path}
-            path={link.path}
+            path={link.path === "/snippets" ? `${link.path}/*` : link.path}
             element={link.component ? <link.component /> : null}
           />
         ))}
