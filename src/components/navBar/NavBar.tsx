@@ -18,6 +18,7 @@ interface NavBarProps {
 
 export default function NavBar({ brandName, links }: NavBarProps) {
     const [expanded, setExpanded] = useState(false);
+    const [isScrolled, setIsScrolled] = useState(false);
     const navRef = useRef<HTMLDivElement>(null);
 
     const handleClickOutside = useCallback((event: MouseEvent) => {
@@ -31,12 +32,19 @@ export default function NavBar({ brandName, links }: NavBarProps) {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [handleClickOutside]);
 
+    useEffect(() => {
+        const handleScroll = () => setIsScrolled(window.scrollY > 12);
+        handleScroll();
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
+
     return (
         <Navbar
             ref={navRef}
             expand="lg"
             expanded={expanded}
-            className="fixed-top glass custom-nav"
+            className={`fixed-top glass custom-nav ${isScrolled ? "custom-nav-scrolled" : ""} ${expanded ? "custom-nav-expanded" : ""}`}
         >
             <Container fluid>
                 <Navbar.Brand as={NavLink} to="/">
@@ -44,6 +52,7 @@ export default function NavBar({ brandName, links }: NavBarProps) {
                 </Navbar.Brand>
                 <Navbar.Toggle
                     aria-controls="navbar-nav"
+                    aria-label="Toggle navigation"
                     onClick={() => setExpanded((prev) => !prev)}
                 />
                 <Navbar.Collapse id="navbar-nav">
@@ -55,7 +64,7 @@ export default function NavBar({ brandName, links }: NavBarProps) {
                                 to={link.path}
                                 onClick={() => setExpanded(false)}
                             >
-                                {link.name}
+                                <span className="nav-link-label">{link.name}</span>
                             </Nav.Link>
                         ))}
                     </Nav>
