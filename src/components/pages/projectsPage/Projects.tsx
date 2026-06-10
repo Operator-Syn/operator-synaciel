@@ -7,6 +7,7 @@ import { type MediaItem } from '../../../types/MediaCardTypes';
 import Grid from '../../grid/Grid';
 import MediaModal from '../../mediaModal/MediaModal';
 import GlobalHeadManager from '../../globalHeadManager/GlobalHeadManager';
+import { PUBLIC_DATA_STALE_TIME_MS } from '../../../data/cacheSettings';
 
 // --- UPDATED INTERFACE: Matches ProjectsModel.ts flat structure ---
 interface ApiProject {
@@ -76,7 +77,7 @@ export default function Projects() {
             {
                 queryKey: ['projects'],
                 queryFn: fetchProjects,
-                staleTime: 1000 * 60 * 30,
+                staleTime: PUBLIC_DATA_STALE_TIME_MS,
             },
         ],
     })[0];
@@ -90,7 +91,7 @@ export default function Projects() {
         queries: projects.map(project => ({
             queryKey: ['gallery', project.id],
             queryFn: () => fetchGalleryByProject(project.id),
-            staleTime: 1000 * 60 * 30,
+            staleTime: PUBLIC_DATA_STALE_TIME_MS,
             enabled: !!projects.length,
         })),
     });
