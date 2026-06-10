@@ -135,7 +135,12 @@ CREATE TABLE IF NOT EXISTS Snippets (
     
     -- RESTRICTED FORMATS:
     -- Only 'pdf' or 'md' allowed for files. NULL for directories.
-    file_format TEXT, 
+    file_format TEXT,
+
+    -- DISPLAY ORDER:
+    -- Controls manual ordering within the same parent folder.
+    -- Lower numbers appear first.
+    display_order INTEGER DEFAULT 0,
     
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     modified_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -155,3 +160,6 @@ CREATE TABLE IF NOT EXISTS Snippets (
 
 -- Index for fast lookups when opening a folder
 CREATE INDEX IF NOT EXISTS idx_snippets_parent_id ON Snippets(parent_id);
+
+-- Index for fast ordered folder views
+CREATE INDEX IF NOT EXISTS idx_snippets_parent_order ON Snippets(parent_id, display_order, name);
