@@ -13,6 +13,24 @@
   border: 1px solid transparent !important; 
 }
 
+.snippet-path-heading {
+  display: flex;
+  max-width: 100%;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.snippet-path-heading span:first-child {
+  flex: 0 0 auto;
+}
+
+.snippet-path-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Force a fixed layout so columns can't wiggle or resize */
 .table-fixed {
   table-layout: fixed !important;
@@ -61,6 +79,44 @@
   overflow-y: auto;
   color: #1a202c !important;
   line-height: 1.6;
+}
+
+.pdf-modal-body {
+  height: min(78dvh, 860px);
+  max-height: none;
+  overflow: hidden;
+  padding: 0 1.5rem 1.5rem !important;
+}
+
+.pdf-preview-frame {
+  width: 100%;
+  height: 100%;
+  min-height: 28rem;
+  border: 0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+@media (max-width: 575.98px) {
+  .markdown-modal-content {
+    min-height: 100dvh;
+    border-radius: 0 !important;
+  }
+
+  .markdown-body-container {
+    padding: 1rem !important;
+    max-height: calc(100dvh - 4.5rem);
+  }
+
+  .pdf-modal-body {
+    height: calc(100dvh - 4.5rem);
+    padding: 0 0.75rem 0.75rem !important;
+  }
+
+  .pdf-preview-frame {
+    min-height: 0;
+    border-radius: 6px;
+  }
 }
 
 /* Typography Colors */
