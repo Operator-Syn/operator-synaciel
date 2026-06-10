@@ -10,16 +10,22 @@ interface SyntaxRendererProps {
 export default function SyntaxRenderer({ language, codeString, ...props }: SyntaxRendererProps) {
   return (
     <SyntaxHighlighter
+      className="snippet-code-highlighter"
       style={vscDarkPlus}
       language={language}
       PreTag="div"
+      wrapLongLines={false}
       useInlineStyles={true}
       customStyle={{
         margin: 0,
         padding: "1.25rem",
         fontSize: "13px",
+        lineHeight: 1.65,
         overflowX: "auto",
         background: "#1e1e1e",
+        whiteSpace: "pre",
+        wordBreak: "normal",
+        overflowWrap: "normal",
       }}
       {...props}
     >
