@@ -7,6 +7,7 @@ import { type MediaItem } from '../../../types/MediaCardTypes';
 import Grid from '../../grid/Grid';
 import MediaModal from '../../mediaModal/MediaModal';
 import GlobalHeadManager from '../../globalHeadManager/GlobalHeadManager';
+import { PUBLIC_DATA_STALE_TIME_MS } from '../../../data/cacheSettings';
 
 interface ApiCertification {
     id: number;
@@ -75,7 +76,7 @@ export default function Certifications() {
             {
                 queryKey: ['certificates'],
                 queryFn: fetchCertifications,
-                staleTime: 1000 * 60 * 30,
+                staleTime: PUBLIC_DATA_STALE_TIME_MS,
             },
         ],
     })[0];
@@ -89,7 +90,7 @@ export default function Certifications() {
         queries: certifications.map(cert => ({
             queryKey: ['certificate-items', cert.id],
             queryFn: () => fetchCertificateItems(cert.id),
-            staleTime: 1000 * 60 * 30,
+            staleTime: PUBLIC_DATA_STALE_TIME_MS,
             enabled: !!certifications.length,
         })),
     });
