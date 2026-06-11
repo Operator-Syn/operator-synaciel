@@ -139,6 +139,17 @@ const generateFileIndex = (
     return index;
 };
 
+const slugifyPathSegment = (segment: string) =>
+    segment.trim().replace(/\s+/g, "-").replace(/-+/g, "-");
+
+const unslugifyPathSegment = (segment: string) => {
+    try {
+        return decodeURIComponent(segment).replace(/-/g, " ");
+    } catch {
+        return segment.replace(/-/g, " ");
+    }
+};
+
 const getInternalPathFromRoutePath = (pathname: string) => {
     const normalizedPathname = pathname.replace(/\/+$/, "");
 
@@ -158,13 +169,7 @@ const getInternalPathFromRoutePath = (pathname: string) => {
     const decodedSegments = relativePath
         .split("/")
         .filter(Boolean)
-        .map((segment) => {
-            try {
-                return decodeURIComponent(segment);
-            } catch {
-                return segment;
-            }
-        });
+        .map(unslugifyPathSegment);
 
     return [INTERNAL_ROOT_PATH, ...decodedSegments].join("/");
 };
@@ -174,7 +179,7 @@ const getRoutePathFromInternalPath = (internalPath: string) => {
         .replace(/^\/snippets\/?/, "")
         .split("/")
         .filter(Boolean)
-        .map((segment) => encodeURIComponent(segment))
+        .map((segment) => encodeURIComponent(slugifyPathSegment(segment)))
         .join("/");
 
     return `${ROUTE_ROOT_PATH}/${relativePath ? `${relativePath}/` : ""}`;
