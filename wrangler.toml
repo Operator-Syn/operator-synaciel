@@ -21,3 +21,10 @@ bucket_name = "personal-portfolio"
 [[routes]]
 pattern = "personal-portfolio.syn-forge.com"
 custom_domain = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
+[observability.traces]
+enabled = true
