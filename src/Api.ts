@@ -1,9 +1,8 @@
 // src/Api.ts
 import { Hono } from 'hono';
-import { cache } from 'hono/cache';
 import { cors } from 'hono/cors';
 import type { MiddlewareHandler } from 'hono';
-import type { D1Database, R2Bucket } from "@cloudflare/workers-types";
+import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
 
 import { SnippetsPageController } from './controller/SnippetsPage/SnippetsPageController';
 import { ProjectsController } from './controller/ProjectPage/ProjectsController';
@@ -14,7 +13,10 @@ import { SectionsController } from './controller/HomePage/SectionsController';
 import { SectionItemsController } from './controller/HomePage/SectionsItemsController';
 import { CertificatesController } from './controller/CertificatesPage/CertificatesController';
 import { CertificateItemsController } from './controller/CertificatesPage/CertificateItemsController';
-import { MediaController, createMediaController } from './controller/Media/MediaController'; 
+import {
+  MediaController,
+  createMediaController,
+} from './controller/Media/MediaController';
 
 const ProjectsMedia = MediaController;
 const CertificatesMedia = createMediaController('Certificates/');
@@ -32,68 +34,50 @@ export type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-const PUBLIC_DATA_CACHE_CONTROL = 'public, max-age=60, s-maxage=180, stale-while-revalidate=300';
-const PUBLIC_FILE_CACHE_CONTROL = 'public, max-age=30, s-maxage=120, stale-while-revalidate=300';
-const PUBLIC_MEDIA_CACHE_CONTROL = 'public, max-age=120, s-maxage=600, stale-while-revalidate=900';
-
-const noStoreByDefault: MiddlewareHandler<{ Bindings: Bindings }> = async (c, next) => {
+const noStoreByDefault: MiddlewareHandler<{ Bindings: Bindings }> = async (
+  c,
+  next,
+) => {
   await next();
 
   if (!c.res.headers.has('Cache-Control')) {
-    c.header('Cache-Control', 'no-store');
+    c.header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
   }
+
+  c.header('Pragma', 'no-cache');
+  c.header('Expires', '0');
 };
 
-const publicDataCache = cache({
-  cacheName: 'operator-synaciel-public-data-v1',
-  cacheControl: PUBLIC_DATA_CACHE_CONTROL,
-  vary: 'Origin',
-  cacheableStatusCodes: [200],
-  onCacheNotAvailable: false,
-});
-
-const publicFileCache = cache({
-  cacheName: 'operator-synaciel-public-files-v1',
-  cacheControl: PUBLIC_FILE_CACHE_CONTROL,
-  vary: 'Origin',
-  cacheableStatusCodes: [200],
-  onCacheNotAvailable: false,
-});
-
-const publicMediaCache = cache({
-  cacheName: 'operator-synaciel-public-media-v1',
-  cacheControl: PUBLIC_MEDIA_CACHE_CONTROL,
-  vary: 'Origin',
-  cacheableStatusCodes: [200],
-  onCacheNotAvailable: false,
-});
-
 // --- CORS MIDDLEWARE ---
-app.use('/*', cors({
-  origin: (origin) => {
-    if (!origin) return '';
+app.use(
+  '/*',
+  cors({
+    origin: (origin) => {
+      if (!origin) return '';
 
-    const allowedOrigins = [
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'http://localhost:3000',
-      'https://www.syn-forge.com',
-      'https://syn-forge.com',
-      'https://personal-portfolio.syn-forge.com',
-      'https://atelier.syn-forge.com'
-    ];
+      const allowedOrigins = [
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:3000',
+        'https://www.syn-forge.com',
+        'https://syn-forge.com',
+        'https://personal-portfolio.syn-forge.com',
+        'https://atelier.syn-forge.com',
+      ];
 
-    if (allowedOrigins.includes(origin)) return origin;
-    return '';
-  },
-  allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-}));
+      if (allowedOrigins.includes(origin)) return origin;
+      return '';
+    },
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  }),
+);
 
 // --- OPTIONS handler for preflight requests ---
 app.options('/api/*', (c) => c.json({}));
 
+// Default all API responses to no-store unless a route explicitly overrides it.
 app.use('/api/*', noStoreByDefault);
 
 // --- ROOT REDIRECT ---
@@ -103,24 +87,31 @@ app.get('/', (c) => c.redirect('https://www.syn-forge.com', 301));
 //   PUBLIC APIS (No Auth Required)
 // ==========================================
 
-app.get('/api/projects', publicDataCache, ProjectsController.list);
-app.get('/api/project/:id', publicDataCache, ProjectsController.get);
-app.get('/api/project/:projectId/gallery', publicDataCache, GalleryController.listByProject);
-app.get('/api/snippets/:id', publicDataCache, SnippetsPageController.getSnippet);
-app.get('/api/snippets/:id/content', publicFileCache, SnippetsPageController.downloadSnippet);
-app.get('/api/snippets', publicDataCache, SnippetsPageController.getSnippets);
-app.get('/api/settings', publicDataCache, SettingsController.list);
-app.get('/api/profile', publicDataCache, ProfileController.list);
-app.get('/api/sections', publicDataCache, SectionsController.list);
-app.get('/api/sections/:sectionId/items', publicDataCache, SectionItemsController.list);
-app.get('/api/projects/media', publicMediaCache, ProjectsMedia.list);           
-app.get('/api/projects/media/:key{.+}', publicMediaCache, ProjectsMedia.get);
-app.get('/api/certificates/media', publicMediaCache, CertificatesMedia.list);           
-app.get('/api/certificates/media/:key{.+}', publicMediaCache, CertificatesMedia.get);
-app.get('/api/certificates', publicDataCache, CertificatesController.listAll);
-app.get('/api/certificates/:id', publicDataCache, CertificatesController.getById);
-app.get('/api/certificates/:certId/items', publicDataCache, CertificateItemsController.listByCertificate);
+app.get('/api/projects', ProjectsController.list);
+app.get('/api/project/:id', ProjectsController.get);
+app.get('/api/project/:projectId/gallery', GalleryController.listByProject);
 
+app.get('/api/snippets', SnippetsPageController.getSnippets);
+app.get('/api/snippets/:id', SnippetsPageController.getSnippet);
+app.get('/api/snippets/:id/content', SnippetsPageController.downloadSnippet);
+
+app.get('/api/settings', SettingsController.list);
+app.get('/api/profile', ProfileController.list);
+app.get('/api/sections', SectionsController.list);
+app.get('/api/sections/:sectionId/items', SectionItemsController.list);
+
+app.get('/api/projects/media', ProjectsMedia.list);
+app.get('/api/projects/media/:key{.+}', ProjectsMedia.get);
+
+app.get('/api/certificates/media', CertificatesMedia.list);
+app.get('/api/certificates/media/:key{.+}', CertificatesMedia.get);
+
+app.get('/api/certificates', CertificatesController.listAll);
+app.get('/api/certificates/:id', CertificatesController.getById);
+app.get(
+  '/api/certificates/:certId/items',
+  CertificateItemsController.listByCertificate,
+);
 
 // ==========================================
 //   PRIVATE APIS (Auth Middleware Protected)
@@ -135,8 +126,11 @@ app.use('/api/*', async (c, next) => {
 
   try {
     const authWorkerUrl = `${c.env.AUTH_WORKER_URL}/auth/user`;
+
     const authRes = await fetch(authWorkerUrl, {
-      headers: { 'Cookie': cookie }
+      headers: {
+        Cookie: cookie,
+      },
     });
 
     if (!authRes.ok) {
@@ -145,19 +139,25 @@ app.use('/api/*', async (c, next) => {
 
     await next();
   } catch (err: any) {
-    return c.json({ error: 'Auth service unreachable', message: err.message }, 500);
+    return c.json(
+      {
+        error: 'Auth service unreachable',
+        message: err.message,
+      },
+      500,
+    );
   }
 });
 
 // --- MEDIA (Private CRUD) ---
 app.post('/api/projects/media', ProjectsMedia.upload);
-app.put('/api/projects/media/:key{.+}', ProjectsMedia.update); 
-app.delete('/api/projects/media/:key{.+}', ProjectsMedia.delete); 
+app.put('/api/projects/media/:key{.+}', ProjectsMedia.update);
+app.delete('/api/projects/media/:key{.+}', ProjectsMedia.delete);
 app.post('/api/projects/media/presign', ProjectsMedia.presign);
 
 app.post('/api/certificates/media', CertificatesMedia.upload);
-app.put('/api/certificates/media/:key{.+}', CertificatesMedia.update); 
-app.delete('/api/certificates/media/:key{.+}', CertificatesMedia.delete); 
+app.put('/api/certificates/media/:key{.+}', CertificatesMedia.update);
+app.delete('/api/certificates/media/:key{.+}', CertificatesMedia.delete);
 app.post('/api/certificates/media/presign', CertificatesMedia.presign);
 
 // --- PROJECTS CRUD (Write) ---
