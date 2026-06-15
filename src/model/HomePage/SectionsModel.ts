@@ -8,7 +8,7 @@ export class SectionsModel {
   constructor(db: D1Database) { this.db = db; }
 
   async list() {
-    const res = await this.db.prepare("SELECT id, title, section_type, display_order FROM sections ORDER BY display_order ASC").all<SectionRow>();
+    const res = await this.db.prepare("SELECT id, title, section_type, display_order FROM sections ORDER BY display_order ASC, id ASC").all<SectionRow>();
     return res.results;
   }
 
