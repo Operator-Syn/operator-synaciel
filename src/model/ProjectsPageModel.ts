@@ -54,7 +54,7 @@ export class ProjectsPageModel {
         g.type as gallery_type, g.url as gallery_url
       FROM Projects p
       LEFT JOIN GalleryItems g ON p.id = g.project_id
-      ORDER BY p.display_order ASC, g.display_order ASC
+      ORDER BY p.display_order ASC, p.id ASC, g.display_order ASC, g.id ASC
     `;
 
     const { results } = await this.db.prepare(query).all<ProjectJoinRow>();
