@@ -20,7 +20,7 @@ export class SectionItemsModel {
       SELECT id, section_id, label, content, image_url, target_url, display_order
       FROM section_items
       WHERE section_id=?
-      ORDER BY display_order ASC
+      ORDER BY display_order ASC, id ASC
     `).bind(sectionId).all<SectionItemRow>();
     return res.results;
   }
