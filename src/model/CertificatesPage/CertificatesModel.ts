@@ -32,7 +32,7 @@ export class CertificatesModel {
   }
 
   async listAll(): Promise<Certificate[]> {
-    const query = `SELECT * FROM Certificates ORDER BY display_order ASC`;
+    const query = `SELECT * FROM Certificates ORDER BY display_order ASC, id ASC`;
     const { results } = await this.db.prepare(query).all();
 
     if (!results) return [];
@@ -76,10 +76,10 @@ export class CertificatesModel {
       INSERT INTO Certificates 
         (title, type, url, short_description, long_description, certificate_link, display_order)
       VALUES (?, ?, ?, ?, ?, ?, ?)
+      RETURNING id
     `;
-    
-    // FIX: Pass arguments individually (remove array brackets)
-    await this.db.prepare(query).bind(
+
+    const result = await this.db.prepare(query).bind(
       cert.title,
       cert.type,
       cert.url,
@@ -87,10 +87,9 @@ export class CertificatesModel {
       cert.long_description,
       cert.certificate_link ?? null,
       cert.display_order ?? 0
-    ).run();
+    ).first<{ id: number }>();
 
-    const { results } = await this.db.prepare(`SELECT id FROM Certificates ORDER BY id DESC LIMIT 1`).all();
-    return results?.[0]?.id ? Number(results[0].id) : 0;
+    return result?.id ? Number(result.id) : 0;
   }
 
   async update(id: number, cert: Partial<CertificateCreate>): Promise<void> {
