@@ -82,6 +82,7 @@ export class SnippetsPageModel {
           WHEN 'file' THEN 1
           ELSE 2
         END,
+        id ASC,
         name ASC
     `;
 
@@ -124,8 +125,6 @@ export class SnippetsPageModel {
   ): Promise<SnippetNode> {
     await this.validateParent(parentId);
 
-    const displayOrder = await this.getNextDisplayOrder(parentId);
-
     const query = `
       INSERT INTO Snippets (
         parent_id,
@@ -153,23 +152,27 @@ export class SnippetsPageModel {
 
     const result = await this.db
       .prepare(query)
-      .bind(parentId, name, displayOrder)
+      .bind(parentId, name, 0)
       .first<SnippetRow>();
 
     if (!result) {
       throw new Error("Failed to create folder.");
     }
 
-    return this.toSnippetNode(result);
+    await this.db
+      .prepare("UPDATE Snippets SET display_order = ? WHERE id = ?")
+      .bind(result.id, result.id)
+      .run();
+
+    return (await this.getSnippetById(result.id)) ?? this.toSnippetNode(result);
   }
 
   async uploadFile(file: File, parentId: number | null): Promise<SnippetNode> {
     await this.validateParent(parentId);
 
-    const displayOrder = await this.getNextDisplayOrder(parentId);
     const fileFormat = this.getValidatedFileExtension(file.name);
     const safeName = this.getSafeFilename(file.name);
-    const key = `${this.prefix}${Date.now()}-${safeName}`;
+    const key = `${this.prefix}${crypto.randomUUID()}-${safeName}`;
 
     await this.bucket.put(key, await file.arrayBuffer(), {
       httpMetadata: {
@@ -205,14 +208,19 @@ export class SnippetsPageModel {
 
       const result = await this.db
         .prepare(query)
-        .bind(parentId, file.name, key, file.size, fileFormat, displayOrder)
+        .bind(parentId, file.name, key, file.size, fileFormat, 0)
         .first<SnippetRow>();
 
       if (!result) {
         throw new Error("Failed to insert snippet row.");
       }
 
-      return this.toSnippetNode(result);
+      await this.db
+        .prepare("UPDATE Snippets SET display_order = ? WHERE id = ?")
+        .bind(result.id, result.id)
+        .run();
+
+      return (await this.getSnippetById(result.id)) ?? this.toSnippetNode(result);
     } catch (err: unknown) {
       await this.bucket.delete(key);
 
@@ -251,7 +259,7 @@ export class SnippetsPageModel {
       }
 
       if (parent_id !== existing.parent_id && nextDisplayOrder === undefined) {
-        nextDisplayOrder = await this.getNextDisplayOrder(parent_id);
+        nextDisplayOrder = existing.id;
       }
     }
 
@@ -439,35 +447,6 @@ export class SnippetsPageModel {
     if (cycle) {
       throw new Error("Cannot move a folder into one of its descendants.");
     }
-  }
-
-  private async getNextDisplayOrder(parentId: number | null): Promise<number> {
-    if (parentId === null) {
-      const row = await this.db
-        .prepare(
-          `
-          SELECT COALESCE(MAX(display_order), 0) + 1 AS next_order
-          FROM Snippets
-          WHERE parent_id IS NULL
-        `,
-        )
-        .first<{ next_order: number }>();
-
-      return row?.next_order ?? 1;
-    }
-
-    const row = await this.db
-      .prepare(
-        `
-        SELECT COALESCE(MAX(display_order), 0) + 1 AS next_order
-        FROM Snippets
-        WHERE parent_id = ?
-      `,
-      )
-      .bind(parentId)
-      .first<{ next_order: number }>();
-
-    return row?.next_order ?? 1;
   }
 
   private buildTree(rows: SnippetRow[]): SnippetNode[] {
