@@ -2,7 +2,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { MiddlewareHandler } from 'hono';
-import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
+import type { D1Database, Fetcher, R2Bucket } from '@cloudflare/workers-types';
 
 import { SnippetsPageController } from './controller/SnippetsPage/SnippetsPageController';
 import { ProjectsController } from './controller/ProjectPage/ProjectsController';
@@ -24,7 +24,7 @@ const CertificatesMedia = createMediaController('Certificates/');
 export type Bindings = {
   DB: D1Database;
   BUCKET: R2Bucket;
-  AUTH_WORKER_URL: string;
+  AUTH_WORKER: Fetcher;
   VITE_CDN_URL: string;
   ACCOUNT_ID: string;
   R2_ACCESS_KEY_ID: string;
@@ -125,13 +125,14 @@ app.use('/api/*', async (c, next) => {
   }
 
   try {
-    const authWorkerUrl = `${c.env.AUTH_WORKER_URL}/auth/user`;
-
-    const authRes = await fetch(authWorkerUrl, {
-      headers: {
-        Cookie: cookie,
+    const authRes = await c.env.AUTH_WORKER.fetch(
+      'https://auth-worker/auth/user',
+      {
+        headers: {
+          Cookie: cookie,
+        },
       },
-    });
+    );
 
     if (!authRes.ok) {
       return c.json({ error: 'Forbidden' }, 403);
