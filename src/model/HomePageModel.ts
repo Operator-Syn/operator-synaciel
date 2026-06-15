@@ -22,12 +22,12 @@ export class HomePageModel {
   async getHomePageData() {
     const [settings, profile, rows] = await Promise.all([
       this.db.prepare("SELECT key, value FROM site_settings").all<SettingRow>(),
-      this.db.prepare("SELECT label, value FROM profile_info ORDER BY display_order").all<ProfileRow>(),
+      this.db.prepare("SELECT label, value FROM profile_info ORDER BY display_order, id").all<ProfileRow>(),
       this.db.prepare(`
         SELECT s.title, s.section_type, i.label, i.content, i.image_url, i.target_url
         FROM sections s
         LEFT JOIN section_items i ON s.id = i.section_id
-        ORDER BY s.display_order ASC, i.display_order ASC
+        ORDER BY s.display_order ASC, s.id ASC, i.display_order ASC, i.id ASC
       `).all<SectionJoinedRow>()
     ]);
 
