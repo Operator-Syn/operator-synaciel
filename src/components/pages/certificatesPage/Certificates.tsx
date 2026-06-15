@@ -8,6 +8,7 @@ import Grid from '../../grid/Grid';
 import MediaModal from '../../mediaModal/MediaModal';
 import GlobalHeadManager from '../../globalHeadManager/GlobalHeadManager';
 import { PUBLIC_DATA_STALE_TIME_MS } from '../../../data/cacheSettings';
+import PaginationControls from '../../pagination/PaginationControls';
 
 interface ApiCertification {
     id: number;
@@ -40,6 +41,7 @@ const FUTURE_CERT_CARD: MediaItem = {
 };
 
 const apiUrl = import.meta.env.VITE_API_URL;
+const CERTIFICATES_PER_PAGE = 6;
 
 // --- fetch functions ---
 const fetchCertifications = async (): Promise<ApiCertification[]> => {
@@ -59,6 +61,7 @@ export default function Certifications() {
     const [selectedCert, setSelectedCert] = useState<MediaItem | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
 
     // --- dynamic header logic ---
     useEffect(() => {
@@ -81,24 +84,39 @@ export default function Certifications() {
         ],
     })[0];
 
-    const certifications: ApiCertification[] = certsQuery.data ?? [];
+    const certifications: ApiCertification[] = useMemo(
+        () => [...(certsQuery.data ?? [])].sort((a, b) => a.display_order - b.display_order),
+        [certsQuery.data],
+    );
     const isLoading = certsQuery.isLoading;
     const isError = certsQuery.isError;
+    const totalCertificateCards = certifications.length + 1;
+    const totalPages = Math.max(Math.ceil(totalCertificateCards / CERTIFICATES_PER_PAGE), 1);
+    const pageStartIndex = (currentPage - 1) * CERTIFICATES_PER_PAGE;
+    const pageCertifications = useMemo(
+        () => certifications.slice(pageStartIndex, pageStartIndex + CERTIFICATES_PER_PAGE),
+        [certifications, pageStartIndex],
+    );
+    const showFutureCertCard = pageStartIndex + pageCertifications.length < totalCertificateCards
+        && pageStartIndex + CERTIFICATES_PER_PAGE >= totalCertificateCards;
+
+    useEffect(() => {
+        setCurrentPage((page) => Math.min(page, totalPages));
+    }, [totalPages]);
 
     // --- fetch items for all certificates in parallel ---
     const itemQueries = useQueries({
-        queries: certifications.map(cert => ({
+        queries: pageCertifications.map(cert => ({
             queryKey: ['certificate-items', cert.id],
             queryFn: () => fetchCertificateItems(cert.id),
             staleTime: PUBLIC_DATA_STALE_TIME_MS,
-            enabled: !!certifications.length,
+            enabled: !!pageCertifications.length,
         })),
     });
 
     // --- transform into MediaItem shape ---
     const displayCerts: MediaItem[] = useMemo(() => {
-        const mapped = certifications
-            .sort((a, b) => a.display_order - b.display_order)
+        const mapped = pageCertifications
             .map((c, i) => ({
                 id: c.id,
                 title: c.title,
@@ -119,8 +137,13 @@ export default function Certifications() {
                 })) ?? [],
             }));
 
-        return [...mapped, FUTURE_CERT_CARD];
-    }, [certifications, itemQueries]);
+        return showFutureCertCard ? [...mapped, FUTURE_CERT_CARD] : mapped;
+    }, [itemQueries, pageCertifications, showFutureCertCard]);
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
 
     const handleOpenCert = (cert: MediaItem) => {
         if (cert.id === FUTURE_CERT_CARD.id) return;
@@ -154,7 +177,17 @@ export default function Certifications() {
                     )}
 
                     {!isLoading && !isError && (
-                        <Grid projects={displayCerts} onProjectClick={handleOpenCert} />
+                        <>
+                            <Grid projects={displayCerts} onProjectClick={handleOpenCert} />
+                            <PaginationControls
+                                currentPage={currentPage}
+                                itemLabel="certifications"
+                                onPageChange={handlePageChange}
+                                pageSize={CERTIFICATES_PER_PAGE}
+                                totalItems={totalCertificateCards}
+                                totalPages={totalPages}
+                            />
+                        </>
                     )}
 
                     <MediaModal
