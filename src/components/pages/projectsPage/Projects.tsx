@@ -8,6 +8,7 @@ import Grid from '../../grid/Grid';
 import MediaModal from '../../mediaModal/MediaModal';
 import GlobalHeadManager from '../../globalHeadManager/GlobalHeadManager';
 import { PUBLIC_DATA_STALE_TIME_MS } from '../../../data/cacheSettings';
+import PaginationControls from '../../pagination/PaginationControls';
 
 // --- UPDATED INTERFACE: Matches ProjectsModel.ts flat structure ---
 interface ApiProject {
@@ -41,6 +42,7 @@ const FUTURE_PROJECTS_CARD: MediaItem = {
 };
 
 const apiUrl = import.meta.env.VITE_API_URL;
+const PROJECTS_PER_PAGE = 6;
 
 // --- fetch functions ---
 const fetchProjects = async (): Promise<ApiProject[]> => {
@@ -60,6 +62,7 @@ export default function Projects() {
     const [selectedProject, setSelectedProject] = useState<MediaItem | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
 
     // --- responsive header logic ---
     useEffect(() => {
@@ -82,24 +85,39 @@ export default function Projects() {
         ],
     })[0];
 
-    const projects: ApiProject[] = projectsQuery.data ?? [];
+    const projects: ApiProject[] = useMemo(
+        () => [...(projectsQuery.data ?? [])].sort((a, b) => a.display_order - b.display_order),
+        [projectsQuery.data],
+    );
     const isLoading = projectsQuery.isLoading;
     const isError = projectsQuery.isError;
+    const totalProjectCards = projects.length + 1;
+    const totalPages = Math.max(Math.ceil(totalProjectCards / PROJECTS_PER_PAGE), 1);
+    const pageStartIndex = (currentPage - 1) * PROJECTS_PER_PAGE;
+    const pageProjects = useMemo(
+        () => projects.slice(pageStartIndex, pageStartIndex + PROJECTS_PER_PAGE),
+        [pageStartIndex, projects],
+    );
+    const showFutureProjectCard = pageStartIndex + pageProjects.length < totalProjectCards
+        && pageStartIndex + PROJECTS_PER_PAGE >= totalProjectCards;
+
+    useEffect(() => {
+        setCurrentPage((page) => Math.min(page, totalPages));
+    }, [totalPages]);
 
     // --- fetch galleries for all projects in parallel ---
     const galleryQueries = useQueries({
-        queries: projects.map(project => ({
+        queries: pageProjects.map(project => ({
             queryKey: ['gallery', project.id],
             queryFn: () => fetchGalleryByProject(project.id),
             staleTime: PUBLIC_DATA_STALE_TIME_MS,
-            enabled: !!projects.length,
+            enabled: !!pageProjects.length,
         })),
     });
 
     // --- transform flat ApiProject into MediaItem shape ---
     const displayProjects: MediaItem[] = useMemo(() => {
-        return [
-            ...projects.map((p, i) => ({
+        const mapped = pageProjects.map((p, i) => ({
                 id: p.id,
                 title: p.title,
                 type: p.type, // Map directly
@@ -117,10 +135,15 @@ export default function Projects() {
                     projectLink: '',
                     gallery: [],
                 })) ?? [],
-            })),
-            FUTURE_PROJECTS_CARD
-        ];
-    }, [projects, galleryQueries]);
+            }));
+
+        return showFutureProjectCard ? [...mapped, FUTURE_PROJECTS_CARD] : mapped;
+    }, [galleryQueries, pageProjects, showFutureProjectCard]);
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
 
     const handleOpenProject = (project: MediaItem) => {
         if (project.id === FUTURE_PROJECTS_CARD.id) return;
@@ -153,7 +176,17 @@ export default function Projects() {
                     )}
 
                     {!isLoading && !isError && (
-                        <Grid projects={displayProjects} onProjectClick={handleOpenProject} />
+                        <>
+                            <Grid projects={displayProjects} onProjectClick={handleOpenProject} />
+                            <PaginationControls
+                                currentPage={currentPage}
+                                itemLabel="projects"
+                                onPageChange={handlePageChange}
+                                pageSize={PROJECTS_PER_PAGE}
+                                totalItems={totalProjectCards}
+                                totalPages={totalPages}
+                            />
+                        </>
                     )}
 
                     <MediaModal
