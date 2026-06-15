@@ -14,7 +14,7 @@ export class ProfileModel {
 
   async list() {
     const res = await this.db.prepare(
-      "SELECT id, label, value, display_order FROM profile_info ORDER BY display_order"
+      "SELECT id, label, value, display_order FROM profile_info ORDER BY display_order, id"
     ).all<ProfileRow>();
     
     return res.results;
