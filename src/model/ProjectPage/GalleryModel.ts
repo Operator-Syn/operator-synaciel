@@ -28,7 +28,7 @@ export class GalleryModel {
       SELECT id, project_id, type, url, display_order
       FROM GalleryItems
       WHERE project_id = ?
-      ORDER BY display_order ASC
+      ORDER BY display_order ASC, id ASC
     `;
 
     const { results } = await this.db
