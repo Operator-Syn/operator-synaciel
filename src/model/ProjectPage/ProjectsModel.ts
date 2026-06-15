@@ -30,7 +30,7 @@ export class ProjectsModel {
   }
 
   async listAll(): Promise<Project[]> {
-    const query = `SELECT * FROM Projects ORDER BY display_order ASC`;
+    const query = `SELECT * FROM Projects ORDER BY display_order ASC, id ASC`;
     const { results } = await this.db.prepare(query).all();
 
     if (!results) return [];
@@ -73,10 +73,10 @@ export class ProjectsModel {
       INSERT INTO Projects 
         (title, type, url, short_description, long_description, project_link, display_order)
       VALUES (?, ?, ?, ?, ?, ?, ?)
+      RETURNING id
     `;
-    
-    // FIX: Removed the array brackets so they are passed as distinct arguments
-    await this.db.prepare(query).bind(
+
+    const result = await this.db.prepare(query).bind(
       project.title,
       project.type,
       project.url,
@@ -84,10 +84,9 @@ export class ProjectsModel {
       project.long_description,
       project.project_link,
       project.display_order ?? 0
-    ).run();
+    ).first<{ id: number }>();
 
-    const { results } = await this.db.prepare(`SELECT id FROM Projects ORDER BY id DESC LIMIT 1`).all();
-    return results?.[0]?.id ? Number(results[0].id) : 0;
+    return result?.id ? Number(result.id) : 0;
   }
 
   async update(id: number, project: Partial<ProjectCreate>): Promise<void> {
