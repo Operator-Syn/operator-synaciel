@@ -29,9 +29,8 @@ export const createMediaController = (prefix: string) => ({
       const file = formData.get('file');
       if (!file || !(file instanceof File)) return c.json({ error: 'No file provided' }, 400);
 
-      const timestamp = Date.now();
       const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
-      const key = `${prefix}${timestamp}-${safeName}`;
+      const key = `${prefix}${crypto.randomUUID()}-${safeName}`;
 
       const arrayBuffer = await file.arrayBuffer();
       await c.env.BUCKET.put(key, arrayBuffer, { httpMetadata: { contentType: file.type } });
@@ -47,9 +46,8 @@ export const createMediaController = (prefix: string) => ({
       const { filename, contentType } = await c.req.json();
       if (!filename) return c.json({ error: 'Filename is required' }, 400);
 
-      const timestamp = Date.now();
       const safeName = filename.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
-      const key = `${prefix}${timestamp}-${safeName}`;
+      const key = `${prefix}${crypto.randomUUID()}-${safeName}`;
 
       const client = new S3Client({
         region: 'auto',
