@@ -28,7 +28,7 @@ export class CertificateItemsModel {
       SELECT id, certificate_id, type, url, display_order
       FROM CertificateItems
       WHERE certificate_id = ?
-      ORDER BY display_order ASC
+      ORDER BY display_order ASC, id ASC
     `;
 
     const { results } = await this.db
