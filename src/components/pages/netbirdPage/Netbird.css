@@ -1,0 +1,108 @@
+.netbird-page {
+    padding-bottom: 6rem;
+}
+
+.netbird-hero {
+    align-items: center;
+}
+
+.netbird-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.35rem;
+}
+
+.netbird-link-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 2.65rem;
+    padding: 0.6rem 1rem;
+    border: 1px solid rgba(227, 242, 253, 0.72);
+    border-radius: 999px;
+    background: rgba(159, 218, 239, 0.3);
+    box-shadow:
+        0 0.65rem 1.35rem rgba(5, 21, 38, 0.2),
+        inset 0 1px 0 rgba(227, 242, 253, 0.16);
+    color: rgb(227, 242, 253);
+    font-weight: 800;
+    text-decoration: none;
+    transition:
+        border-color 160ms ease,
+        background 160ms ease,
+        transform 160ms ease;
+}
+
+.netbird-link-button:hover,
+.netbird-link-button:focus-visible {
+    border-color: rgba(227, 242, 253, 0.95);
+    background: rgba(159, 218, 239, 0.42);
+    color: rgb(227, 242, 253);
+    transform: translateY(-2px);
+}
+
+.netbird-link-button.secondary {
+    border-color: rgba(159, 218, 239, 0.48);
+    background: rgba(8, 28, 48, 0.44);
+    box-shadow:
+        0 0.55rem 1rem rgba(5, 21, 38, 0.16),
+        inset 0 1px 0 rgba(227, 242, 253, 0.1);
+}
+
+.netbird-document {
+    display: grid;
+    gap: 0;
+}
+
+.netbird-section {
+    opacity: 1;
+    transform: none;
+}
+
+.netbird-policy-links {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.45rem;
+}
+
+.netbird-policy-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.35rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid rgba(159, 218, 239, 0.42);
+    border-radius: 0.45rem;
+    background: rgba(159, 218, 239, 0.14);
+    color: rgb(227, 242, 253);
+    font-weight: 800;
+    text-decoration: none;
+    box-shadow: inset 0 1px 0 rgba(227, 242, 253, 0.08);
+    transition:
+        border-color 160ms ease,
+        background 160ms ease,
+        transform 160ms ease;
+}
+
+.netbird-policy-links a:hover,
+.netbird-policy-links a:focus-visible {
+    border-color: rgba(227, 242, 253, 0.74);
+    background: rgba(159, 218, 239, 0.22);
+    color: rgb(227, 242, 253);
+    transform: translateY(-1px);
+}
+
+@media (max-width: 576px) {
+    .netbird-policy-links {
+        grid-column: 1;
+    }
+
+    .netbird-policy-links a,
+    .netbird-link-button {
+        width: 100%;
+    }
+}
