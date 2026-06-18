@@ -231,6 +231,10 @@ export default function Home() {
                                     <span>01</span>
                                     NetBird
                                 </NavLink>
+                                <NavLink onClick={() => setAppLauncherOpen(false)} to="/atelier">
+                                    <span>02</span>
+                                    Atelier
+                                </NavLink>
                             </nav>
                         </div>
 

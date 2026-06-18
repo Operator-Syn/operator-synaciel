@@ -6,6 +6,7 @@ import Certifications from "../components/pages/certificatesPage/Certificates";
 import PrivacyPolicy from "../components/pages/privacyPolicyPage/PrivacyPolicy";
 import TermsAndConditions from "../components/pages/termsAndConditionsPage/TermsAndConditions";
 import Netbird from "../components/pages/netbirdPage/Netbird";
+import Atelier from "../components/pages/atelierPage/Atelier";
 
 export const brandName = "Operator-Syn";
 
@@ -21,6 +22,7 @@ export const routes: RouteItem[] = [
     { name: "Privacy", path: "/privacy-policy", component: PrivacyPolicy, showInNav: true },
     { name: "Terms", path: "/terms-and-conditions", component: TermsAndConditions, showInNav: true },
     { name: "NetBird", path: "/netbird", component: Netbird, showInNav: false },
+    { name: "Atelier", path: "/atelier", component: Atelier, showInNav: false },
 ];
 
 export const navLinks: NavLinkItem[] = routes.filter((route) => route.showInNav !== false);
