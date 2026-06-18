@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ArrowUp, ListTree, X } from "lucide-react";
+import { ArrowLeft, ArrowUp, ListTree, X } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import CookingArea from "../../cookingArea/CookingArea";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
 import "../privacyPolicyPage/PrivacyPolicy.css";
@@ -14,6 +15,25 @@ type TermsSection = {
     title: string;
     body: string[];
     items?: string[];
+};
+
+type TermsRouteState = {
+    returnLabel?: string;
+    returnTo?: string;
+};
+
+const getReturnContext = (state: unknown) => {
+    const routeState = state as TermsRouteState | null;
+    const returnTo = routeState?.returnTo;
+
+    if (!returnTo || !returnTo.startsWith("/") || returnTo.startsWith("//")) {
+        return null;
+    }
+
+    return {
+        label: routeState?.returnLabel || "previous page",
+        to: returnTo,
+    };
 };
 
 const termsSummary: TermsSummaryItem[] = [
@@ -161,6 +181,8 @@ const termsSections: TermsSection[] = [
 ];
 
 export default function TermsAndConditions() {
+    const location = useLocation();
+    const navigate = useNavigate();
     const pageRef = useRef<HTMLElement | null>(null);
     const activeSectionIdRef = useRef(termsSections[0].id);
     const [visibleSectionIds, setVisibleSectionIds] = useState<Set<string>>(
@@ -175,6 +197,7 @@ export default function TermsAndConditions() {
         0,
     );
     const activeSection = termsSections[activeSectionIndex];
+    const returnContext = getReturnContext(location.state);
 
     useEffect(() => {
         activeSectionIdRef.current = activeSectionId;
@@ -202,6 +225,13 @@ export default function TermsAndConditions() {
             behavior: "smooth",
             block: "start",
         });
+        setQuickActionsOpen(false);
+    };
+
+    const handleReturnToSource = () => {
+        if (!returnContext) return;
+
+        navigate(returnContext.to);
         setQuickActionsOpen(false);
     };
 
@@ -312,6 +342,18 @@ export default function TermsAndConditions() {
 
             <CookingArea>
                 <main className="privacy-policy-page container py-3" ref={pageRef}>
+                    {returnContext && (
+                        <button
+                            className="privacy-policy-context-return"
+                            onClick={handleReturnToSource}
+                            title={`Back to ${returnContext.label}`}
+                            type="button"
+                        >
+                            <ArrowLeft aria-hidden="true" size={16} />
+                            Back to {returnContext.label}
+                        </button>
+                    )}
+
                     <header className="privacy-policy-hero">
                         <div className="privacy-policy-hero-copy">
                             <p className="privacy-policy-kicker">Syn-Forge applications</p>
@@ -399,6 +441,12 @@ export default function TermsAndConditions() {
                                     <ArrowUp aria-hidden="true" size={16} />
                                     Top
                                 </button>
+                                {returnContext && (
+                                    <button onClick={handleReturnToSource} type="button">
+                                        <ArrowLeft aria-hidden="true" size={16} />
+                                        Back to {returnContext.label}
+                                    </button>
+                                )}
                             </div>
 
                             <nav aria-label="Terms and conditions sections" className="privacy-policy-action-list">
@@ -430,6 +478,7 @@ export default function TermsAndConditions() {
                             <ListTree aria-hidden="true" size={20} />
                         </button>
                     </div>
+
                 </main>
             </CookingArea>
         </>
