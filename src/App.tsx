@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import { Fragment } from "react";
 import NavBar from "./components/navBar/NavBar";
-import { navLinks as NavLinks, brandName } from "./data/NavLinks.types";
+import { routes, navLinks as NavLinks, brandName } from "./data/NavLinks.types";
 
 export default function App() {
   return (
@@ -9,7 +9,7 @@ export default function App() {
       <NavBar brandName={brandName} links={NavLinks} />
       
       <Routes>
-        {NavLinks.map((link) => (
+        {routes.map((link) => (
           <Route
             key={link.path}
             path={link.path === "/snippets" ? `${link.path}/*` : link.path}
