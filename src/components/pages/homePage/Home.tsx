@@ -1,5 +1,9 @@
+import { useState } from "react";
 import { useQueries } from "@tanstack/react-query";
+import { Home as HomeIcon, ListTree, X } from "lucide-react";
+import { NavLink } from "react-router-dom";
 import type { HomePageTypes } from "../../../types/HomePageTypes";
+import "../privacyPolicyPage/PrivacyPolicy.css";
 import "./Home.css";
 import HeaderComponent from "../../headerComponent/HeaderComponent";
 import ElevatorPitchComponent from "../../elevatorPitch/ElevatorPitch";
@@ -60,6 +64,7 @@ const fetchSections = async () => {
 };
 
 export default function Home() {
+    const [appLauncherOpen, setAppLauncherOpen] = useState(false);
     const results = useQueries({
         queries: [
             {
@@ -197,6 +202,53 @@ export default function Home() {
                             }))}
                             className="home-side-panel order-first-on-mobile"
                         />
+                    </div>
+
+                    <div className={`privacy-policy-quick-actions ${appLauncherOpen ? "is-open" : ""}`}>
+                        <div className="privacy-policy-action-panel" aria-hidden={!appLauncherOpen}>
+                            <div className="privacy-policy-action-header">
+                                <div>
+                                    <span>Domain apps</span>
+                                    <strong>Syn-Forge Applications</strong>
+                                </div>
+                                <button
+                                    aria-label="Close app launcher"
+                                    className="privacy-policy-icon-button"
+                                    onClick={() => setAppLauncherOpen(false)}
+                                    title="Close"
+                                    type="button"
+                                >
+                                    <X aria-hidden="true" size={18} />
+                                </button>
+                            </div>
+
+                            <div className="privacy-policy-action-progress home-app-launcher-progress" aria-hidden="true">
+                                <span />
+                            </div>
+
+                            <nav aria-label="Syn-Forge applications" className="privacy-policy-action-list home-app-launcher-list">
+                                <NavLink onClick={() => setAppLauncherOpen(false)} to="/netbird">
+                                    <span>01</span>
+                                    NetBird
+                                </NavLink>
+                            </nav>
+                        </div>
+
+                        <button
+                            aria-expanded={appLauncherOpen}
+                            aria-label="Open Syn-Forge app launcher"
+                            className="privacy-policy-action-trigger"
+                            onClick={() => setAppLauncherOpen((open) => !open)}
+                            title="Applications"
+                            type="button"
+                        >
+                            <span className="privacy-policy-action-ring">
+                                <span>
+                                    <HomeIcon aria-hidden="true" size={15} />
+                                </span>
+                            </span>
+                            <ListTree aria-hidden="true" size={20} />
+                        </button>
                     </div>
                 </div>
             </CookingArea>
