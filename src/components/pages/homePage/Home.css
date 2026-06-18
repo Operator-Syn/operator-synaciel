@@ -111,6 +111,55 @@
         0 0 0 0.35rem rgba(227, 242, 253, 0.08);
 }
 
+.home-app-launcher-progress span {
+    width: 100%;
+}
+
+.home-app-launcher-list a {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.55rem;
+    align-items: center;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.45rem 0.55rem;
+    border: 1px solid transparent;
+    border-radius: 0.45rem;
+    background: transparent;
+    color: rgba(227, 242, 253, 0.78);
+    text-align: left;
+    text-decoration: none;
+    transition:
+        border-color 160ms ease,
+        background 160ms ease,
+        color 160ms ease;
+}
+
+.home-app-launcher-list a span {
+    display: inline-grid;
+    place-items: center;
+    width: 1.65rem;
+    height: 1.65rem;
+    border-radius: 999px;
+    background: rgba(227, 242, 253, 0.08);
+    color: rgba(159, 218, 239, 0.92);
+    font-size: 0.76rem !important;
+    font-weight: 800;
+}
+
+.home-app-launcher-list a:hover,
+.home-app-launcher-list a:focus-visible {
+    border-color: rgba(227, 242, 253, 0.16);
+    background: rgba(227, 242, 253, 0.08);
+    color: rgb(227, 242, 253);
+}
+
+.home-app-launcher-list a:hover span,
+.home-app-launcher-list a:focus-visible span {
+    background: rgb(159, 218, 239);
+    color: rgb(7, 25, 45);
+}
+
 .stack-on-mobile {
     display: flex;
     flex-wrap: nowrap;
