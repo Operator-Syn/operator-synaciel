@@ -1,19 +1,19 @@
-.atelier-page {
+.static-app-page {
     padding-bottom: 6rem;
 }
 
-.atelier-hero {
+.static-app-hero {
     align-items: center;
 }
 
-.atelier-hero-actions {
+.static-app-hero-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
     margin-top: 1.35rem;
 }
 
-.atelier-link-button {
+.static-app-link-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -35,15 +35,15 @@
         transform 160ms ease;
 }
 
-.atelier-link-button:hover,
-.atelier-link-button:focus-visible {
+.static-app-link-button:hover,
+.static-app-link-button:focus-visible {
     border-color: rgba(227, 242, 253, 0.95);
     background: rgba(159, 218, 239, 0.42);
     color: rgb(227, 242, 253);
     transform: translateY(-2px);
 }
 
-.atelier-link-button.secondary {
+.static-app-link-button.secondary {
     border-color: rgba(159, 218, 239, 0.48);
     background: rgba(8, 28, 48, 0.44);
     box-shadow:
@@ -51,17 +51,17 @@
         inset 0 1px 0 rgba(227, 242, 253, 0.1);
 }
 
-.atelier-document {
+.static-app-document {
     display: grid;
     gap: 0;
 }
 
-.atelier-section {
+.static-app-section {
     opacity: 1;
     transform: none;
 }
 
-.atelier-policy-links {
+.static-app-policy-links {
     grid-column: 2;
     display: flex;
     flex-wrap: wrap;
@@ -69,7 +69,7 @@
     margin-top: 0.45rem;
 }
 
-.atelier-policy-links a {
+.static-app-policy-links a {
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
@@ -88,8 +88,8 @@
         transform 160ms ease;
 }
 
-.atelier-policy-links a:hover,
-.atelier-policy-links a:focus-visible {
+.static-app-policy-links a:hover,
+.static-app-policy-links a:focus-visible {
     border-color: rgba(227, 242, 253, 0.74);
     background: rgba(159, 218, 239, 0.22);
     color: rgb(227, 242, 253);
@@ -97,12 +97,12 @@
 }
 
 @media (max-width: 576px) {
-    .atelier-policy-links {
+    .static-app-policy-links {
         grid-column: 1;
     }
 
-    .atelier-policy-links a,
-    .atelier-link-button {
+    .static-app-policy-links a,
+    .static-app-link-button {
         width: 100%;
     }
 }
