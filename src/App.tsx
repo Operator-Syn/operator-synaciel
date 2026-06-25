@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import { Fragment } from "react";
 import NavBar from "./components/navBar/NavBar";
+import QuickNavigation from "./components/quickNavigation/QuickNavigation";
 import { routes, navLinks as NavLinks, brandName } from "./data/NavLinks.types";
 
 export default function App() {
@@ -17,6 +18,8 @@ export default function App() {
           />
         ))}
       </Routes>
+
+      <QuickNavigation />
 
     </Fragment>
   );
