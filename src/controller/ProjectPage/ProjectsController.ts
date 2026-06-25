@@ -21,8 +21,9 @@ export class ProjectsController {
   static async create(c: Context<{ Bindings: Bindings }>) {
     const body = await c.req.json();
     const model = new ProjectsModel(c.env.DB);
-    await model.create(body);
-    return c.json({ success: true });
+    const newId = await model.create(body);
+    const project = newId ? await model.getById(newId) : null;
+    return c.json(project ?? { success: true }, project ? 201 : 200);
   }
 
   static async update(c: Context<{ Bindings: Bindings }>) {
@@ -30,7 +31,8 @@ export class ProjectsController {
     const body = await c.req.json();
     const model = new ProjectsModel(c.env.DB);
     await model.update(id, body);
-    return c.json({ success: true });
+    const project = await model.getById(id);
+    return c.json(project ?? { success: true });
   }
 
   static async delete(c: Context<{ Bindings: Bindings }>) {
