@@ -5,7 +5,7 @@ interface AsyncImageProps extends ImgHTMLAttributes<HTMLImageElement> {
     src: string;
     alt: string;
     wrapperClassName?: string;
-    loader?: ReactNode; // <--- NEW PROP: Accepts any Component or JSX
+    loader?: ReactNode; // Accepts a custom loader component or JSX
 }
 
 export default function AsyncImage({ 
