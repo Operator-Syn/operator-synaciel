@@ -27,9 +27,10 @@ export class SectionItemsModel {
 
   async create(sectionId: number, label: string | null, content: string | null, image_url: string | null, target_url: string | null, order: number) {
     console.log(`[MODEL DEBUG] Inserting item into section: ${sectionId}`);
-    await this.db.prepare(`
+    return this.db.prepare(`
       INSERT INTO section_items (section_id, label, content, image_url, target_url, display_order)
       VALUES (?, ?, ?, ?, ?, ?)
+      RETURNING id, section_id, label, content, image_url, target_url, display_order
     `).bind(
       sectionId, 
       label ?? null, 
@@ -37,16 +38,17 @@ export class SectionItemsModel {
       image_url ?? null, 
       target_url ?? null, 
       order ?? 0
-    ).run();
+    ).first<SectionItemRow>();
   }
 
   // ADDED: display_order parameter here
   async update(id: number, label: string | null, content: string | null, image_url: string | null, target_url: string | null, display_order: number) {
     console.log(`[MODEL DEBUG] Updating item ID: ${id} with order: ${display_order}`);
-    await this.db.prepare(`
+    return this.db.prepare(`
       UPDATE section_items
       SET label=?, content=?, image_url=?, target_url=?, display_order=?
       WHERE id=?
+      RETURNING id, section_id, label, content, image_url, target_url, display_order
     `).bind(
       label ?? null, 
       content ?? null, 
@@ -54,7 +56,7 @@ export class SectionItemsModel {
       target_url ?? null, 
       display_order, 
       id
-    ).run();
+    ).first<SectionItemRow>();
   }
 
   async delete(id: number) {
