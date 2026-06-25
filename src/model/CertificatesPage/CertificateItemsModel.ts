@@ -49,13 +49,36 @@ export class CertificateItemsModel {
     }));
   }
 
-  async create(item: CertificateItemCreate): Promise<void> {
+  async getById(id: number): Promise<CertificateItem | null> {
+    const query = `
+      SELECT id, certificate_id, type, url, display_order
+      FROM CertificateItems
+      WHERE id = ?
+    `;
+
+    const row = await this.db.prepare(query).bind(id).first<any>();
+
+    if (!row) {
+      return null;
+    }
+
+    return {
+      id: Number(row.id),
+      certificate_id: Number(row.certificate_id),
+      type: row.type === "video" ? "video" : "image",
+      url: String(row.url),
+      display_order: Number(row.display_order),
+    };
+  }
+
+  async create(item: CertificateItemCreate): Promise<number> {
     const query = `
       INSERT INTO CertificateItems (certificate_id, type, url, display_order)
       VALUES (?, ?, ?, ?)
+      RETURNING id
     `;
 
-    await this.db
+    const result = await this.db
       .prepare(query)
       .bind(
         item.certificate_id,
@@ -63,13 +86,15 @@ export class CertificateItemsModel {
         item.url,
         item.display_order ?? 0
       )
-      .run();
+      .first<{ id: number }>();
+
+    return result?.id ? Number(result.id) : 0;
   }
 
   async update(
     id: number,
     item: Partial<Omit<CertificateItemCreate, "certificate_id">>
-  ): Promise<void> {
+  ): Promise<CertificateItem | null> {
     const fields: string[] = [];
     const values: unknown[] = [];
 
@@ -78,7 +103,7 @@ export class CertificateItemsModel {
       values.push(value);
     }
 
-    if (fields.length === 0) return;
+    if (fields.length === 0) return null;
 
     const query = `
       UPDATE CertificateItems
@@ -90,6 +115,8 @@ export class CertificateItemsModel {
       .prepare(query)
       .bind(...values, id)
       .run();
+
+    return (await this.getById(id)) ?? null;
   }
 
   async delete(id: number): Promise<void> {
