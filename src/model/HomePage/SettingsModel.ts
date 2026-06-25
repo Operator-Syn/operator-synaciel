@@ -14,11 +14,15 @@ export class SettingsModel {
 
   async create(key: string, value: string) {
     // FIX: Use INSERT OR REPLACE to avoid UNIQUE constraint errors
-    await this.db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").bind(key, value).run();
+    return this.db.prepare(
+      "INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?) RETURNING key, value"
+    ).bind(key, value).first<SettingRow>();
   }
 
   async update(key: string, value: string) {
-    await this.db.prepare("UPDATE site_settings SET value=? WHERE key=?").bind(value, key).run();
+    return this.db.prepare(
+      "UPDATE site_settings SET value=? WHERE key=? RETURNING key, value"
+    ).bind(value, key).first<SettingRow>();
   }
 
   async delete(key: string) {
