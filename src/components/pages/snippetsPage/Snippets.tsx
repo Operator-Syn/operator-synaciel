@@ -8,6 +8,7 @@ import {
     useMemo,
     useRef,
     useState,
+    type ComponentPropsWithoutRef,
     type ReactNode,
 } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -575,7 +576,7 @@ export default function Snippets() {
                                     <ReactMarkdown
                                         remarkPlugins={[remarkGfm]}
                                         components={{
-                                            code({ className, children, ...props }: any) {
+                                            code({ className, children, ...props }: ComponentPropsWithoutRef<"code">) {
                                                 const rawCode = String(children ?? "");
                                                 const codeString = rawCode.replace(/\n$/, "");
                                                 const match = /language-([\w-]+)/.exec(
@@ -636,7 +637,6 @@ export default function Snippets() {
                                                             <SyntaxRenderer
                                                                 language={language}
                                                                 codeString={codeString}
-                                                                {...props}
                                                             />
                                                         </Suspense>
                                                     </div>
