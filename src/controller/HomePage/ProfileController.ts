@@ -13,8 +13,7 @@ export class ProfileController {
     // FIX: Look for display_order instead of order to match the frontend state
     const { label, value, display_order } = await c.req.json();
     const model = new ProfileModel(c.env.DB);
-    await model.create(label, value, display_order ?? 0);
-    return c.json({ success: true });
+    return c.json(await model.create(label, value, display_order ?? 0));
   }
 
   static async update(c: Context<{ Bindings: Bindings }>) {
@@ -22,8 +21,7 @@ export class ProfileController {
     const { label, value, display_order } = await c.req.json();
     const model = new ProfileModel(c.env.DB);
     // Pass it to the model
-    await model.update(label, value, display_order ?? 0);
-    return c.json({ success: true });
+    return c.json(await model.update(label, value, display_order ?? 0));
   }
 
   static async delete(c: Context<{ Bindings: Bindings }>) {
