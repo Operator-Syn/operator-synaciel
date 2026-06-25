@@ -178,8 +178,8 @@ export default function Projects() {
     return (
         <>
             <GlobalHeadManager
-                title="Full-Stack Web Development Projects"
-                description="Browse full-stack web development projects by John-Ronan Beira, including React interfaces, Cloudflare-backed apps, software engineering experiments, and practical portfolio work."
+                title="Projects"
+                description="Browse software projects by John-Ronan Beira, including web apps, React interfaces, Cloudflare-backed tools, Python experiments, and other technical work."
                 image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
                 url="https://syn-forge.com/projects"
                 jsonLd={breadcrumbSchema}
