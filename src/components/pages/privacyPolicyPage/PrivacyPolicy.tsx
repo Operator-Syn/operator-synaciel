@@ -355,6 +355,25 @@ export default function PrivacyPolicy() {
         };
     }, []);
 
+    const breadcrumbSchema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+            {
+                "@type": "ListItem",
+                position: 1,
+                name: "Home",
+                item: "https://syn-forge.com/",
+            },
+            {
+                "@type": "ListItem",
+                position: 2,
+                name: "Privacy Policy",
+                item: "https://syn-forge.com/privacy-policy",
+            },
+        ],
+    };
+
     return (
         <>
             <GlobalHeadManager
@@ -362,6 +381,7 @@ export default function PrivacyPolicy() {
                 description="Privacy Policy for Syn-Forge, Operator-Syn, and related personal applications hosted under syn-forge.com."
                 image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
                 url="https://syn-forge.com/privacy-policy"
+                jsonLd={breadcrumbSchema}
             />
 
             <CookingArea>

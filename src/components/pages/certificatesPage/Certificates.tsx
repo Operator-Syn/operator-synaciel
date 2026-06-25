@@ -156,13 +156,33 @@ export default function Certifications() {
         setTimeout(() => setSelectedCert(null), 300);
     };
 
+    const breadcrumbSchema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+            {
+                "@type": "ListItem",
+                position: 1,
+                name: "Home",
+                item: "https://syn-forge.com/",
+            },
+            {
+                "@type": "ListItem",
+                position: 2,
+                name: "Certificates",
+                item: "https://syn-forge.com/certificates",
+            },
+        ],
+    };
+
     return (
         <>
             <GlobalHeadManager
-                title="Certifications"
-                description="A showcase of my credentials and specialized training, highlighting completed certifications in software development, cloud technologies, and industry-recognized programs. This Certifications page provides insight into my commitment to continuous learning and professional growth, featuring detailed information about each certification, including issuing organizations, completion dates, and credential links for verification."
+                title="Certificates"
+                description="A showcase of completed certificates, training, and credential details across software development, cloud technologies, and related disciplines."
                 image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
                 url="https://syn-forge.com/certificates"
+                jsonLd={breadcrumbSchema}
             />
             <CookingArea>
                 <div className="container py-3">

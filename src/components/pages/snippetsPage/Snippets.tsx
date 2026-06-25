@@ -248,6 +248,7 @@ export default function Snippets() {
         () => getInternalPathFromRoutePath(location.pathname),
         [location.pathname],
     );
+    const canonicalUrl = `https://syn-forge.com${getCanonicalRoutePath(location.pathname)}`;
 
     const currentItems = fileIndex[currentPathStr] || [];
 
@@ -423,13 +424,33 @@ export default function Snippets() {
         !!previewFileUrl ||
         !!previewError;
 
+    const breadcrumbSchema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+            {
+                "@type": "ListItem",
+                position: 1,
+                name: "Home",
+                item: "https://syn-forge.com/",
+            },
+            {
+                "@type": "ListItem",
+                position: 2,
+                name: "Snippets",
+                item: canonicalUrl,
+            },
+        ],
+    };
+
     return (
         <>
             <GlobalHeadManager
                 title="Snippets"
-                description="A collection of code snippets..."
+                description="A browsable collection of code snippets, notes, and reference files from the Syn-Forge portfolio."
                 image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
-                url="https://syn-forge.com/snippets"
+                url={canonicalUrl}
+                jsonLd={breadcrumbSchema}
             />
 
             <CookingArea>

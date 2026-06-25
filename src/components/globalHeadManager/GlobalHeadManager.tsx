@@ -5,10 +5,13 @@ type HeadProps = {
   description?: string;
   image?: string;
   url?: string;
+  jsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
 };
 
-export default function GlobalHeadManager({ title, description, image, url }: HeadProps) {
+export default function GlobalHeadManager({ title, description, image, url, jsonLd }: HeadProps) {
   useEffect(() => {
+    const pageUrl = url || window.location.href;
+
     // Document title
     if (title) document.title = `${title} | Syn-Forge`;
 
@@ -40,7 +43,15 @@ export default function GlobalHeadManager({ title, description, image, url }: He
     setMetaProperty("og:title", title ? `${title} | Syn-Forge` : undefined);
     setMetaProperty("og:description", description);
     setMetaProperty("og:image", image);
-    setMetaProperty("og:url", url || window.location.href);
+    setMetaProperty("og:url", pageUrl);
+
+    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (!canonical) {
+      canonical = document.createElement("link");
+      canonical.setAttribute("rel", "canonical");
+      document.head.appendChild(canonical);
+    }
+    canonical.href = pageUrl;
 
     // Twitter card tags
     const setMetaName = (name: string, content?: string) => {
@@ -58,7 +69,21 @@ export default function GlobalHeadManager({ title, description, image, url }: He
     setMetaName("twitter:description", description);
     setMetaName("twitter:image", image);
     setMetaName("twitter:card", "summary_large_image");
-  }, [title, description, image, url]);
+
+    document
+      .querySelectorAll('script[type="application/ld+json"][data-global-head-manager="true"]')
+      .forEach((script) => script.remove());
+
+    const structuredData = Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : [];
+
+    structuredData.forEach((entry) => {
+      const script = document.createElement("script");
+      script.type = "application/ld+json";
+      script.setAttribute("data-global-head-manager", "true");
+      script.textContent = JSON.stringify(entry);
+      document.head.appendChild(script);
+    });
+  }, [title, description, image, url, jsonLd]);
 
   return null;
 }

@@ -180,6 +180,20 @@ export default function Home() {
         sections,
     };
 
+    const websiteSchema = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "Syn-Forge",
+        url: "https://syn-forge.com/",
+        description:
+            "Syn-Forge is the development portfolio of John-Ronan Beira, focused on software engineering, Linux systems, and modern web technologies.",
+        author: {
+            "@type": "Person",
+            name: "John-Ronan Beira",
+            url: "https://syn-forge.com/",
+        },
+    };
+
     return (
         <>
             <GlobalHeadManager
@@ -187,6 +201,7 @@ export default function Home() {
                 description="This software development portfolio presents a comprehensive showcase of full-stack projects, development tools, and technical expertise. It highlights web applications, open-source contributions, and innovative solutions, providing insight into the developer’s professional experience, programming skills, and problem-solving capabilities. Visitors can explore detailed project implementations, development loadouts, and software engineering achievements designed to demonstrate proficiency in modern web and software development practices."
                 image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
                 url="https://syn-forge.com/"
+                jsonLd={websiteSchema}
             />
 
             <CookingArea>

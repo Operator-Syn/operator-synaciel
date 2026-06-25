@@ -336,6 +336,25 @@ export default function TermsAndConditions() {
         };
     }, []);
 
+    const breadcrumbSchema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+            {
+                "@type": "ListItem",
+                position: 1,
+                name: "Home",
+                item: "https://syn-forge.com/",
+            },
+            {
+                "@type": "ListItem",
+                position: 2,
+                name: "Terms and Conditions",
+                item: "https://syn-forge.com/terms-and-conditions",
+            },
+        ],
+    };
+
     return (
         <>
             <GlobalHeadManager
@@ -343,6 +362,7 @@ export default function TermsAndConditions() {
                 description="Terms and Conditions for Syn-Forge, Operator-Syn, and related personal applications hosted under syn-forge.com."
                 image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
                 url="https://syn-forge.com/terms-and-conditions"
+                jsonLd={breadcrumbSchema}
             />
 
             <CookingArea>
