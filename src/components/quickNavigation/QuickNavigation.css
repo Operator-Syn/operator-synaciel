@@ -1,0 +1,152 @@
+.quick-navigation-progress span {
+    width: 100%;
+}
+
+.quick-navigation-tabs {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.25rem;
+    padding: 0 1rem;
+}
+
+.quick-navigation-tab {
+    position: relative;
+    z-index: 1;
+    flex: 1 1 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-width: 0;
+    min-height: 2.45rem;
+    padding: 0.48rem 0.75rem 0.56rem;
+    border: 1px solid rgba(159, 218, 239, 0.2);
+    border-bottom: 0;
+    border-radius: 0.7rem 0.7rem 0.15rem 0.15rem;
+    background: rgba(13, 39, 65, 0.58);
+    color: rgba(227, 242, 253, 0.66);
+    font-weight: 800;
+    box-shadow: inset 0 1px 0 rgba(227, 242, 253, 0.08);
+    transition:
+        border-color 160ms ease,
+        background 160ms ease,
+        color 160ms ease,
+        transform 160ms ease;
+}
+
+.quick-navigation-tab:hover,
+.quick-navigation-tab:focus-visible {
+    border-color: rgba(159, 218, 239, 0.58);
+    background: rgba(22, 63, 96, 0.72);
+    color: rgb(227, 242, 253);
+}
+
+.quick-navigation-tab.active {
+    z-index: 3;
+    min-height: 2.65rem;
+    border-color: rgba(159, 218, 239, 0.56);
+    background: rgba(22, 63, 96, 0.94);
+    color: rgb(227, 242, 253);
+    transform: translateY(1px);
+}
+
+.quick-navigation-tab svg {
+    color: currentColor;
+}
+
+.quick-navigation-folder-pane {
+    position: relative;
+    z-index: 2;
+    margin: 0 1rem 0.85rem;
+    padding: 0.6rem;
+    border: 1px solid rgba(159, 218, 239, 0.56);
+    background:
+        linear-gradient(180deg, rgba(22, 63, 96, 0.92), rgba(8, 28, 48, 0.42)),
+        rgba(8, 28, 48, 0.84);
+    box-shadow:
+        inset 0 1px 0 rgba(227, 242, 253, 0.08),
+        0 0.65rem 1rem rgba(5, 21, 38, 0.12);
+}
+
+.quick-navigation-folder-pane.align-left {
+    border-radius: 0 0.65rem 0.65rem;
+}
+
+.quick-navigation-folder-pane.align-right {
+    border-radius: 0.65rem 0 0.65rem 0.65rem;
+}
+
+.quick-navigation-folder-pane .quick-navigation-list {
+    position: relative;
+    isolation: isolate;
+    gap: 0.2rem;
+    max-height: none;
+    padding: 0;
+    overflow: visible;
+}
+
+.quick-navigation-folder-pane .quick-navigation-list::before {
+    content: "";
+    position: absolute;
+    top: 0.55rem;
+    bottom: 0.55rem;
+    left: 1.35rem;
+    width: 1px;
+    background: rgba(159, 218, 239, 0.22);
+    z-index: 0;
+}
+
+.quick-navigation-list a {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.55rem;
+    align-items: center;
+    width: 100%;
+    min-height: 2.65rem;
+    padding: 0.42rem 0.55rem;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: rgba(227, 242, 253, 0.78);
+    text-align: left;
+    text-decoration: none;
+    transition:
+        border-color 160ms ease,
+        background 160ms ease,
+        color 160ms ease;
+}
+
+.quick-navigation-list a span {
+    position: relative;
+    z-index: 2;
+    display: inline-grid;
+    place-items: center;
+    width: 1.65rem;
+    height: 1.65rem;
+    border: 1px solid rgba(159, 218, 239, 0.18);
+    border-radius: 999px;
+    background: rgb(17, 51, 76);
+    box-shadow: 0 0 0 0.25rem rgba(8, 28, 48, 0.84);
+    color: rgba(159, 218, 239, 0.92);
+    font-size: 0.76rem !important;
+    font-weight: 800;
+}
+
+.quick-navigation-list a:hover,
+.quick-navigation-list a:focus-visible,
+.quick-navigation-list a.active {
+    border-color: rgba(227, 242, 253, 0.16);
+    background: rgba(227, 242, 253, 0.08);
+    color: rgb(227, 242, 253);
+}
+
+.quick-navigation-list a:hover span,
+.quick-navigation-list a:focus-visible span,
+.quick-navigation-list a.active span {
+    border-color: rgb(159, 218, 239);
+    background: rgb(159, 218, 239);
+    box-shadow: 0 0 0 0.25rem rgba(8, 28, 48, 0.9);
+    color: rgb(7, 25, 45);
+}
