@@ -12,15 +12,13 @@ export class SettingsController {
   static async create(c: Context<{ Bindings: Bindings }>) {
     const { key, value } = await c.req.json();
     const model = new SettingsModel(c.env.DB);
-    await model.create(key, value);
-    return c.json({ success: true });
+    return c.json(await model.create(key, value));
   }
 
   static async update(c: Context<{ Bindings: Bindings }>) {
     const { key, value } = await c.req.json();
     const model = new SettingsModel(c.env.DB);
-    await model.update(key, value);
-    return c.json({ success: true });
+    return c.json(await model.update(key, value));
   }
 
   static async delete(c: Context<{ Bindings: Bindings }>) {
