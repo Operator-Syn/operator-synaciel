@@ -139,11 +139,12 @@ app.use('/api/*', async (c, next) => {
     }
 
     await next();
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
     return c.json(
       {
         error: 'Auth service unreachable',
-        message: err.message,
+        message,
       },
       500,
     );
