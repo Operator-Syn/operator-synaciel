@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ArrowLeft, ArrowUp, ListTree, X } from "lucide-react";
+import { ArrowLeft, ArrowUp, Home, ListTree, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import CookingArea from "../../cookingArea/CookingArea";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
@@ -247,6 +247,11 @@ export default function PrivacyPolicy() {
         setQuickActionsOpen(false);
     };
 
+    const handleBackToHome = () => {
+        navigate("/");
+        setQuickActionsOpen(false);
+    };
+
     const handleReturnToSource = () => {
         if (!returnContext) return;
 
@@ -459,6 +464,15 @@ export default function PrivacyPolicy() {
                                 <button onClick={handleBackToTop} type="button">
                                     <ArrowUp aria-hidden="true" size={16} />
                                     Top
+                                </button>
+                                <button
+                                    aria-label="Back to Home"
+                                    onClick={handleBackToHome}
+                                    title="Back to Home"
+                                    type="button"
+                                >
+                                    <Home aria-hidden="true" size={16} />
+                                    Home
                                 </button>
                                 {returnContext && (
                                     <button onClick={handleReturnToSource} type="button">
