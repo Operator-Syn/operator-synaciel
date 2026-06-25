@@ -12,6 +12,28 @@ interface SectionJoinedRow {
   target_url: string | null;
 }
 
+interface HomePagePitchItem {
+  title: string;
+  content: string;
+}
+
+interface HomePageSocialItem {
+  label: string | null;
+  image_url: string | null;
+  target_url: string | null;
+}
+
+interface HomePageLoadoutItem {
+  category: string;
+  badges: string[];
+}
+
+interface HomePageSections {
+  pitch: { items: HomePagePitchItem[] };
+  social: { items: HomePageSocialItem[] };
+  loadouts: HomePageLoadoutItem[];
+}
+
 export class HomePageModel {
   private db: D1Database;
 
@@ -39,10 +61,10 @@ export class HomePageModel {
   }
 
   private transformSections(rows: SectionJoinedRow[]) {
-    const data: any = {
-      pitch: { items: [] as string[] },
-      social: { items: [] as any[] },
-      loadouts: [] as any[]
+    const data: HomePageSections = {
+      pitch: { items: [] },
+      social: { items: [] },
+      loadouts: []
     };
 
     rows.forEach(row => {
@@ -66,7 +88,7 @@ export class HomePageModel {
 
         case 'loadout':
           // Find or create the category (e.g., "Operating Systems")
-          let cat = data.loadouts.find((l: any) => l.category === row.title);
+          let cat = data.loadouts.find((l) => l.category === row.title);
           if (!cat) {
             cat = { category: row.title, badges: [] };
             data.loadouts.push(cat);
