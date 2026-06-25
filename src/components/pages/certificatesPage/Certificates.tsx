@@ -178,8 +178,8 @@ export default function Certifications() {
     return (
         <>
             <GlobalHeadManager
-                title="Certificates"
-                description="A showcase of completed certificates, training, and credential details across software development, cloud technologies, and related disciplines."
+                title="Training and Credentials"
+                description="Explore certificates and training credentials covering software development, cloud technologies, and related professional learning."
                 image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
                 url="https://syn-forge.com/certificates"
                 jsonLd={breadcrumbSchema}

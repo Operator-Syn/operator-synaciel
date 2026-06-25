@@ -186,7 +186,7 @@ export default function Home() {
         name: "Syn-Forge",
         url: "https://syn-forge.com/",
         description:
-            "Syn-Forge is the development portfolio of John-Ronan Beira, focused on software engineering, Linux systems, and modern web technologies.",
+            "Syn-Forge is the software developer portfolio of John-Ronan Beira, featuring full-stack projects, React work, Linux systems, Cloudflare tooling, and modern web development experience.",
         author: {
             "@type": "Person",
             name: "John-Ronan Beira",
@@ -197,8 +197,8 @@ export default function Home() {
     return (
         <>
             <GlobalHeadManager
-                title="Home"
-                description="This software development portfolio presents a comprehensive showcase of full-stack projects, development tools, and technical expertise. It highlights web applications, open-source contributions, and innovative solutions, providing insight into the developer’s professional experience, programming skills, and problem-solving capabilities. Visitors can explore detailed project implementations, development loadouts, and software engineering achievements designed to demonstrate proficiency in modern web and software development practices."
+                title="Software Developer Portfolio"
+                description="Syn-Forge is the software developer portfolio of John-Ronan Beira, featuring full-stack projects, React work, Linux systems, Cloudflare tooling, and modern web development experience."
                 image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
                 url="https://syn-forge.com/"
                 jsonLd={websiteSchema}

@@ -446,8 +446,8 @@ export default function Snippets() {
     return (
         <>
             <GlobalHeadManager
-                title="Snippets"
-                description="A browsable collection of code snippets, notes, and reference files from the Syn-Forge portfolio."
+                title="Code Snippets"
+                description="Browse code snippets, developer notes, and reference files from the Syn-Forge portfolio."
                 image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
                 url={canonicalUrl}
                 jsonLd={breadcrumbSchema}

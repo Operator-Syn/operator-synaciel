@@ -178,8 +178,8 @@ export default function Projects() {
     return (
         <>
             <GlobalHeadManager
-                title="Projects"
-                description="This Projects page showcases a collection of full-stack and web development projects, demonstrating technical expertise, problem-solving abilities, and innovative solutions. Each project includes detailed implementations, development tools, and key achievements, providing insight into the developer’s professional experience and proficiency in modern software engineering, open-source contributions, and cloud-based technologies. Visitors can explore a variety of projects, from web applications to software engineering achievements, highlighting the developer’s skills and experience in the field."
+                title="Full-Stack Web Development Projects"
+                description="Browse full-stack web development projects by John-Ronan Beira, including React interfaces, Cloudflare-backed apps, software engineering experiments, and practical portfolio work."
                 image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
                 url="https://syn-forge.com/projects"
                 jsonLd={breadcrumbSchema}
