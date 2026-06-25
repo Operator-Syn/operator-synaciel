@@ -24,6 +24,18 @@ export interface CertificateCreate {
   display_order?: number;
 }
 
+type CertificateRow = {
+  id: number;
+  title: string;
+  type: 'video' | 'image';
+  url: string;
+  short_description: string;
+  long_description: string;
+  certificate_link: string | null;
+  display_order: number;
+  created_at: string;
+};
+
 export class CertificatesModel {
   private db: D1Database;
   
@@ -33,7 +45,7 @@ export class CertificatesModel {
 
   async listAll(): Promise<Certificate[]> {
     const query = `SELECT * FROM Certificates ORDER BY display_order ASC, id ASC`;
-    const { results } = await this.db.prepare(query).all();
+    const { results } = await this.db.prepare(query).all<CertificateRow>();
 
     if (!results) return [];
 
@@ -53,7 +65,7 @@ export class CertificatesModel {
   async getById(id: number): Promise<Certificate | null> {
     const query = `SELECT * FROM Certificates WHERE id=?`;
     // FIX: Remove array brackets from .bind()
-    const { results } = await this.db.prepare(query).bind(id).all();
+    const { results } = await this.db.prepare(query).bind(id).all<CertificateRow>();
 
     if (!results || results.length === 0) return null;
 
@@ -94,7 +106,7 @@ export class CertificatesModel {
 
   async update(id: number, cert: Partial<CertificateCreate>): Promise<void> {
     const fields: string[] = [];
-    const values: any[] = [];
+    const values: unknown[] = [];
 
     // Filter out internal properties that might come from the frontend
     const allowedKeys = ['title', 'type', 'url', 'short_description', 'long_description', 'certificate_link', 'display_order'];
