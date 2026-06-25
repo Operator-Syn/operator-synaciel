@@ -49,13 +49,36 @@ export class GalleryModel {
     }));
   }
 
-  async create(item: GalleryCreate): Promise<void> {
+  async getById(id: number): Promise<GalleryItem | null> {
+    const query = `
+      SELECT id, project_id, type, url, display_order
+      FROM GalleryItems
+      WHERE id = ?
+    `;
+
+    const row = await this.db.prepare(query).bind(id).first<any>();
+
+    if (!row) {
+      return null;
+    }
+
+    return {
+      id: Number(row.id),
+      project_id: Number(row.project_id),
+      type: row.type === "video" ? "video" : "image",
+      url: String(row.url),
+      display_order: Number(row.display_order),
+    };
+  }
+
+  async create(item: GalleryCreate): Promise<number> {
     const query = `
       INSERT INTO GalleryItems (project_id, type, url, display_order)
       VALUES (?, ?, ?, ?)
+      RETURNING id
     `;
 
-    await this.db
+    const result = await this.db
       .prepare(query)
       .bind(
         item.project_id,
@@ -63,13 +86,15 @@ export class GalleryModel {
         item.url,
         item.display_order ?? 0
       )
-      .run();
+      .first<{ id: number }>();
+
+    return result?.id ? Number(result.id) : 0;
   }
 
   async update(
     id: number,
     item: Partial<Omit<GalleryCreate, "project_id">>
-  ): Promise<void> {
+  ): Promise<GalleryItem | null> {
     const fields: string[] = [];
     const values: unknown[] = [];
 
@@ -79,7 +104,7 @@ export class GalleryModel {
     }
 
     if (fields.length === 0) {
-      return;
+      return null;
     }
 
     const query = `
@@ -92,6 +117,8 @@ export class GalleryModel {
       .prepare(query)
       .bind(...values, id)
       .run();
+
+    return (await this.getById(id)) ?? null;
   }
 
   async delete(id: number): Promise<void> {
