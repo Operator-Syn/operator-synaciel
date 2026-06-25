@@ -21,16 +21,16 @@ export class ProfileModel {
   }
 
   async create(label: string, value: string, display_order: number) {
-    await this.db.prepare(
-      "INSERT INTO profile_info (label, value, display_order) VALUES (?, ?, ?)"
-    ).bind(label, value, display_order).run();
+    return this.db.prepare(
+      "INSERT INTO profile_info (label, value, display_order) VALUES (?, ?, ?) RETURNING id, label, value, display_order"
+    ).bind(label, value, display_order).first<ProfileRow>();
   }
 
   // ADDED: display_order to the parameters and the SQL query
   async update(label: string, value: string, display_order: number) {
-    await this.db.prepare(
-      "UPDATE profile_info SET value=?, display_order=? WHERE label=?"
-    ).bind(value, display_order, label).run();
+    return this.db.prepare(
+      "UPDATE profile_info SET value=?, display_order=? WHERE label=? RETURNING id, label, value, display_order"
+    ).bind(value, display_order, label).first<ProfileRow>();
   }
 
   async delete(label: string) {
