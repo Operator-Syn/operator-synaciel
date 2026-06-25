@@ -20,8 +20,9 @@ export class GalleryController {
   static async create(c: Context<{ Bindings: Bindings }>) {
     const body = await c.req.json();
     const model = new GalleryModel(c.env.DB);
-    await model.create(body);
-    return c.json({ success: true });
+    const newId = await model.create(body);
+    const item = newId ? await model.getById(newId) : null;
+    return c.json(item ?? { success: true }, item ? 201 : 200);
   }
 
   // Update a gallery item
@@ -31,8 +32,8 @@ export class GalleryController {
 
     const body = await c.req.json();
     const model = new GalleryModel(c.env.DB);
-    await model.update(id, body);
-    return c.json({ success: true });
+    const item = await model.update(id, body);
+    return c.json(item ?? { success: true });
   }
 
   // Delete a gallery item
