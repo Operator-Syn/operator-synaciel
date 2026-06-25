@@ -40,9 +40,10 @@ export class CertificateItemsController {
       };
 
       const model = new CertificateItemsModel(c.env.DB);
-      await model.create(sanitizedData);
+      const newId = await model.create(sanitizedData);
+      const item = newId ? await model.getById(newId) : null;
       
-      return c.json({ success: true }, 201);
+      return c.json(item ?? { success: true }, item ? 201 : 200);
     } catch (err: any) {
       console.error("Create Controller Error:", err);
       return c.json({ error: "Internal Server Error" }, 500);
@@ -69,8 +70,8 @@ export class CertificateItemsController {
         updateData.certificate_id = Number(body.project_id || body.certificate_id);
       }
 
-      await model.update(id, updateData);
-      return c.json({ success: true });
+      const item = await model.update(id, updateData);
+      return c.json(item ?? { success: true });
     } catch (err: any) {
       console.error("Update Controller Error:", err);
       return c.json({ error: "Update failed" }, 500);
