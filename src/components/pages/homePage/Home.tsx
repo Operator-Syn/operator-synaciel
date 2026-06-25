@@ -10,6 +10,40 @@ import DevelopmentLoadoutsComponent from "../../developmentLoadoutsComponent/Dev
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
 import { PUBLIC_DATA_STALE_TIME_MS } from "../../../data/cacheSettings";
 
+interface SectionApiItem {
+    label?: string;
+    content?: string;
+    image_url?: string;
+    target_url?: string;
+}
+
+interface SectionApiRow {
+    id: number;
+    title: string;
+    section_type: string;
+    items: SectionApiItem[];
+}
+
+interface HomeSectionMap {
+    pitch: {
+        items: Array<{
+            title: string;
+            content: string;
+        }>;
+    };
+    social: {
+        items: Array<{
+            label: string;
+            image_url: string;
+            target_url: string;
+        }>;
+    };
+    loadouts: Array<{
+        category: string;
+        badges: string[];
+    }>;
+}
+
 const apiUrl = import.meta.env.VITE_API_URL;
 
 const fetchSettings = async () => {
@@ -39,16 +73,16 @@ const fetchSections = async () => {
         throw new Error("Failed to fetch sections");
     }
 
-    const sections = await res.json();
+    const sections = (await res.json()) as Array<{ id: number; title: string; section_type: string }>;
 
-    const sectionItemsPromises = sections.map(async (section: any) => {
+    const sectionItemsPromises = sections.map(async (section) => {
         const itemsRes = await fetch(`${apiUrl}/sections/${section.id}/items`);
 
         if (!itemsRes.ok) {
             throw new Error(`Failed to fetch items for section ${section.title}`);
         }
 
-        const items = await itemsRes.json();
+        const items = (await itemsRes.json()) as SectionApiItem[];
 
         return {
             ...section,
@@ -95,33 +129,33 @@ export default function Home() {
     const profile = results[1].data ?? [];
     const rawSections = results[2].data ?? [];
 
-    const sections = {
+    const sections: HomeSectionMap = {
         pitch: {
-            items: [] as any[],
+            items: [],
         },
         social: {
-            items: [] as any[],
+            items: [],
         },
-        loadouts: [] as any[],
+        loadouts: [],
     };
 
-    rawSections.forEach((section: any) => {
+    rawSections.forEach((section: SectionApiRow) => {
         switch (section.section_type) {
             case "pitch":
-                section.items.forEach((item: any) => {
+                section.items.forEach((item) => {
                     sections.pitch.items.push({
                         title: section.title,
-                        content: item.content,
+                        content: item.content ?? "",
                     });
                 });
                 break;
 
             case "social":
-                section.items.forEach((item: any) => {
+                section.items.forEach((item) => {
                     sections.social.items.push({
-                        label: item.label,
-                        image_url: item.image_url,
-                        target_url: item.target_url,
+                        label: item.label ?? "",
+                        image_url: item.image_url ?? "",
+                        target_url: item.target_url ?? "",
                     });
                 });
                 break;
@@ -130,8 +164,8 @@ export default function Home() {
                 sections.loadouts.push({
                     category: section.title,
                     badges: section.items
-                        .map((item: any) => item.image_url)
-                        .filter(Boolean),
+                        .map((item) => item.image_url)
+                        .filter((badge): badge is string => Boolean(badge)),
                 });
                 break;
 
