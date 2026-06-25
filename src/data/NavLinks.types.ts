@@ -19,8 +19,8 @@ export const routes: RouteItem[] = [
     { name: "Projects", path: "/projects", component: Projects, showInNav: true },
     { name: "Certificates", path: "/certificates", component: Certifications, showInNav: true },
     { name: "Snippets", path: "/snippets", component: Snippets, showInNav: true },
-    { name: "Privacy", path: "/privacy-policy", component: PrivacyPolicy, showInNav: true },
-    { name: "Terms", path: "/terms-and-conditions", component: TermsAndConditions, showInNav: true },
+    { name: "Privacy", path: "/privacy-policy", component: PrivacyPolicy, showInNav: false },
+    { name: "Terms", path: "/terms-and-conditions", component: TermsAndConditions, showInNav: false },
     { name: "NetBird", path: "/netbird", component: Netbird, showInNav: false },
     { name: "Atelier", path: "/atelier", component: Atelier, showInNav: false },
 ];
