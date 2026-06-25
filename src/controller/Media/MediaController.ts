@@ -18,8 +18,9 @@ export const createMediaController = (prefix: string) => ({
           url: `${c.env.VITE_CDN_URL}/${obj.key}`,
         }));
       return c.json({ success: true, data: fileList });
-    } catch (err: any) {
-      return c.json({ error: 'Failed to list bucket objects', message: err.message }, 500);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      return c.json({ error: 'Failed to list bucket objects', message }, 500);
     }
   },
 
@@ -36,8 +37,9 @@ export const createMediaController = (prefix: string) => ({
       await c.env.BUCKET.put(key, arrayBuffer, { httpMetadata: { contentType: file.type } });
 
       return c.json({ success: true, url: `${c.env.VITE_CDN_URL}/${key}`, key }, 201);
-    } catch (err: any) {
-      return c.json({ error: 'Upload failed', message: err.message }, 500);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      return c.json({ error: 'Upload failed', message }, 500);
     }
   },
 
@@ -66,8 +68,9 @@ export const createMediaController = (prefix: string) => ({
 
       const uploadUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
       return c.json({ success: true, uploadUrl, publicUrl: `${c.env.VITE_CDN_URL}/${key}`, key });
-    } catch (err: any) {
-      return c.json({ error: 'Presign failed', message: err.message }, 500);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      return c.json({ error: 'Presign failed', message }, 500);
     }
   },
 
@@ -99,8 +102,9 @@ export const createMediaController = (prefix: string) => ({
       const arrayBuffer = await file.arrayBuffer();
       await c.env.BUCKET.put(key, arrayBuffer, { httpMetadata: { contentType: file.type } });
       return c.json({ success: true, url: `${c.env.VITE_CDN_URL}/${key}` });
-    } catch (err: any) {
-      return c.json({ error: 'Update failed', message: err.message }, 500);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      return c.json({ error: 'Update failed', message }, 500);
     }
   },
 
@@ -113,8 +117,9 @@ export const createMediaController = (prefix: string) => ({
       if (!object) return c.json({ error: 'Resource not found' }, 404);
       await c.env.BUCKET.delete(key);
       return c.json({ success: true, message: `Asset ${key} deleted.` });
-    } catch (err: any) {
-      return c.json({ error: 'Delete failed', message: err.message }, 500);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      return c.json({ error: 'Delete failed', message }, 500);
     }
   }
 });
