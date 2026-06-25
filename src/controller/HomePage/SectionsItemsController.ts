@@ -24,7 +24,7 @@ export class SectionItemsController {
         return c.json({ error: "sectionId is required", body_received: body }, 400);
       }
 
-      await model.create(
+      const savedItem = await model.create(
         Number(sectionId), 
         body.label ?? null, 
         body.content ?? null, 
@@ -33,7 +33,7 @@ export class SectionItemsController {
         Number(order)
       );
 
-      return c.json({ success: true });
+      return c.json(savedItem ?? { success: true });
     } catch (err: any) {
       return c.json({ error: "Create failed", message: err.message }, 500);
     }
@@ -54,7 +54,7 @@ export class SectionItemsController {
         return c.json({ error: "id is required for update" }, 400);
       }
 
-      await model.update(
+      const savedItem = await model.update(
         Number(id), 
         body.label ?? null, 
         body.content ?? null, 
@@ -63,7 +63,7 @@ export class SectionItemsController {
         Number(order) // PASS order to model
       );
 
-      return c.json({ success: true });
+      return c.json(savedItem ?? { success: true });
     } catch (err: any) {
       return c.json({ error: "Update failed", message: err.message }, 500);
     }
