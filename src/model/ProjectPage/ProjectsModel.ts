@@ -23,6 +23,18 @@ export interface ProjectCreate {
   display_order?: number;
 }
 
+type ProjectRow = {
+  id: number;
+  title: string;
+  type: 'video' | 'image';
+  url: string;
+  short_description: string;
+  long_description: string;
+  project_link: string;
+  display_order: number;
+  created_at: string;
+};
+
 export class ProjectsModel {
   private db: D1Database;
   constructor(db: D1Database) {
@@ -31,7 +43,7 @@ export class ProjectsModel {
 
   async listAll(): Promise<Project[]> {
     const query = `SELECT * FROM Projects ORDER BY display_order ASC, id ASC`;
-    const { results } = await this.db.prepare(query).all();
+    const { results } = await this.db.prepare(query).all<ProjectRow>();
 
     if (!results) return [];
 
@@ -50,7 +62,7 @@ export class ProjectsModel {
 
   async getById(id: number): Promise<Project | null> {
     const query = `SELECT * FROM Projects WHERE id=?`;
-    const { results } = await this.db.prepare(query).bind(id).all();
+    const { results } = await this.db.prepare(query).bind(id).all<ProjectRow>();
 
     if (!results || results.length === 0) return null;
 
@@ -91,7 +103,7 @@ export class ProjectsModel {
 
   async update(id: number, project: Partial<ProjectCreate>): Promise<void> {
     const fields: string[] = [];
-    const values: any[] = [];
+    const values: unknown[] = [];
 
     // Filter out id and created_at if they accidentally get passed in the body
     for (const [key, value] of Object.entries(project)) {
