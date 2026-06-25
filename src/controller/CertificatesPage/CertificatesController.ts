@@ -29,7 +29,8 @@ export class CertificatesController {
     const body = await c.req.json();
     const model = new CertificatesModel(c.env.DB);
     const newId = await model.create(body);
-    return c.json({ success: true, id: newId }, 201);
+    const cert = newId ? await model.getById(newId) : null;
+    return c.json(cert ?? { success: true, id: newId }, cert ? 201 : 200);
   }
 
   // Update a certificate
@@ -40,7 +41,8 @@ export class CertificatesController {
     const body = await c.req.json();
     const model = new CertificatesModel(c.env.DB);
     await model.update(id, body);
-    return c.json({ success: true });
+    const cert = await model.getById(id);
+    return c.json(cert ?? { success: true });
   }
 
   // Delete a certificate
