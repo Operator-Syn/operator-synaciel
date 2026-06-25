@@ -13,11 +13,15 @@ export class SectionsModel {
   }
 
   async create(title: string, type: string, order: number) {
-    await this.db.prepare("INSERT INTO sections (title, section_type, display_order) VALUES (?, ?, ?)").bind(title, type, order).run();
+    return this.db.prepare(
+      "INSERT INTO sections (title, section_type, display_order) VALUES (?, ?, ?) RETURNING id, title, section_type, display_order"
+    ).bind(title, type, order).first<SectionRow>();
   }
 
-  async update(id: number, title: string, type: string) {
-    await this.db.prepare("UPDATE sections SET title=?, section_type=? WHERE id=?").bind(title, type, id).run();
+  async update(id: number, title: string, type: string, display_order: number) {
+    return this.db.prepare(
+      "UPDATE sections SET title=?, section_type=?, display_order=? WHERE id=? RETURNING id, title, section_type, display_order"
+    ).bind(title, type, display_order, id).first<SectionRow>();
   }
 
   async delete(id: number) {
