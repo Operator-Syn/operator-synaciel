@@ -34,8 +34,9 @@ export class SectionItemsController {
       );
 
       return c.json(savedItem ?? { success: true });
-    } catch (err: any) {
-      return c.json({ error: "Create failed", message: err.message }, 500);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return c.json({ error: "Create failed", message }, 500);
     }
   }
 
@@ -64,8 +65,9 @@ export class SectionItemsController {
       );
 
       return c.json(savedItem ?? { success: true });
-    } catch (err: any) {
-      return c.json({ error: "Update failed", message: err.message }, 500);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return c.json({ error: "Update failed", message }, 500);
     }
   }
 
@@ -75,8 +77,9 @@ export class SectionItemsController {
       const model = new SectionItemsModel(c.env.DB);
       await model.delete(id);
       return c.json({ success: true });
-    } catch (err: any) {
-      return c.json({ error: "Delete failed", message: err.message }, 500);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return c.json({ error: "Delete failed", message }, 500);
     }
   }
 }
