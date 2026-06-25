@@ -16,6 +16,14 @@ export interface CertificateItemCreate {
   display_order?: number;
 }
 
+type CertificateItemRow = {
+  id: number;
+  certificate_id: number;
+  type: "video" | "image";
+  url: string;
+  display_order: number;
+};
+
 export class CertificateItemsModel {
   private db: D1Database;
 
@@ -34,13 +42,13 @@ export class CertificateItemsModel {
     const { results } = await this.db
       .prepare(query)
       .bind(certificate_id)
-      .all();
+      .all<CertificateItemRow>();
 
     if (!results || results.length === 0) {
       return [];
     }
 
-    return results.map((r: any) => ({
+    return results.map((r) => ({
       id: Number(r.id),
       certificate_id: Number(r.certificate_id),
       type: r.type === "video" ? "video" : "image",
@@ -56,7 +64,7 @@ export class CertificateItemsModel {
       WHERE id = ?
     `;
 
-    const row = await this.db.prepare(query).bind(id).first<any>();
+    const row = await this.db.prepare(query).bind(id).first<CertificateItemRow>();
 
     if (!row) {
       return null;
