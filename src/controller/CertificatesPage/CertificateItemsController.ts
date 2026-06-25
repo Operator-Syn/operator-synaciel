@@ -4,6 +4,11 @@ import type { Context } from "hono";
 import type { Bindings } from "../../Api";
 import { CertificateItemsModel, type CertificateItemCreate } from "../../model/CertificatesPage/CertificateItemsModel";
 
+type CertificateItemUpdatePayload = Partial<CertificateItemCreate> & {
+  project_id?: number;
+  certificate_id?: number;
+};
+
 export class CertificateItemsController {
   
   // List all items for a specific certificate
@@ -44,7 +49,7 @@ export class CertificateItemsController {
       const item = newId ? await model.getById(newId) : null;
       
       return c.json(item ?? { success: true }, item ? 201 : 200);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Create Controller Error:", err);
       return c.json({ error: "Internal Server Error" }, 500);
     }
@@ -61,7 +66,7 @@ export class CertificateItemsController {
       
       // Construct partial update data with type safety
       // Note: We also check for project_id here in case the frontend sends it during an update
-      const updateData: any = {};
+      const updateData: CertificateItemUpdatePayload = {};
       
       if (body.type !== undefined) updateData.type = (body.type === 'video' || body.type === 'image') ? body.type : 'image';
       if (body.url !== undefined) updateData.url = String(body.url);
@@ -72,7 +77,7 @@ export class CertificateItemsController {
 
       const item = await model.update(id, updateData);
       return c.json(item ?? { success: true });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Update Controller Error:", err);
       return c.json({ error: "Update failed" }, 500);
     }
