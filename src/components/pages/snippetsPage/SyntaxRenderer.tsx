@@ -1,10 +1,12 @@
+import type { ComponentPropsWithoutRef } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
-interface SyntaxRendererProps {
+type SyntaxHighlighterProps = ComponentPropsWithoutRef<typeof SyntaxHighlighter>;
+
+interface SyntaxRendererProps extends Omit<SyntaxHighlighterProps, "language" | "children"> {
   language: string;
   codeString: string;
-  [key: string]: any;
 }
 
 export default function SyntaxRenderer({ language, codeString, ...props }: SyntaxRendererProps) {
