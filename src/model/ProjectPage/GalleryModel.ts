@@ -16,6 +16,14 @@ export interface GalleryCreate {
   display_order?: number;
 }
 
+type GalleryRow = {
+  id: number;
+  project_id: number;
+  type: "video" | "image";
+  url: string;
+  display_order: number;
+};
+
 export class GalleryModel {
   private db: D1Database;
 
@@ -34,13 +42,13 @@ export class GalleryModel {
     const { results } = await this.db
       .prepare(query)
       .bind(project_id)
-      .all();
+      .all<GalleryRow>();
 
     if (!results || results.length === 0) {
       return [];
     }
 
-    return results.map((r: any) => ({
+    return results.map((r) => ({
       id: Number(r.id),
       project_id: Number(r.project_id),
       type: r.type === "video" ? "video" : "image",
@@ -56,7 +64,7 @@ export class GalleryModel {
       WHERE id = ?
     `;
 
-    const row = await this.db.prepare(query).bind(id).first<any>();
+    const row = await this.db.prepare(query).bind(id).first<GalleryRow>();
 
     if (!row) {
       return null;
