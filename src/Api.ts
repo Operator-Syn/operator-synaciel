@@ -17,6 +17,7 @@ import {
   MediaController,
   createMediaController,
 } from './controller/Media/MediaController';
+import { respondWithInternalError } from './utils/serverErrors';
 
 const ProjectsMedia = MediaController;
 const CertificatesMedia = createMediaController('Certificates/');
@@ -140,14 +141,7 @@ app.use('/api/*', async (c, next) => {
 
     await next();
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return c.json(
-      {
-        error: 'Auth service unreachable',
-        message,
-      },
-      500,
-    );
+    return respondWithInternalError(c, 'AUTH middleware', err);
   }
 });
 

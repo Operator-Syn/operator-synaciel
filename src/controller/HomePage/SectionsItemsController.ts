@@ -2,6 +2,7 @@
 import type { Context } from "hono";
 import { SectionItemsModel } from "../../model/HomePage/SectionItemsModel";
 import type { Bindings } from "../../Api";
+import { respondWithInternalError } from "../../utils/serverErrors";
 
 export class SectionItemsController {
   static async list(c: Context<{ Bindings: Bindings }>) {
@@ -21,7 +22,7 @@ export class SectionItemsController {
       const order = body.order ?? body.display_order ?? 0;
 
       if (sectionId === undefined) {
-        return c.json({ error: "sectionId is required", body_received: body }, 400);
+        return c.json({ error: "sectionId is required" }, 400);
       }
 
       const savedItem = await model.create(
@@ -35,8 +36,7 @@ export class SectionItemsController {
 
       return c.json(savedItem ?? { success: true });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      return c.json({ error: "Create failed", message }, 500);
+      return respondWithInternalError(c, "SectionItemsController.create", err);
     }
   }
 
@@ -66,8 +66,7 @@ export class SectionItemsController {
 
       return c.json(savedItem ?? { success: true });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      return c.json({ error: "Update failed", message }, 500);
+      return respondWithInternalError(c, "SectionItemsController.update", err);
     }
   }
 
@@ -78,8 +77,7 @@ export class SectionItemsController {
       await model.delete(id);
       return c.json({ success: true });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      return c.json({ error: "Delete failed", message }, 500);
+      return respondWithInternalError(c, "SectionItemsController.delete", err);
     }
   }
 }

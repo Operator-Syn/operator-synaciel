@@ -2,6 +2,7 @@
 import type { Context } from "hono";
 import { ProjectsPageModel } from "../model/ProjectsPageModel";
 import type { Bindings } from "../Api";
+import { respondWithInternalError } from "../utils/serverErrors";
 
 export class ProjectsPageController {
   static async handleProjects(c: Context<{ Bindings: Bindings }>) {
@@ -11,8 +12,7 @@ export class ProjectsPageController {
       const data = await model.getAllProjects();
       return c.json(data);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      return c.json({ error: errorMessage }, 500);
+      return respondWithInternalError(c, "ProjectsPageController.handleProjects", err);
     }
   }
 }

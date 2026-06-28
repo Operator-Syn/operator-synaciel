@@ -87,13 +87,15 @@ export class HomePageModel {
           break;
 
         case 'loadout':
-          // Find or create the category (e.g., "Operating Systems")
-          let cat = data.loadouts.find((l) => l.category === row.title);
-          if (!cat) {
-            cat = { category: row.title, badges: [] };
-            data.loadouts.push(cat);
+          {
+            // Find or create the category (e.g., "Operating Systems")
+            let cat = data.loadouts.find((l) => l.category === row.title);
+            if (!cat) {
+              cat = { category: row.title, badges: [] };
+              data.loadouts.push(cat);
+            }
+            if (row.image_url) cat.badges.push(row.image_url);
           }
-          if (row.image_url) cat.badges.push(row.image_url);
           break;
       }
     });

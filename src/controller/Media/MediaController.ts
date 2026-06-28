@@ -3,6 +3,7 @@ import { type Context } from 'hono';
 import { type Bindings } from '../../Api';
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { respondWithInternalError } from '../../utils/serverErrors';
 
 // Factory function to create a controller for a specific bucket directory
 export const createMediaController = (prefix: string) => ({
@@ -19,8 +20,7 @@ export const createMediaController = (prefix: string) => ({
         }));
       return c.json({ success: true, data: fileList });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      return c.json({ error: 'Failed to list bucket objects', message }, 500);
+      return respondWithInternalError(c, 'MediaController.list', err);
     }
   },
 
@@ -38,8 +38,7 @@ export const createMediaController = (prefix: string) => ({
 
       return c.json({ success: true, url: `${c.env.VITE_CDN_URL}/${key}`, key }, 201);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      return c.json({ error: 'Upload failed', message }, 500);
+      return respondWithInternalError(c, 'MediaController.upload', err);
     }
   },
 
@@ -69,8 +68,7 @@ export const createMediaController = (prefix: string) => ({
       const uploadUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
       return c.json({ success: true, uploadUrl, publicUrl: `${c.env.VITE_CDN_URL}/${key}`, key });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      return c.json({ error: 'Presign failed', message }, 500);
+      return respondWithInternalError(c, 'MediaController.presign', err);
     }
   },
 
@@ -103,8 +101,7 @@ export const createMediaController = (prefix: string) => ({
       await c.env.BUCKET.put(key, arrayBuffer, { httpMetadata: { contentType: file.type } });
       return c.json({ success: true, url: `${c.env.VITE_CDN_URL}/${key}` });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      return c.json({ error: 'Update failed', message }, 500);
+      return respondWithInternalError(c, 'MediaController.update', err);
     }
   },
 
@@ -118,8 +115,7 @@ export const createMediaController = (prefix: string) => ({
       await c.env.BUCKET.delete(key);
       return c.json({ success: true, message: `Asset ${key} deleted.` });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      return c.json({ error: 'Delete failed', message }, 500);
+      return respondWithInternalError(c, 'MediaController.delete', err);
     }
   }
 });

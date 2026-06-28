@@ -3,6 +3,7 @@
 import { type Context } from "hono";
 import { type Bindings } from "../../Api";
 import { SnippetsPageModel } from "../../model/SnippetsPage/SnippetsPageModel";
+import { respondWithInternalError } from "../../utils/serverErrors";
 
 type AppContext = Context<{ Bindings: Bindings }>;
 
@@ -68,28 +69,6 @@ function parseOptionalDisplayOrder(value: unknown): number | undefined {
   return displayOrder;
 }
 
-function getErrorStatus(message: string): 400 | 404 | 500 {
-  if (
-    message.includes("not found") ||
-    message.includes("Not found") ||
-    message.includes("not found.")
-  ) {
-    return 404;
-  }
-
-  if (
-    message.includes("Invalid") ||
-    message.includes("required") ||
-    message.includes("supported") ||
-    message.includes("Cannot") ||
-    message.includes("Parent")
-  ) {
-    return 400;
-  }
-
-  return 500;
-}
-
 export const createSnippetsPageController = (prefix = "snippets/") => ({
   // GET /api/snippets
   getSnippets: async (c: AppContext) => {
@@ -102,13 +81,7 @@ export const createSnippetsPageController = (prefix = "snippets/") => ({
         data,
       });
     } catch (err: unknown) {
-      return c.json(
-        {
-          error: "Failed to fetch snippets",
-          message: err instanceof Error ? err.message : "Unknown error",
-        },
-        500,
-      );
+      return respondWithInternalError(c, "SnippetsPageController.getSnippets", err);
     }
   },
 
@@ -133,13 +106,7 @@ export const createSnippetsPageController = (prefix = "snippets/") => ({
         data,
       });
     } catch (err: unknown) {
-      return c.json(
-        {
-          error: "Failed to fetch snippet",
-          message: err instanceof Error ? err.message : "Unknown error",
-        },
-        500,
-      );
+      return respondWithInternalError(c, "SnippetsPageController.getSnippet", err);
     }
   },
 
@@ -165,13 +132,7 @@ export const createSnippetsPageController = (prefix = "snippets/") => ({
         result.headers,
       );
     } catch (err: unknown) {
-      return c.json(
-        {
-          error: "Download failed",
-          message: err instanceof Error ? err.message : "Unknown error",
-        },
-        500,
-      );
+      return respondWithInternalError(c, "SnippetsPageController.downloadSnippet", err);
     }
   },
 
@@ -231,16 +192,8 @@ export const createSnippetsPageController = (prefix = "snippets/") => ({
 
       return c.json({ error: "Unsupported Content-Type" }, 415);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Creation failed";
-      const status = getErrorStatus(message);
-
-      return c.json(
-        {
-          error: "Creation failed",
-          message,
-        },
-        status,
-      );
+      console.error("[SnippetsPageController.createSnippet]", err);
+      return c.json({ error: "Creation failed" }, 500);
     }
   },
 
@@ -295,16 +248,8 @@ export const createSnippetsPageController = (prefix = "snippets/") => ({
         data: updated,
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Update failed";
-      const status = getErrorStatus(message);
-
-      return c.json(
-        {
-          error: "Update failed",
-          message,
-        },
-        status,
-      );
+      console.error("[SnippetsPageController.updateSnippet]", err);
+      return c.json({ error: "Update failed" }, 500);
     }
   },
 
@@ -329,13 +274,7 @@ export const createSnippetsPageController = (prefix = "snippets/") => ({
         message: `Snippet ${id} deleted.`,
       });
     } catch (err: unknown) {
-      return c.json(
-        {
-          error: "Delete failed",
-          message: err instanceof Error ? err.message : "Unknown error",
-        },
-        500,
-      );
+      return respondWithInternalError(c, "SnippetsPageController.deleteSnippet", err);
     }
   },
 });

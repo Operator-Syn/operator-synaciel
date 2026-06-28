@@ -2,6 +2,7 @@
 import type { Context } from "hono";
 import { HomePageModel } from "../model/HomePageModel";
 import type { Bindings } from "../Api";
+import { respondWithInternalError } from "../utils/serverErrors";
 
 export class HomePageController {
   static async handleHome(c: Context<{ Bindings: Bindings }>) {
@@ -11,8 +12,7 @@ export class HomePageController {
       const data = await model.getHomePageData();
       return c.json(data); 
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      return c.json({ error: errorMessage }, 500);
+      return respondWithInternalError(c, "HomePageController.handleHome", err);
     }
   }
 }
