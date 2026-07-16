@@ -255,7 +255,7 @@
     opacity: 0.18;
 }
 
-@media (max-width: 1400px) {
+@media (max-width: 1600px) {
     .development-loadouts-column {
         height: auto;
     }

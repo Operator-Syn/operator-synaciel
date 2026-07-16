@@ -116,7 +116,9 @@
     flex-wrap: nowrap;
 }
 
-@media (max-width: 1400px) {
+/* Account for high-DPI Windows displays where a 125% scale reduces the CSS
+   viewport enough to make the three-column layout cramped. */
+@media (max-width: 1600px) {
     .stack-on-mobile {
         flex-direction: column;
     }

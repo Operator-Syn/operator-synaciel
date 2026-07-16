@@ -1,5 +1,5 @@
 // src/model/HomePageModel.ts
-import { D1Database } from "@cloudflare/workers-types";
+import type { D1Database } from "@cloudflare/workers-types";
 
 interface SettingRow { key: string; value: string; }
 interface ProfileRow { label: string; value: string; }

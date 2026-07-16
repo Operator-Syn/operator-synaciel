@@ -147,7 +147,10 @@ html::-webkit-scrollbar { display: none; }
 /* Navbar inherits correctly */
 .navbar, .navbar * { font-size: inherit; }
 
-@media (max-width: 1400px) {
+/* A 125% Windows display scale commonly exposes a ~1536px CSS viewport.
+   Keep the page in its comfortable stacked layout before that width becomes
+   too narrow for three home columns. */
+@media (max-width: 1600px) {
     body { padding-left: 3rem; padding-right: 3rem; }
 }
 
