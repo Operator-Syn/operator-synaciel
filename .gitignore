@@ -24,3 +24,8 @@ dist-ssr
 *.sw?
 .env
 bundle-analysis.html
+
+# Local Python and Graphify output
+.venv
+graphify-out
+.wrangler
