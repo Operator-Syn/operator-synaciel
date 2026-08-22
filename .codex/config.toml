@@ -1,0 +1,29 @@
+[mcp_servers.graphify]
+command = "bash"
+args = ["-lc", "root=\"$(git rev-parse --show-toplevel 2>/dev/null || exit 1)\"; cd \"$root\"; exec pipenv run python -m graphify.serve \"$root/graphify-out/graph.json\""]
+startup_timeout_sec = 30
+
+[mcp_servers."operator-synaciel-repository"]
+command = "bash"
+args = ["-lc", "root=\"$(git rev-parse --show-toplevel 2>/dev/null || exit 1)\"; cd \"$root\"; export OPERATOR_SYNACIEL_MCP_ROOT=\"$root\"; exec \"$root/node_modules/.bin/tsx\" \"$root/mcp/server.ts\""]
+startup_timeout_sec = 30
+tool_timeout_sec = 660
+default_tools_approval_mode = "writes"
+enabled_tools = [
+  "prepare_repository_change",
+  "apply_repository_change",
+  "verify_repository_change",
+  "prepare_working_tree_commit",
+  "git_commit_working_tree",
+  "prepare_commits",
+  "git_commit_files",
+]
+
+[mcp_servers."operator-synaciel-repository".tools.apply_repository_change]
+approval_mode = "prompt"
+
+[mcp_servers."operator-synaciel-repository".tools.git_commit_working_tree]
+approval_mode = "prompt"
+
+[mcp_servers."operator-synaciel-repository".tools.git_commit_files]
+approval_mode = "prompt"
