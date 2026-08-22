@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Commit Pipeline"
+  short_description: "Guarded MCP commits with hook-enforced one-file history"
+  default_prompt: "Use $github-commit-pipeline to prepare, verify, and commit this Git change safely."
