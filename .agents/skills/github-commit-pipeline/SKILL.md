@@ -13,7 +13,8 @@ migration application as separately authorized actions.
 
 1. Read the nearest instructions and canonical documentation.
 2. Inspect Git status, including untracked files, before preparing anything.
-3. Discover the local MCP tools, write profiles, verification profiles, hook
+3. Call `repository_workflow_status` when available, then discover the local
+   MCP tools, write profiles, verification profiles, hook
    setup command, restricted paths, and approval behavior.
 4. Use bounded preparation for planned edits or complete working-tree
    preparation when the user asks to review the dirty tree.
