@@ -1,223 +1,240 @@
-// src/components/pages/projectsPage/Projects.tsx
-import { useState, useMemo, useEffect } from 'react';
-import { useQueries } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { type ReactNode, useState } from "react";
+import { PUBLIC_DATA_STALE_TIME_MS } from "../../../data/cacheSettings";
+import type { MediaItem } from "../../../types/MediaCardTypes";
 import CookingArea from "../../cookingArea/CookingArea";
-import './Projects.css';
-import { type MediaItem } from '../../../types/MediaCardTypes';
-import Grid from '../../grid/Grid';
-import MediaModal from '../../mediaModal/MediaModal';
-import GlobalHeadManager from '../../globalHeadManager/GlobalHeadManager';
-import { PUBLIC_DATA_STALE_TIME_MS } from '../../../data/cacheSettings';
-import PaginationControls from '../../pagination/PaginationControls';
-
-// --- UPDATED INTERFACE: Matches ProjectsModel.ts flat structure ---
-interface ApiProject {
-    id: number;
-    title: string;
-    type: 'video' | 'image';
-    url: string;
-    short_description: string;
-    long_description: string;
-    project_link: string;
-    display_order: number;
-}
+import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
+import MediaModal from "../../mediaModal/MediaModal";
+import CursorPaginationControls from "../../pagination/CursorPaginationControls";
+import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
+import ProjectArchive from "./ProjectArchive";
 
 interface ApiGalleryItem {
-    id: number;
-    project_id: number;
-    type: 'image' | 'video';
-    url: string;
-    display_order: number;
+  id: number;
+  project_id: number;
+  type: "image" | "video";
+  url: string;
+  display_order: number;
 }
 
-const FUTURE_PROJECTS_CARD: MediaItem = {
-    id: 999999,
-    title: "Still cooking",
-    type: 'image',
-    url: 'https://placehold.co/600x400/E2E8F0/64748B?text=In+Progress',
-    shortDescription: "More projects on the way. I'm always working on something new.",
-    longDescription: "",
-    projectLink: "",
-    gallery: [],
-};
+interface ApiProject {
+  id: number;
+  title: string;
+  type: "video" | "image";
+  url: string;
+  short_description: string;
+  long_description: string;
+  project_link: string;
+  display_order: number;
+  created_at: string;
+  gallery: ApiGalleryItem[];
+}
+
+interface ProjectArchiveResponse {
+  data: ApiProject[];
+  pagination: {
+    limit: number;
+    total: number;
+    has_more: boolean;
+    next_cursor: string | null;
+  };
+}
 
 const apiUrl = import.meta.env.VITE_API_URL;
-const PROJECTS_PER_PAGE = 6;
+const PROJECTS_PER_PAGE = 4;
 
-// --- fetch functions ---
-const fetchProjects = async (): Promise<ApiProject[]> => {
-    const res = await fetch(`${apiUrl}/projects`);
-    if (!res.ok) throw new Error('Failed to fetch projects');
-    return res.json();
-};
+async function fetchProjectArchive(cursor: string | null, signal: AbortSignal) {
+  const params = new URLSearchParams({ limit: String(PROJECTS_PER_PAGE) });
+  if (cursor) params.set("cursor", cursor);
 
-const fetchGalleryByProject = async (projectId: number): Promise<ApiGalleryItem[]> => {
-    const res = await fetch(`${apiUrl}/project/${projectId}/gallery`);
-    if (!res.ok) return [];
-    return res.json();
-};
+  const response = await fetch(`${apiUrl}/v2/projects/archive?${params.toString()}`, { signal });
+  if (!response.ok) throw new Error("Failed to fetch the project archive");
 
-// --- main component ---
+  return (await response.json()) as ProjectArchiveResponse;
+}
+
+function toMediaItem(project: ApiProject): MediaItem {
+  return {
+    id: project.id,
+    title: project.title,
+    type: project.type,
+    url: project.url,
+    shortDescription: project.short_description,
+    longDescription: project.long_description,
+    projectLink: project.project_link,
+    gallery: project.gallery.map((media) => ({
+      id: media.id,
+      title: project.title,
+      type: media.type,
+      url: media.url,
+      shortDescription: "",
+      longDescription: "",
+      projectLink: project.project_link,
+      gallery: [],
+    })),
+  };
+}
+
+function scrollToArchiveTop() {
+  window.scrollTo({
+    top: 0,
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+  });
+}
+
+function ProjectArchiveState({ children }: { children: ReactNode }) {
+  return <div className="project-archive-state">{children}</div>;
+}
+
 export default function Projects() {
-    const [selectedProject, setSelectedProject] = useState<MediaItem | null>(null);
-    const [showModal, setShowModal] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
+  const [selectedProject, setSelectedProject] = useState<MediaItem | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [currentCursor, setCurrentCursor] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [cursorHistory, setCursorHistory] = useState<Array<string | null>>([null]);
 
-    // --- responsive header logic ---
-    useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 768);
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
+  const projectsQuery = useQuery({
+    queryKey: ["projects-archive", currentCursor],
+    queryFn: ({ signal }) => fetchProjectArchive(currentCursor, signal),
+    placeholderData: keepPreviousData,
+    staleTime: PUBLIC_DATA_STALE_TIME_MS,
+  });
 
-    const HeaderTag = isMobile ? 'h3' : 'h1';
+  const archive = projectsQuery.data;
+  const projects = archive?.data.map(toMediaItem) ?? [];
 
-    // --- fetch projects ---
-    const projectsQuery = useQueries({
-        queries: [
-            {
-                queryKey: ['projects'],
-                queryFn: fetchProjects,
-                staleTime: PUBLIC_DATA_STALE_TIME_MS,
-            },
-        ],
-    })[0];
+  const handleOpenProject = (project: MediaItem) => {
+    setSelectedProject(project);
+    setShowModal(true);
+  };
 
-    const projects: ApiProject[] = useMemo(
-        () => [...(projectsQuery.data ?? [])].sort((a, b) => a.display_order - b.display_order),
-        [projectsQuery.data],
-    );
-    const isLoading = projectsQuery.isLoading;
-    const isError = projectsQuery.isError;
-    const totalProjectCards = projects.length + 1;
-    const totalPages = Math.max(Math.ceil(totalProjectCards / PROJECTS_PER_PAGE), 1);
-    const pageStartIndex = (currentPage - 1) * PROJECTS_PER_PAGE;
-    const pageProjects = useMemo(
-        () => projects.slice(pageStartIndex, pageStartIndex + PROJECTS_PER_PAGE),
-        [pageStartIndex, projects],
-    );
-    const showFutureProjectCard = pageStartIndex + pageProjects.length < totalProjectCards
-        && pageStartIndex + PROJECTS_PER_PAGE >= totalProjectCards;
+  const handleNextPage = () => {
+    const nextCursor = archive?.pagination.next_cursor;
+    if (!nextCursor) return;
 
-    useEffect(() => {
-        setCurrentPage((page) => Math.min(page, totalPages));
-    }, [totalPages]);
-
-    // --- fetch galleries for all projects in parallel ---
-    const galleryQueries = useQueries({
-        queries: pageProjects.map(project => ({
-            queryKey: ['gallery', project.id],
-            queryFn: () => fetchGalleryByProject(project.id),
-            staleTime: PUBLIC_DATA_STALE_TIME_MS,
-            enabled: !!pageProjects.length,
-        })),
+    setCursorHistory((history) => {
+      const nextHistory = history.slice(0, currentPage);
+      nextHistory[currentPage] = nextCursor;
+      return nextHistory;
     });
+    setCurrentCursor(nextCursor);
+    setCurrentPage((page) => page + 1);
+    scrollToArchiveTop();
+  };
 
-    // --- transform flat ApiProject into MediaItem shape ---
-    const displayProjects: MediaItem[] = useMemo(() => {
-        const mapped = pageProjects.map((p, i) => ({
-                id: p.id,
-                title: p.title,
-                type: p.type, // Map directly
-                url: p.url,   // Map directly
-                shortDescription: p.short_description, // Map directly
-                longDescription: p.long_description,   // Map directly
-                projectLink: p.project_link,           // Map directly
-                gallery: galleryQueries[i]?.data?.sort((a, b) => a.display_order - b.display_order).map(g => ({
-                    id: g.id,
-                    title: '',
-                    type: g.type,
-                    url: g.url,
-                    shortDescription: '',
-                    longDescription: '',
-                    projectLink: '',
-                    gallery: [],
-                })) ?? [],
-            }));
+  const handlePreviousPage = () => {
+    if (currentPage === 1) return;
 
-        return showFutureProjectCard ? [...mapped, FUTURE_PROJECTS_CARD] : mapped;
-    }, [galleryQueries, pageProjects, showFutureProjectCard]);
+    setCurrentCursor(cursorHistory[currentPage - 2] ?? null);
+    setCurrentPage((page) => page - 1);
+    scrollToArchiveTop();
+  };
 
-    const handlePageChange = (page: number) => {
-        setCurrentPage(page);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    };
+  const closeModal = () => {
+    setShowModal(false);
+    window.setTimeout(() => setSelectedProject(null), 300);
+  };
 
-    const handleOpenProject = (project: MediaItem) => {
-        if (project.id === FUTURE_PROJECTS_CARD.id) return;
-        setSelectedProject(project);
-        setShowModal(true);
-    };
+  const isInitialLoading = projectsQuery.isPending && !archive;
+  const isInitialError = projectsQuery.isError && !archive;
+  const isEmpty = archive && archive.data.length === 0;
 
-    const handleCloseModal = () => {
-        setShowModal(false);
-        setTimeout(() => setSelectedProject(null), 300);
-    };
-
-    const breadcrumbSchema = {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        itemListElement: [
-            {
-                "@type": "ListItem",
-                position: 1,
-                name: "Home",
-                item: "https://syn-forge.com/",
-            },
-            {
-                "@type": "ListItem",
-                position: 2,
-                name: "Projects",
-                item: "https://syn-forge.com/projects",
-            },
-        ],
-    };
-
-    return (
-        <>
-            <GlobalHeadManager
-                title="Projects"
-                description="Browse software projects by John-Ronan Beira, including web apps, React interfaces, Cloudflare-backed tools, Python experiments, and other technical work."
-                image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
-                url="https://syn-forge.com/projects"
-                jsonLd={breadcrumbSchema}
+  return (
+    <>
+      <GlobalHeadManager
+        title="Projects"
+        description="Browse software projects by John-Ronan Beira."
+        image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
+        url="https://syn-forge.com/projects"
+      />
+      <main aria-labelledby="projects-page-title">
+        <CookingArea>
+          <div className="project-archive-shell">
+            <PointerCoordinates
+              activeSection={0}
+              className="project-archive-coordinates"
+              markerCount={1}
             />
 
-            <CookingArea>
-                <div className="container py-3">
-                    <HeaderTag className="mb-4">Light and easy things that I've been working on.</HeaderTag>
-
-                    {isLoading && (
-                        <div className="d-flex justify-content-center my-5">
-                            <div className="spinner-border text-primary" role="status"></div>
-                        </div>
-                    )}
-
-                    {!isLoading && !isError && (
-                        <>
-                            <Grid projects={displayProjects} onProjectClick={handleOpenProject} />
-                            <PaginationControls
-                                currentPage={currentPage}
-                                itemLabel="projects"
-                                onPageChange={handlePageChange}
-                                pageSize={PROJECTS_PER_PAGE}
-                                totalItems={totalProjectCards}
-                                totalPages={totalPages}
-                            />
-                        </>
-                    )}
-
-                    <MediaModal
-                        item={selectedProject}
-                        show={showModal}
-                        onClose={handleCloseModal}
-                        detailsLabel="About this Project"
-                        ctaLabel="View Project Source"
-                    />
+            <header className="project-archive-header">
+              <p className="eyebrow">02 / 04</p>
+              <div className="project-archive-heading">
+                <div>
+                  <h1 id="projects-page-title">Selected work / Project archive</h1>
+                  <p>A focused collection of light and purposeful projects I've been working on.</p>
                 </div>
-            </CookingArea>
-        </>
-    );
+                <p className="meta-label">[ {archive?.pagination.total ?? "--"} projects ]</p>
+              </div>
+            </header>
+
+            {isInitialLoading && (
+              <ProjectArchiveState>
+                <p className="eyebrow" aria-live="polite">
+                  Loading archive
+                </p>
+              </ProjectArchiveState>
+            )}
+
+            {isInitialError && (
+              <ProjectArchiveState>
+                <p className="project-archive-error" role="alert">
+                  Unable to load projects.
+                </p>
+                <button
+                  className="action-quiet"
+                  onClick={() => projectsQuery.refetch()}
+                  type="button"
+                >
+                  Try again
+                </button>
+              </ProjectArchiveState>
+            )}
+
+            {!isInitialLoading && !isInitialError && isEmpty && (
+              <ProjectArchiveState>
+                <p className="eyebrow">Archive empty</p>
+                <p>No projects are available yet.</p>
+              </ProjectArchiveState>
+            )}
+
+            {archive && !isEmpty && (
+              <>
+                {projectsQuery.isError && (
+                  <div className="project-archive-inline-error" role="alert">
+                    <span>That archive page could not be refreshed.</span>
+                    <button onClick={() => projectsQuery.refetch()} type="button">
+                      Retry
+                    </button>
+                  </div>
+                )}
+                <ProjectArchive
+                  onOpenProject={handleOpenProject}
+                  projects={projects}
+                  startIndex={(currentPage - 1) * PROJECTS_PER_PAGE}
+                />
+                <CursorPaginationControls
+                  currentPage={currentPage}
+                  hasNextPage={archive.pagination.has_more}
+                  isFetching={projectsQuery.isFetching}
+                  itemLabel="projects"
+                  onNextPage={handleNextPage}
+                  onPreviousPage={handlePreviousPage}
+                  pageSize={PROJECTS_PER_PAGE}
+                  totalItems={archive.pagination.total}
+                />
+              </>
+            )}
+
+            <MediaModal
+              item={selectedProject}
+              show={showModal}
+              onClose={closeModal}
+              detailsLabel="About this Project"
+              ctaLabel="View Project Source"
+            />
+          </div>
+        </CookingArea>
+      </main>
+    </>
+  );
 }
