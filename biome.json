@@ -1,0 +1,51 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "src/**/*.{css,js,jsx,ts,tsx}",
+      "mcp/**/*.{cjs,js,jsx,mjs,ts,tsx}",
+      "scripts/**/*.{cjs,js,jsx,mjs,ts,tsx}",
+      "tests/**/*.{cjs,js,jsx,mjs,ts,tsx}",
+      "biome.json",
+      "drizzle.config.ts",
+      "eslint.config.js",
+      "index.html",
+      "package.json",
+      "tsconfig*.json",
+      "vite.config.ts",
+      ".mcp.json"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    },
+    "formatter": {
+      "enabled": true,
+      "indentStyle": "space",
+      "indentWidth": 4,
+      "lineWidth": 100
+    },
+    "linter": {
+      "enabled": true
+    }
+  }
+}
