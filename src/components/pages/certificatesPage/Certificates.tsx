@@ -1,224 +1,196 @@
-// src/components/pages/certificationsPage/Certifications.tsx
-import { useState, useMemo, useEffect } from 'react';
-import { useQueries } from '@tanstack/react-query';
+import { useQueries } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { PUBLIC_DATA_STALE_TIME_MS } from "../../../data/cacheSettings";
+import type { MediaItem } from "../../../types/MediaCardTypes";
 import CookingArea from "../../cookingArea/CookingArea";
-import './Certificates.css';
-import { type MediaItem } from '../../../types/MediaCardTypes';
-import Grid from '../../grid/Grid';
-import MediaModal from '../../mediaModal/MediaModal';
-import GlobalHeadManager from '../../globalHeadManager/GlobalHeadManager';
-import { PUBLIC_DATA_STALE_TIME_MS } from '../../../data/cacheSettings';
-import PaginationControls from '../../pagination/PaginationControls';
+import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
+import Grid from "../../grid/Grid";
+import MediaModal from "../../mediaModal/MediaModal";
+import PaginationControls from "../../pagination/PaginationControls";
 
 interface ApiCertification {
-    id: number;
-    title: string;
-    type: 'video' | 'image';
-    url: string;
-    short_description: string;
-    long_description: string;
-    certificate_link: string;
-    display_order: number;
+  id: number;
+  title: string;
+  type: "video" | "image";
+  url: string;
+  short_description: string;
+  long_description: string;
+  certificate_link: string;
+  display_order: number;
 }
 
 interface ApiCertificateItem {
-    id: number;
-    certificate_id: number;
-    type: 'image' | 'video';
-    url: string;
-    display_order: number;
+  id: number;
+  certificate_id: number;
+  type: "image" | "video";
+  url: string;
+  display_order: number;
 }
 
 const FUTURE_CERT_CARD: MediaItem = {
-    id: 888888,
-    title: "Still cooking",
-    type: 'image',
-    url: 'https://placehold.co/600x400/E2E8F0/64748B?text=In+Progress',
-    shortDescription: "More certifications on the way. I'm always learning something new.",
-    longDescription: "",
-    projectLink: "",
-    gallery: [],
+  id: 888888,
+  title: "Still cooking",
+  type: "image",
+  url: "https://placehold.co/600x400/E2E8F0/64748B?text=In+Progress",
+  shortDescription: "More certifications on the way. I'm always learning something new.",
+  longDescription: "",
+  projectLink: "",
+  gallery: [],
 };
 
 const apiUrl = import.meta.env.VITE_API_URL;
 const CERTIFICATES_PER_PAGE = 6;
 
-// --- fetch functions ---
 const fetchCertifications = async (): Promise<ApiCertification[]> => {
-    const res = await fetch(`${apiUrl}/certificates`);
-    if (!res.ok) throw new Error('Failed to fetch certifications');
-    return res.json();
+  const res = await fetch(`${apiUrl}/certificates`);
+  if (!res.ok) throw new Error("Failed to fetch certifications");
+  return res.json();
 };
 
 const fetchCertificateItems = async (certId: number): Promise<ApiCertificateItem[]> => {
-    const res = await fetch(`${apiUrl}/certificates/${certId}/items`);
-    if (!res.ok) return [];
-    return res.json();
+  const res = await fetch(`${apiUrl}/certificates/${certId}/items`);
+  if (!res.ok) return [];
+  return res.json();
 };
 
-// --- main component ---
 export default function Certifications() {
-    const [selectedCert, setSelectedCert] = useState<MediaItem | null>(null);
-    const [showModal, setShowModal] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
+  const [selectedCert, setSelectedCert] = useState<MediaItem | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
-    // --- dynamic header logic ---
-    useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 768);
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
+  const certsQuery = useQueries({
+    queries: [
+      {
+        queryKey: ["certificates"],
+        queryFn: fetchCertifications,
+        staleTime: PUBLIC_DATA_STALE_TIME_MS,
+      },
+    ],
+  })[0];
 
-    const HeaderTag = isMobile ? 'h3' : 'h1';
+  const certifications = useMemo(
+    () => [...(certsQuery.data ?? [])].sort((a, b) => a.display_order - b.display_order),
+    [certsQuery.data],
+  );
+  const totalCertificateCards = certifications.length + 1;
+  const totalPages = Math.max(Math.ceil(totalCertificateCards / CERTIFICATES_PER_PAGE), 1);
+  const pageStartIndex = (currentPage - 1) * CERTIFICATES_PER_PAGE;
+  const pageCertifications = useMemo(
+    () => certifications.slice(pageStartIndex, pageStartIndex + CERTIFICATES_PER_PAGE),
+    [certifications, pageStartIndex],
+  );
+  const showFutureCertCard =
+    pageStartIndex + pageCertifications.length < totalCertificateCards &&
+    pageStartIndex + CERTIFICATES_PER_PAGE >= totalCertificateCards;
 
-    // --- fetch certificates ---
-    const certsQuery = useQueries({
-        queries: [
-            {
-                queryKey: ['certificates'],
-                queryFn: fetchCertifications,
-                staleTime: PUBLIC_DATA_STALE_TIME_MS,
-            },
-        ],
-    })[0];
+  useEffect(() => setCurrentPage((page) => Math.min(page, totalPages)), [totalPages]);
 
-    const certifications: ApiCertification[] = useMemo(
-        () => [...(certsQuery.data ?? [])].sort((a, b) => a.display_order - b.display_order),
-        [certsQuery.data],
-    );
-    const isLoading = certsQuery.isLoading;
-    const isError = certsQuery.isError;
-    const totalCertificateCards = certifications.length + 1;
-    const totalPages = Math.max(Math.ceil(totalCertificateCards / CERTIFICATES_PER_PAGE), 1);
-    const pageStartIndex = (currentPage - 1) * CERTIFICATES_PER_PAGE;
-    const pageCertifications = useMemo(
-        () => certifications.slice(pageStartIndex, pageStartIndex + CERTIFICATES_PER_PAGE),
-        [certifications, pageStartIndex],
-    );
-    const showFutureCertCard = pageStartIndex + pageCertifications.length < totalCertificateCards
-        && pageStartIndex + CERTIFICATES_PER_PAGE >= totalCertificateCards;
+  const itemQueries = useQueries({
+    queries: pageCertifications.map((cert) => ({
+      queryKey: ["certificate-items", cert.id],
+      queryFn: () => fetchCertificateItems(cert.id),
+      staleTime: PUBLIC_DATA_STALE_TIME_MS,
+      enabled: pageCertifications.length > 0,
+    })),
+  });
 
-    useEffect(() => {
-        setCurrentPage((page) => Math.min(page, totalPages));
-    }, [totalPages]);
+  const displayCerts: MediaItem[] = useMemo(() => {
+    const mapped = pageCertifications.map((cert, index) => ({
+      id: cert.id,
+      title: cert.title,
+      type: cert.type,
+      url: cert.url,
+      shortDescription: cert.short_description,
+      longDescription: cert.long_description,
+      projectLink: cert.certificate_link,
+      gallery:
+        itemQueries[index]?.data
+          ?.sort((a, b) => a.display_order - b.display_order)
+          .map((media) => ({
+            id: media.id,
+            title: "",
+            type: media.type,
+            url: media.url,
+            shortDescription: "",
+            longDescription: "",
+            projectLink: "",
+            gallery: [],
+          })) ?? [],
+    }));
 
-    // --- fetch items for all certificates in parallel ---
-    const itemQueries = useQueries({
-        queries: pageCertifications.map(cert => ({
-            queryKey: ['certificate-items', cert.id],
-            queryFn: () => fetchCertificateItems(cert.id),
-            staleTime: PUBLIC_DATA_STALE_TIME_MS,
-            enabled: !!pageCertifications.length,
-        })),
-    });
+    return showFutureCertCard ? [...mapped, FUTURE_CERT_CARD] : mapped;
+  }, [itemQueries, pageCertifications, showFutureCertCard]);
 
-    // --- transform into MediaItem shape ---
-    const displayCerts: MediaItem[] = useMemo(() => {
-        const mapped = pageCertifications
-            .map((c, i) => ({
-                id: c.id,
-                title: c.title,
-                type: c.type,
-                url: c.url,
-                shortDescription: c.short_description,
-                longDescription: c.long_description,
-                projectLink: c.certificate_link,
-                gallery: itemQueries[i]?.data?.sort((a, b) => a.display_order - b.display_order).map(item => ({
-                    id: item.id,
-                    title: '',
-                    type: item.type,
-                    url: item.url,
-                    shortDescription: '',
-                    longDescription: '',
-                    projectLink: '',
-                    gallery: [],
-                })) ?? [],
-            }));
+  const handleOpenCert = (cert: MediaItem) => {
+    if (cert.id === FUTURE_CERT_CARD.id) return;
+    setSelectedCert(cert);
+    setShowModal(true);
+  };
 
-        return showFutureCertCard ? [...mapped, FUTURE_CERT_CARD] : mapped;
-    }, [itemQueries, pageCertifications, showFutureCertCard]);
+  const closeModal = () => {
+    setShowModal(false);
+    window.setTimeout(() => setSelectedCert(null), 300);
+  };
 
-    const handlePageChange = (page: number) => {
-        setCurrentPage(page);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    };
+  return (
+    <>
+      <GlobalHeadManager
+        title="Training and Credentials"
+        description="Explore certificates and training credentials covering software development and related learning."
+        image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
+        url="https://syn-forge.com/certificates"
+      />
+      <CookingArea>
+        <div className="py-10 sm:py-14">
+          <header className="mb-8 border-b border-line pb-8">
+            <div className="flex flex-wrap items-end justify-between gap-6">
+              <div>
+                <p className="eyebrow mb-5">03 / 04</p>
+                <h1 className="text-page-title text-text">Credentials / learning archive</h1>
+                <p className="mt-4 max-w-2xl text-lg text-text-muted">
+                  Training completed through workshops, programs, and certifications.
+                </p>
+              </div>
+              <p className="meta-label">[ {certifications.length} certifications ]</p>
+            </div>
+          </header>
 
-    const handleOpenCert = (cert: MediaItem) => {
-        if (cert.id === FUTURE_CERT_CARD.id) return;
-        setSelectedCert(cert);
-        setShowModal(true);
-    };
+          {certsQuery.isLoading && (
+            <div className="grid min-h-72 place-items-center border-y border-line">
+              <p className="eyebrow animate-pulse">Loading credentials</p>
+            </div>
+          )}
+          {certsQuery.isError && (
+            <div className="border-y border-danger py-8 text-danger">
+              Unable to load certificates.
+            </div>
+          )}
+          {!certsQuery.isLoading && !certsQuery.isError && (
+            <>
+              <Grid projects={displayCerts} onProjectClick={handleOpenCert} />
+              <PaginationControls
+                currentPage={currentPage}
+                itemLabel="certifications"
+                onPageChange={(page) => {
+                  setCurrentPage(page);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                pageSize={CERTIFICATES_PER_PAGE}
+                totalItems={totalCertificateCards}
+                totalPages={totalPages}
+              />
+            </>
+          )}
 
-    const handleCloseModal = () => {
-        setShowModal(false);
-        setTimeout(() => setSelectedCert(null), 300);
-    };
-
-    const breadcrumbSchema = {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        itemListElement: [
-            {
-                "@type": "ListItem",
-                position: 1,
-                name: "Home",
-                item: "https://syn-forge.com/",
-            },
-            {
-                "@type": "ListItem",
-                position: 2,
-                name: "Certificates",
-                item: "https://syn-forge.com/certificates",
-            },
-        ],
-    };
-
-    return (
-        <>
-            <GlobalHeadManager
-                title="Training and Credentials"
-                description="Explore certificates and training credentials covering software development, cloud technologies, and related professional learning."
-                image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
-                url="https://syn-forge.com/certificates"
-                jsonLd={breadcrumbSchema}
-            />
-            <CookingArea>
-                <div className="container py-3">
-                    <HeaderTag className="mb-4">
-                        Credentials and specialized training I've completed.
-                    </HeaderTag>
-
-                    {isLoading && (
-                        <div className="d-flex justify-content-center my-5">
-                            <div className="spinner-border text-primary" role="status"></div>
-                        </div>
-                    )}
-
-                    {!isLoading && !isError && (
-                        <>
-                            <Grid projects={displayCerts} onProjectClick={handleOpenCert} />
-                            <PaginationControls
-                                currentPage={currentPage}
-                                itemLabel="certifications"
-                                onPageChange={handlePageChange}
-                                pageSize={CERTIFICATES_PER_PAGE}
-                                totalItems={totalCertificateCards}
-                                totalPages={totalPages}
-                            />
-                        </>
-                    )}
-
-                    <MediaModal
-                        item={selectedCert}
-                        show={showModal}
-                        onClose={handleCloseModal}
-                        detailsLabel="Certification Details"
-                        ctaLabel="View Credential"
-                    />
-                </div>
-            </CookingArea>
-        </>
-    );
+          <MediaModal
+            item={selectedCert}
+            show={showModal}
+            onClose={closeModal}
+            detailsLabel="Certification Details"
+            ctaLabel="View Credential"
+          />
+        </div>
+      </CookingArea>
+    </>
+  );
 }
