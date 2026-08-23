@@ -72,7 +72,9 @@ export default function GlobalHeadManager({ title, description, image, url, json
 
     document
       .querySelectorAll('script[type="application/ld+json"][data-global-head-manager="true"]')
-      .forEach((script) => script.remove());
+      .forEach((script) => {
+        script.remove();
+      });
 
     const structuredData = Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : [];
 
