@@ -1,0 +1,55 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Biome: repository diagnostics",
+      "type": "npm",
+      "script": "check:biome:github",
+      "group": "test",
+      "problemMatcher": {
+        "owner": "biome",
+        "fileLocation": "relative",
+        "pattern": {
+          "regexp": "^::(error|warning|notice) title=[^,]+,file=(.*),line=(\\d+),endLine=(\\d+),col=(\\d+),endColumn=(\\d+)::(.*)$",
+          "severity": 1,
+          "file": 2,
+          "line": 3,
+          "endLine": 4,
+          "column": 5,
+          "endColumn": 6,
+          "message": 7
+        }
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always",
+        "focus": false,
+        "clear": true,
+        "showReuseMessage": false
+      },
+      "runOptions": {
+        "runOn": "folderOpen",
+        "instanceLimit": 1
+      }
+    },
+    {
+      "label": "TypeScript: repository diagnostics",
+      "type": "npm",
+      "script": "typecheck:watch",
+      "isBackground": true,
+      "group": "test",
+      "problemMatcher": "$tsc-watch",
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "never",
+        "focus": false,
+        "clear": false,
+        "showReuseMessage": false
+      },
+      "runOptions": {
+        "runOn": "folderOpen",
+        "instanceLimit": 1
+      }
+    }
+  ]
+}
