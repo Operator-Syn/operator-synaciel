@@ -1,10 +1,6 @@
 // src/model/SnippetsPage/SnippetsPageModel.ts
 
-import type {
-  D1Database,
-  R2Bucket,
-  R2ObjectBody,
-} from "@cloudflare/workers-types";
+import type { D1Database, R2Bucket, R2ObjectBody } from "@cloudflare/workers-types";
 
 type SnippetType = "dir" | "file";
 type SnippetFormat = "pdf" | "md";
@@ -110,18 +106,13 @@ export class SnippetsPageModel {
       stream: object.body,
       headers: {
         "Content-Type": this.getContentType(node.format),
-        "Content-Disposition": `attachment; filename="${this.escapeFilename(
-          node.name,
-        )}"`,
+        "Content-Disposition": `attachment; filename="${this.escapeFilename(node.name)}"`,
         "Content-Length": node.size?.toString() ?? "0",
       },
     };
   }
 
-  async createFolder(
-    name: string,
-    parentId: number | null,
-  ): Promise<SnippetNode> {
+  async createFolder(name: string, parentId: number | null): Promise<SnippetNode> {
     await this.validateParent(parentId);
 
     const displayOrder = await this.getNextDisplayOrder(parentId);
@@ -216,9 +207,7 @@ export class SnippetsPageModel {
     } catch (err: unknown) {
       await this.bucket.delete(key);
 
-      throw err instanceof Error
-        ? err
-        : new Error("Database insert failed.");
+      throw err instanceof Error ? err : new Error("Database insert failed.");
     }
   }
 
@@ -287,7 +276,10 @@ export class SnippetsPageModel {
       WHERE id = ?
     `;
 
-    await this.db.prepare(query).bind(...args).run();
+    await this.db
+      .prepare(query)
+      .bind(...args)
+      .run();
 
     return this.getSnippetById(id);
   }
@@ -317,13 +309,10 @@ export class SnippetsPageModel {
       FROM descendants
     `;
 
-    const { results } = await this.db
-      .prepare(findQuery)
-      .bind(id)
-      .all<{
-        type: SnippetType;
-        storage_path: string | null;
-      }>();
+    const { results } = await this.db.prepare(findQuery).bind(id).all<{
+      type: SnippetType;
+      storage_path: string | null;
+    }>();
 
     if (results.length === 0) {
       return false;
@@ -409,10 +398,7 @@ export class SnippetsPageModel {
     }
   }
 
-  private async validateNoFolderCycle(
-    folderId: number,
-    newParentId: number,
-  ): Promise<void> {
+  private async validateNoFolderCycle(folderId: number, newParentId: number): Promise<void> {
     const query = `
       WITH RECURSIVE descendants AS (
         SELECT id
@@ -431,10 +417,7 @@ export class SnippetsPageModel {
       LIMIT 1
     `;
 
-    const cycle = await this.db
-      .prepare(query)
-      .bind(folderId, newParentId)
-      .first<{ id: number }>();
+    const cycle = await this.db.prepare(query).bind(folderId, newParentId).first<{ id: number }>();
 
     if (cycle) {
       throw new Error("Cannot move a folder into one of its descendants.");
