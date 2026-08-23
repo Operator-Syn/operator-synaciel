@@ -1,15 +1,16 @@
 [mcp_servers.graphify]
 command = "bash"
-args = ["-lc", "root=\"$(git rev-parse --show-toplevel 2>/dev/null || exit 1)\"; cd \"$root\"; exec pipenv run python -m graphify.serve \"$root/graphify-out/graph.json\""]
+args = ["-lc", "root=\"$(git -C \"${CLAUDE_PROJECT_DIR:-.}\" rev-parse --show-toplevel 2>/dev/null || exit 1)\"; cd \"$root\"; exec node \"$root/scripts/mcp-launcher.mjs\" graphify"]
 startup_timeout_sec = 30
 
 [mcp_servers."operator-synaciel-repository"]
 command = "bash"
-args = ["-lc", "root=\"$(git rev-parse --show-toplevel 2>/dev/null || exit 1)\"; cd \"$root\"; export OPERATOR_SYNACIEL_MCP_ROOT=\"$root\"; exec \"$root/node_modules/.bin/tsx\" \"$root/mcp/server.ts\""]
+args = ["-lc", "root=\"$(git -C \"${CLAUDE_PROJECT_DIR:-.}\" rev-parse --show-toplevel 2>/dev/null || exit 1)\"; cd \"$root\"; exec node \"$root/scripts/mcp-launcher.mjs\" repository"]
 startup_timeout_sec = 30
 tool_timeout_sec = 660
 default_tools_approval_mode = "writes"
 enabled_tools = [
+  "repository_workflow_status",
   "prepare_repository_change",
   "apply_repository_change",
   "verify_repository_change",
