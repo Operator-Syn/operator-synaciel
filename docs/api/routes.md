@@ -23,6 +23,7 @@ These GET routes are registered before the private auth middleware:
 | Area | Routes |
 | --- | --- |
 | Projects | `GET /api/projects`, `GET /api/project/:id`, `GET /api/project/:projectId/gallery` |
+| Projects archive v2 | `GET /api/v2/projects/archive` |
 | Snippets | `GET /api/snippets`, `GET /api/snippets/:id`, `GET /api/snippets/:id/content` |
 | Home content | `GET /api/settings`, `GET /api/profile`, `GET /api/sections`, `GET /api/sections/:sectionId/items` |
 | Project media | `GET /api/projects/media`, `GET /api/projects/media/:key{.+}` |
@@ -48,3 +49,12 @@ to `AUTH_WORKER` at `https://auth-worker/auth/user`. Missing cookies return
 
 Keep this note aligned with `src/Api.ts`; route behavior belongs in the source
 and tests, not in a duplicated implementation.
+
+## Project archive pagination
+
+`GET /api/v2/projects/archive` is the cursor-backed read contract used by the
+Projects archive. It accepts `limit` (default `4`, maximum `12`) and an
+opaque `cursor`; it does not accept offset pagination. The response contains
+`data` with nested gallery items and a `pagination` object with `total`,
+`has_more`, and `next_cursor`. The existing `GET /api/projects` array
+response remains unchanged for Home and compatibility with existing clients.
