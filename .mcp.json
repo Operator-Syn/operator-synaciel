@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "graphify": {
+      "command": "bash",
+      "args": [
+        "-lc",
+        "root=\"$(git -C \"${CLAUDE_PROJECT_DIR:-.}\" rev-parse --show-toplevel 2>/dev/null || exit 1)\"; cd \"$root\"; exec node \"$root/scripts/mcp-launcher.mjs\" graphify"
+      ]
+    },
+    "operator-synaciel-repository": {
+      "command": "bash",
+      "args": [
+        "-lc",
+        "root=\"$(git -C \"${CLAUDE_PROJECT_DIR:-.}\" rev-parse --show-toplevel 2>/dev/null || exit 1)\"; cd \"$root\"; exec node \"$root/scripts/mcp-launcher.mjs\" repository"
+      ]
+    }
+  }
+}
