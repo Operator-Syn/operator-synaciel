@@ -1,7 +1,7 @@
 // src/controller/SnippetsPage/SnippetsPageController.ts
 
-import { type Context } from "hono";
-import { type Bindings } from "../../Api";
+import type { Context } from "hono";
+import type { Bindings } from "../../Api";
 import { SnippetsPageModel } from "../../model/SnippetsPage/SnippetsPageModel";
 import { respondWithInternalError } from "../../utils/serverErrors";
 
@@ -126,11 +126,7 @@ export const createSnippetsPageController = (prefix = "snippets/") => ({
         return c.json({ error: "File not found" }, 404);
       }
 
-      return c.body(
-        result.stream as unknown as ReadableStream,
-        200,
-        result.headers,
-      );
+      return c.body(result.stream as unknown as ReadableStream, 200, result.headers);
     } catch (err: unknown) {
       return respondWithInternalError(c, "SnippetsPageController.downloadSnippet", err);
     }
@@ -214,16 +210,10 @@ export const createSnippetsPageController = (prefix = "snippets/") => ({
 
       const name = body.name === undefined ? undefined : body.name.trim();
       const parentId =
-        body.parent_id === undefined
-          ? undefined
-          : parseOptionalJsonParentId(body.parent_id);
+        body.parent_id === undefined ? undefined : parseOptionalJsonParentId(body.parent_id);
       const displayOrder = parseOptionalDisplayOrder(body.display_order);
 
-      if (
-        name === undefined &&
-        parentId === undefined &&
-        displayOrder === undefined
-      ) {
+      if (name === undefined && parentId === undefined && displayOrder === undefined) {
         return c.json({ error: "No changes provided" }, 400);
       }
 
