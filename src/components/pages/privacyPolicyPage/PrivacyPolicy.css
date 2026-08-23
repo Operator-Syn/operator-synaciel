@@ -1,6 +1,8 @@
 .privacy-policy-page {
     --policy-parallax: 0px;
     max-width: 1120px;
+    margin-inline: auto;
+    padding-block: 0.75rem;
 }
 
 .privacy-policy-hero {
@@ -20,7 +22,11 @@
     inset: -35% -12% auto;
     height: 32rem;
     background:
-        radial-gradient(circle at 24% calc(28% + var(--policy-parallax)), rgba(159, 218, 239, 0.16), transparent 22rem),
+        radial-gradient(
+            circle at 24% calc(28% + var(--policy-parallax)),
+            rgba(159, 218, 239, 0.16),
+            transparent 22rem
+        ),
         linear-gradient(120deg, transparent, rgba(227, 242, 253, 0.07), transparent);
     transform: translateY(calc(var(--policy-parallax) * -0.35));
     pointer-events: none;
@@ -34,8 +40,17 @@
         radial-gradient(ellipse at 12% 62%, rgba(95, 202, 229, 0.18), transparent 22rem),
         radial-gradient(ellipse at 42% 42%, rgba(227, 242, 253, 0.12), transparent 18rem),
         radial-gradient(ellipse at 78% 56%, rgba(68, 160, 216, 0.14), transparent 24rem),
-        linear-gradient(90deg, rgba(33, 141, 185, 0.11), rgba(159, 218, 239, 0.08), rgba(44, 102, 170, 0.1));
-    background-size: 130% 100%, 120% 100%, 140% 100%, 160% 100%;
+        linear-gradient(
+            90deg,
+            rgba(33, 141, 185, 0.11),
+            rgba(159, 218, 239, 0.08),
+            rgba(44, 102, 170, 0.1)
+        );
+    background-size:
+        130% 100%,
+        120% 100%,
+        140% 100%,
+        160% 100%;
     filter: blur(20px);
     opacity: 0.48;
     transform: translate3d(-3%, 0, 0);
@@ -307,11 +322,10 @@
     width: 2.15rem;
     height: 2.15rem;
     border-radius: 999px;
-    background:
-        conic-gradient(
-            rgb(159, 218, 239) var(--policy-progress),
-            rgba(227, 242, 253, 0.16) 0
-        );
+    background: conic-gradient(
+        rgb(159, 218, 239) var(--policy-progress),
+        rgba(227, 242, 253, 0.16) 0
+    );
 }
 
 .privacy-policy-action-ring span {
@@ -322,7 +336,7 @@
     border-radius: inherit;
     background: rgba(7, 25, 45, 0.98);
     color: rgba(227, 242, 253, 0.94);
-    font-size: 0.78rem !important;
+    font-size: 0.78rem;
     font-weight: 800;
 }
 
@@ -364,7 +378,7 @@
     display: block;
     margin-bottom: 0.2rem;
     color: rgba(227, 242, 253, 0.64);
-    font-size: 0.78rem !important;
+    font-size: 0.78rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -460,7 +474,7 @@
     border-radius: 999px;
     background: rgba(227, 242, 253, 0.08);
     color: rgba(159, 218, 239, 0.92);
-    font-size: 0.76rem !important;
+    font-size: 0.76rem;
     font-weight: 800;
 }
 
@@ -486,19 +500,31 @@
 @keyframes privacy-hero-wave {
     0%,
     100% {
-        background-position: 0% 58%, 18% 45%, 100% 58%, 0% 50%;
+        background-position:
+            0% 58%,
+            18% 45%,
+            100% 58%,
+            0% 50%;
         opacity: 0.4;
         transform: translate3d(-3%, 0.4rem, 0) skewX(-1deg);
     }
 
     35% {
-        background-position: 38% 52%, 54% 48%, 58% 62%, 42% 50%;
+        background-position:
+            38% 52%,
+            54% 48%,
+            58% 62%,
+            42% 50%;
         opacity: 0.56;
         transform: translate3d(2%, -0.35rem, 0) skewX(1deg);
     }
 
     68% {
-        background-position: 72% 60%, 88% 42%, 26% 54%, 86% 50%;
+        background-position:
+            72% 60%,
+            88% 42%,
+            26% 54%,
+            86% 50%;
         opacity: 0.47;
         transform: translate3d(0.5%, 0.15rem, 0) skewX(-0.5deg);
     }
