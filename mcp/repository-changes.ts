@@ -1,14 +1,8 @@
-import { randomUUID } from 'node:crypto';
-import { lstat, readFile, rm } from 'node:fs/promises';
+import { randomUUID } from "node:crypto";
+import { lstat, readFile, rm } from "node:fs/promises";
 
-import { registerAppliedRepositoryOperation } from './commit-pipeline.ts';
-import { withMutationLock } from './mutation-lock.ts';
-import {
-  REPOSITORY_WRITE_PROFILES,
-  type RepositoryVerificationProfile,
-  type RepositoryWriteProfile,
-} from './policy.ts';
-import { isCredentialLikeContent, isSensitiveFileName } from './redaction.ts';
+import { registerAppliedRepositoryOperation } from "./commit-pipeline.ts";
+import { withMutationLock } from "./mutation-lock.ts";
 import {
   atomicWrite,
   digestBytes,
@@ -16,8 +10,14 @@ import {
   safeAbsolutePath,
   validateLocalProjectRoot,
   validateRelativeProjectPath,
-} from './path.ts';
-import { runVerificationProfile, type VerificationSummary } from './verification.ts';
+} from "./path.ts";
+import {
+  REPOSITORY_WRITE_PROFILES,
+  type RepositoryVerificationProfile,
+  type RepositoryWriteProfile,
+} from "./policy.ts";
+import { isCredentialLikeContent, isSensitiveFileName } from "./redaction.ts";
+import { runVerificationProfile, type VerificationSummary } from "./verification.ts";
 
 const PLAN_TTL_MS = 30 * 60 * 1_000;
 const MAX_PLANS = 100;
@@ -29,7 +29,7 @@ export type RepositoryChangeOperation = {
 };
 
 export type RepositoryChangeRequest = {
-  readonly taskType: 'patch' | 'app' | 'docs' | 'mcp' | 'database' | 'config';
+  readonly taskType: "patch" | "app" | "docs" | "mcp" | "database" | "config";
   readonly description: string;
   readonly profile: RepositoryWriteProfile;
   readonly operations: readonly RepositoryChangeOperation[];
@@ -63,13 +63,13 @@ type RepositoryPlan = {
 
 export type RepositoryChangeResult = {
   readonly status:
-    | 'prepared'
-    | 'applied'
-    | 'applied_with_verification_failures'
-    | 'verified'
-    | 'rejected'
-    | 'conflict'
-    | 'failed';
+    | "prepared"
+    | "applied"
+    | "applied_with_verification_failures"
+    | "verified"
+    | "rejected"
+    | "conflict"
+    | "failed";
   readonly auditId: string;
   readonly planId?: string;
   readonly requestedBy?: string;
@@ -92,7 +92,7 @@ function auditId(): string {
 }
 
 function cleanRequestedBy(value: string | undefined): string {
-  return (value?.trim() || 'unknown-client').slice(0, 120);
+  return (value?.trim() || "unknown-client").slice(0, 120);
 }
 
 async function localFileState(path: string): Promise<FileState> {
@@ -100,32 +100,35 @@ async function localFileState(path: string): Promise<FileState> {
   const info = await lstat(absolutePath).catch(() => null);
   if (!info) return { exists: false, sha256: null, content: null };
   if (!info.isFile()) throw new Error(`The repository path is not a regular file: ${path}`);
-  if (info.size > MAX_FILE_BYTES) throw new Error(`The repository file is too large to review: ${path}`);
+  if (info.size > MAX_FILE_BYTES)
+    throw new Error(`The repository file is too large to review: ${path}`);
   const bytes = await readFile(absolutePath);
-  const content = bytes.toString('utf8');
-  if (content.includes('\0')) throw new Error(`Binary file content is not accepted: ${path}`);
-  if (isCredentialLikeContent(content)) throw new Error(`Credential-like content cannot be reviewed: ${path}`);
+  const content = bytes.toString("utf8");
+  if (content.includes("\0")) throw new Error(`Binary file content is not accepted: ${path}`);
+  if (isCredentialLikeContent(content))
+    throw new Error(`Credential-like content cannot be reviewed: ${path}`);
   return { exists: true, sha256: digestBytes(bytes), content };
 }
 
 function profileAllowsPath(profile: RepositoryWriteProfile, path: string): boolean {
   return REPOSITORY_WRITE_PROFILES[profile].prefixes.some((prefix) =>
-    prefix.endsWith('/') ? path.startsWith(prefix) : path === prefix,
+    prefix.endsWith("/") ? path.startsWith(prefix) : path === prefix,
   );
 }
 
 function taskMatchesProfile(
-  taskType: RepositoryChangeRequest['taskType'],
+  taskType: RepositoryChangeRequest["taskType"],
   profile: RepositoryWriteProfile,
 ): boolean {
-  return taskType === 'patch' || taskType === profile;
+  return taskType === "patch" || taskType === profile;
 }
 
 function validateWritePath(profile: RepositoryWriteProfile, input: string): string {
   const path = validateRelativeProjectPath(input, { allowRestrictedPaths: true });
-  if (!profileAllowsPath(profile, path)) throw new Error(`Path is not allowed by the ${profile} write profile.`);
-  if (path.split('/').some((part) => isSensitiveFileName(part))) {
-    throw new Error('Sensitive environment and credential files cannot be changed.');
+  if (!profileAllowsPath(profile, path))
+    throw new Error(`Path is not allowed by the ${profile} write profile.`);
+  if (path.split("/").some((part) => isSensitiveFileName(part))) {
+    throw new Error("Sensitive environment and credential files cannot be changed.");
   }
   return path;
 }
@@ -136,7 +139,7 @@ function buildDiff(
 ): string {
   return operations
     .map((operation) => {
-      const before = states.get(operation.path)?.content ?? '';
+      const before = states.get(operation.path)?.content ?? "";
       const oldLines = before.split(/\r?\n/);
       const newLines = operation.content.split(/\r?\n/);
       return [
@@ -145,9 +148,9 @@ function buildDiff(
         `@@ -1,${oldLines.length} +1,${newLines.length} @@`,
         ...(before ? oldLines.map((line) => `-${line}`) : []),
         ...newLines.map((line) => `+${line}`),
-      ].join('\n');
+      ].join("\n");
     })
-    .join('\n\n');
+    .join("\n\n");
 }
 
 function prunePlans(): void {
@@ -171,11 +174,13 @@ export async function prepareRepositoryChange(
       throw new Error(`The task type must match the ${request.profile} profile.`);
     }
     if (request.description.trim().length === 0 || request.description.length > 4_000) {
-      throw new Error('A bounded change description is required.');
+      throw new Error("A bounded change description is required.");
     }
     const policy = REPOSITORY_WRITE_PROFILES[request.profile];
     if (request.operations.length === 0 || request.operations.length > policy.maxFiles) {
-      throw new Error(`The ${request.profile} profile limits the number of files in one operation.`);
+      throw new Error(
+        `The ${request.profile} profile limits the number of files in one operation.`,
+      );
     }
 
     const seen = new Set<string>();
@@ -190,7 +195,8 @@ export async function prepareRepositoryChange(
         throw new Error(`Credential-like content is not accepted: ${path}`);
       }
       const bytes = new TextEncoder().encode(operation.content).byteLength;
-      if (operation.content.includes('\0')) throw new Error(`Binary file content is not allowed: ${path}`);
+      if (operation.content.includes("\0"))
+        throw new Error(`Binary file content is not allowed: ${path}`);
       totalBytes += bytes;
       if (totalBytes > policy.maxBytes) {
         throw new Error(`The ${request.profile} profile permits at most ${policy.maxBytes} bytes.`);
@@ -223,13 +229,13 @@ export async function prepareRepositoryChange(
     };
     plans.set(planId, plan);
     return {
-      status: 'prepared',
+      status: "prepared",
       auditId: id,
       planId,
       requestedBy: plan.requestedBy,
       files: prepared.map((operation) => operation.path),
       diff: plan.diff,
-      message: 'Change prepared. Review the diff before applying it.',
+      message: "Change prepared. Review the diff before applying it.",
       expectedFileHashes: Object.fromEntries(
         prepared.map((operation) => [operation.path, operation.expectedSha256]),
       ),
@@ -237,9 +243,9 @@ export async function prepareRepositoryChange(
     };
   } catch (error) {
     return {
-      status: 'rejected',
+      status: "rejected",
       auditId: id,
-      message: error instanceof Error ? error.message : 'Repository change was rejected.',
+      message: error instanceof Error ? error.message : "Repository change was rejected.",
     };
   }
 }
@@ -248,7 +254,7 @@ function getPlan(planId: string, applyToken: string): RepositoryPlan {
   prunePlans();
   const plan = plans.get(planId);
   if (!plan || plan.applyToken !== applyToken) {
-    throw new Error('The repository plan or apply token is invalid or stale.');
+    throw new Error("The repository plan or apply token is invalid or stale.");
   }
   return plan;
 }
@@ -269,11 +275,11 @@ export async function applyRepositoryChange(input: {
       [...suppliedPaths].some((path) => !expectedPaths.has(path))
     ) {
       return {
-        status: 'conflict',
+        status: "conflict",
         auditId: id,
         planId: plan.id,
         requestedBy: plan.requestedBy,
-        message: 'The expected hash map must cover exactly the prepared file set.',
+        message: "The expected hash map must cover exactly the prepared file set.",
         conflicts: plan.operations.map((operation) => operation.path),
       };
     }
@@ -290,11 +296,11 @@ export async function applyRepositoryChange(input: {
     }
     if (conflicts.length > 0) {
       return {
-        status: 'conflict',
+        status: "conflict",
         auditId: id,
         planId: plan.id,
         requestedBy: plan.requestedBy,
-        message: 'Collaborator changes detected; the plan is stale and was not applied.',
+        message: "Collaborator changes detected; the plan is stale and was not applied.",
         conflicts,
       };
     }
@@ -302,7 +308,8 @@ export async function applyRepositoryChange(input: {
     const backups = new Map<string, FileState>();
     const changed: string[] = [];
     try {
-      for (const operation of plan.operations) backups.set(operation.path, await localFileState(operation.path));
+      for (const operation of plan.operations)
+        backups.set(operation.path, await localFileState(operation.path));
       for (const operation of plan.operations) {
         await atomicWrite(operation.path, operation.content, plan.id);
         changed.push(operation.path);
@@ -322,7 +329,7 @@ export async function applyRepositoryChange(input: {
       const commitOperation = registerAppliedRepositoryOperation({
         files: plan.operations.map((operation) => ({
           path: operation.path,
-          action: operation.expectedSha256 ? 'update' : 'create',
+          action: operation.expectedSha256 ? "update" : "create",
           hash: finalFileHashes[operation.path],
         })),
       });
@@ -331,7 +338,8 @@ export async function applyRepositoryChange(input: {
         ? runVerificationProfile(plan.verificationProfile)
         : undefined;
       return {
-        status: verification && !verification.passed ? 'applied_with_verification_failures' : 'applied',
+        status:
+          verification && !verification.passed ? "applied_with_verification_failures" : "applied",
         auditId: id,
         planId: plan.id,
         requestedBy: plan.requestedBy,
@@ -339,8 +347,8 @@ export async function applyRepositoryChange(input: {
         finalFileHashes,
         message:
           verification && !verification.passed
-            ? 'Change applied, but verification reported failures.'
-            : 'Change applied. Review the result before committing.',
+            ? "Change applied, but verification reported failures."
+            : "Change applied. Review the result before committing.",
         operationId: commitOperation.operationId,
         approvalHash: commitOperation.approvalHash,
         verification,
@@ -355,11 +363,12 @@ export async function applyRepositoryChange(input: {
         }
       }
       return {
-        status: 'failed',
+        status: "failed",
         auditId: id,
         planId: plan.id,
         requestedBy: plan.requestedBy,
-        message: error instanceof Error ? error.message : 'Repository change failed and was rolled back.',
+        message:
+          error instanceof Error ? error.message : "Repository change failed and was rolled back.",
       };
     }
   });
@@ -367,22 +376,22 @@ export async function applyRepositoryChange(input: {
 
 export function verifyRepositoryChange(input: {
   readonly profile: RepositoryVerificationProfile;
-  readonly checks?: readonly import('./policy.ts').SafeVerificationCheck[];
+  readonly checks?: readonly import("./policy.ts").SafeVerificationCheck[];
 }): RepositoryChangeResult {
   const id = auditId();
   try {
     const verification = runVerificationProfile(input.profile, input.checks);
     return {
-      status: verification.passed ? 'verified' : 'failed',
+      status: verification.passed ? "verified" : "failed",
       auditId: id,
-      message: verification.passed ? 'Verification passed.' : 'Verification reported failures.',
+      message: verification.passed ? "Verification passed." : "Verification reported failures.",
       verification,
     };
   } catch (error) {
     return {
-      status: 'rejected',
+      status: "rejected",
       auditId: id,
-      message: error instanceof Error ? error.message : 'Verification was rejected.',
+      message: error instanceof Error ? error.message : "Verification was rejected.",
     };
   }
 }
