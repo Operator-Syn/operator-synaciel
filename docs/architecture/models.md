@@ -21,7 +21,7 @@ into API-facing objects. `SnippetsPageModel` also receives an `R2Bucket`.
 | `SectionsModel` and `SectionItemsModel` | Ordered CRUD for dynamic sections and their child content. |
 | `HomePageModel` | Parallel home-content queries and nested section, pitch, social, and loadout shaping. |
 | `ProjectsModel` and `GalleryModel` | CRUD and row mapping for projects and project media. |
-| `ProjectsPageModel` | Joins projects with gallery rows and builds nested project results for the page. |
+| `ProjectsPageModel` | Builds cursor-backed project archive pages, counts the archive, and batches nested gallery rows. |
 | `CertificatesModel` and `CertificateItemsModel` | Certificate and certificate-media CRUD plus row mapping. |
 | `SnippetsPageModel` | Recursive snippet-tree queries, file/folder rules, R2 content operations, and cleanup. |
 
@@ -36,6 +36,9 @@ Models currently own more than query strings:
 - R2 upload, read, and deletion coordination for snippet files;
 - compensating R2 cleanup when a snippet database insert fails;
 - content type, download header, and safe filename decisions for snippet files.
+
+Drizzle is currently a schema and migration-generation tool only. It does not
+replace these runtime model queries in this phase.
 
 `SnippetsPageModel` is therefore a persistence-and-storage coordinator rather
 than a pure D1 model. The other models are mostly direct D1 repositories with
