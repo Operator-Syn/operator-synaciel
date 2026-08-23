@@ -1,12 +1,11 @@
-import { spawnSync } from 'node:child_process';
-
+import { spawnSync } from "node:child_process";
+import { PROJECT_ROOT } from "./path.ts";
 import {
   REPOSITORY_VERIFICATION_PROFILES,
-  SAFE_VERIFICATION_COMMANDS,
   type RepositoryVerificationProfile,
+  SAFE_VERIFICATION_COMMANDS,
   type SafeVerificationCheck,
-} from './policy.ts';
-import { PROJECT_ROOT } from './path.ts';
+} from "./policy.ts";
 
 export type VerificationCheckResult = {
   readonly check: SafeVerificationCheck;
@@ -26,8 +25,10 @@ const MAX_OUTPUT_BYTES = 12_000;
 const DEFAULT_TIMEOUT_MS = 120_000;
 
 function boundedOutput(stdout: string, stderr: string): string {
-  const output = `${stdout}${stderr ? `\n${stderr}` : ''}`.trim();
-  return output.length <= MAX_OUTPUT_BYTES ? output : `${output.slice(0, MAX_OUTPUT_BYTES)}\n[output truncated]`;
+  const output = `${stdout}${stderr ? `\n${stderr}` : ""}`.trim();
+  return output.length <= MAX_OUTPUT_BYTES
+    ? output
+    : `${output.slice(0, MAX_OUTPUT_BYTES)}\n[output truncated]`;
 }
 
 export function runVerificationProfile(
@@ -47,7 +48,7 @@ export function runVerificationProfile(
     const command = SAFE_VERIFICATION_COMMANDS[check];
     const completed = spawnSync(command[0], command.slice(1), {
       cwd: PROJECT_ROOT,
-      encoding: 'utf8',
+      encoding: "utf8",
       timeout: DEFAULT_TIMEOUT_MS,
       maxBuffer: 16 * 1024 * 1024,
       shell: false,
@@ -58,10 +59,10 @@ export function runVerificationProfile(
       command,
       status,
       output: boundedOutput(
-        completed.stdout ?? '',
-        [completed.stderr ?? '', completed.error instanceof Error ? completed.error.message : '']
+        completed.stdout ?? "",
+        [completed.stderr ?? "", completed.error instanceof Error ? completed.error.message : ""]
           .filter(Boolean)
-          .join('\n'),
+          .join("\n"),
       ),
       passed: status === 0,
     });
