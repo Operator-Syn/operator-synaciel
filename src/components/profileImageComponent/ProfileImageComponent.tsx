@@ -1,37 +1,36 @@
-import ProfileImagePlaceholder from "./ProfileImagePlaceholder";
 import AsyncImage from "../asyncImageLoader/AsyncImage";
-import "./ProfileImage.css";
 
 interface ProfileImageProps {
-    src?: string;
-    isLoading: boolean;
-    className?: string;
+  figureClassName?: string;
+  src?: string;
+  isLoading: boolean;
 }
 
-export default function ProfileImageComponent({ src, isLoading, className = "" }: ProfileImageProps) {
-    if (isLoading || !src) {
-        return (
-            <div className={`col-4 d-flex justify-content-center align-items-center ${className}`}>
-                <ProfileImagePlaceholder />
-            </div>
-        );
-    }
-
+export default function ProfileImageComponent({
+  figureClassName = "",
+  src,
+  isLoading,
+}: ProfileImageProps) {
+  if (isLoading || !src) {
     return (
-        <div className={`col-4 d-flex justify-content-center align-items-center ${className}`}>
-            <AsyncImage
-                src={src}
-                alt="Profile"
-                wrapperClassName="img-thumbnail rounded-circle profile-image-dimensions p-1"
-                loader={
-                    <div className="w-100 h-100 light-glass-blue-hue rounded-circle d-flex align-items-center justify-content-center">
-                         <span className="placeholder w-100 h-100 rounded-circle opacity-25"></span>
-                    </div>
-                }
-
-                // 3. IMAGE: The inner "Photo" content when ready
-                className="profileImage rounded-circle w-100 h-100"
-            />
-        </div>
+      <div
+        className={`aspect-square w-44 animate-pulse border border-line bg-surface-raised lg:justify-self-end ${figureClassName}`}
+        aria-hidden="true"
+      />
     );
+  }
+
+  return (
+    <figure
+      className={`relative aspect-square w-44 border border-line-strong bg-surface p-1 lg:justify-self-end ${figureClassName}`}
+    >
+      <AsyncImage
+        src={src}
+        alt="Profile"
+        wrapperClassName="block h-full w-full"
+        className="h-full w-full object-cover"
+      />
+      <span className="absolute -bottom-2 -right-2 h-4 w-4 bg-signal" aria-hidden="true" />
+    </figure>
+  );
 }
