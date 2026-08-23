@@ -26,6 +26,8 @@ Run the checks used before a change is considered ready:
 npm run lint
 npm run build
 npm run docs:check
+npm run mcp:check
+npm run skills:check
 npm run mcp:typecheck
 npm run test:mcp
 ```
@@ -42,14 +44,15 @@ TypeScript, TSX, and SQL source; Markdown documentation is intentionally kept
 out of that graph and is indexed through the Obsidian documentation map.
 
 ```bash
-pipenv install --deploy
+pipenv install --dev --deploy
 pipenv run graphify query "How does the frontend connect to the Hono API?"
 pipenv run graphify update . --no-cluster
 ```
 
-Codex discovers the project-local Graphify MCP through
-[`.codex/config.toml`](.codex/config.toml). The generated graph remains local
-under `graphify-out/`.
+Compatible clients discover the project-local MCP servers through
+[`.mcp.json`](.mcp.json); Codex also reads the project-scoped
+[`.codex/config.toml`](.codex/config.toml) for approval policy. The generated
+graph remains local under `graphify-out/`.
 
 ## Database changes
 
