@@ -1,65 +1,66 @@
 // MediaRenderer.tsx
 import AsyncImage from "../asyncImageLoader/AsyncImage";
-import "./MediaRenderer.css"; 
 
 interface MediaRendererProps {
-    type: 'video' | 'image';
-    url: string;
-    className?: string;
-    autoPlay?: boolean;
-    onPlay?: () => void;
-    onPause?: () => void;
+  type: "video" | "image";
+  url: string;
+  className?: string;
+  alt?: string;
+  autoPlay?: boolean;
+  onPlay?: () => void;
+  onPause?: () => void;
+  cursorState?: string;
 }
 
-export default function MediaRenderer({ 
-    type, 
-    url, 
-    className, 
-    autoPlay = false,
-    onPlay,
-    onPause
+export default function MediaRenderer({
+  type,
+  url,
+  className,
+  alt = "Media content",
+  autoPlay = false,
+  onPlay,
+  onPause,
+  cursorState,
 }: MediaRendererProps) {
-    // Standard classes for the inner media element (img/video)
-    const classes = className || "object-fit-cover w-100 h-100";
+  const classes = className || "h-full w-full object-cover";
 
-    if (type === 'video') {
-        return (
-            <video 
-                controls={!autoPlay} 
-                autoPlay={autoPlay} 
-                muted={autoPlay} 
-                loop={autoPlay} 
-                className={classes}
-                onPlay={onPlay}   
-                onPause={onPause}
-                onEnded={onPause}
-                playsInline
-                preload="metadata"
-                crossOrigin="anonymous"
-                onLoadedMetadata={(e) => {
-                    // Intelligent Thumbnailing: 
-                    // If not autoplaying, seek to 0.5s to show a preview frame
-                    if (!autoPlay) {
-                        e.currentTarget.currentTime = 0.5;
-                    }
-                }}
-            >
-                <source src={url} />
-                Your browser does not support the video tag.
-            </video>
-        );
-    }
-
-    // IMAGE HANDLING FIX:
-    // We added 'position-absolute top-0 start-0' to wrapperClassName.
-    // This forces the AsyncImage wrapper to snap to the top-left of the .ratio container,
-    // fixing the issue where the image was pushed down below the dark box.
+  if (type === "video") {
     return (
-        <AsyncImage 
-            src={url} 
-            alt="media content" 
-            className={`${classes} media-renderer-fix`} 
-            wrapperClassName="w-100 h-100 position-absolute top-0 start-0" 
-        />
+      <video
+        controls={!autoPlay}
+        autoPlay={autoPlay}
+        muted={autoPlay}
+        loop={autoPlay}
+        aria-label={alt}
+        className={classes}
+        data-cursor={cursorState}
+        onPlay={onPlay}
+        onPause={onPause}
+        onEnded={onPause}
+        playsInline
+        preload="metadata"
+        crossOrigin="anonymous"
+        onLoadedMetadata={(e) => {
+          // Intelligent Thumbnailing:
+          // If not autoplaying, seek to 0.5s to show a preview frame
+          if (!autoPlay) {
+            e.currentTarget.currentTime = 0.5;
+          }
+        }}
+      >
+        <source src={url} />
+        Your browser does not support the video tag.
+      </video>
     );
+  }
+
+  return (
+    <AsyncImage
+      src={url}
+      alt={alt}
+      className={`${classes} block`}
+      cursorState={cursorState}
+      wrapperClassName="absolute inset-0 h-full w-full"
+    />
+  );
 }
