@@ -1,181 +1,17 @@
-/* src/components/pages/snippetsPage/Snippets.css */
-
-.autoindex-page {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
-
-.snippet-card {
-    max-height: calc(100vh - 16rem);
-    overflow-y: auto;
-    overflow-x: hidden;
-    background-color: transparent !important;
-    border: 1px solid transparent !important;
-}
-
-.snippet-path-heading {
-    display: flex;
-    max-width: 100%;
-    min-width: 0;
-    font-family:
-        ui-monospace,
-        SFMono-Regular,
-        Menlo,
-        Monaco,
-        Consolas,
-        "Liberation Mono",
-        monospace;
-}
-
-.snippet-path-heading span:first-child {
-    flex: 0 0 auto;
-}
-
-.snippet-path-text {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.table-fixed {
-    table-layout: fixed !important;
-    width: 100% !important;
-}
-
-.table thead,
-.table thead th {
-    background-color: transparent !important;
-    color: rgb(227, 242, 253) !important;
-    border-bottom: 1px solid rgba(227, 242, 253, 0.3) !important;
-}
-
-.table tbody tr,
-.table tbody tr td {
-    background-color: transparent !important;
-    color: rgb(227, 242, 253) !important;
-    border-bottom: 1px solid rgba(227, 242, 253, 0.1) !important;
-    transition: none !important;
-    transform: none !important;
-}
-
-.table tbody tr:hover,
-.table tbody tr:hover td {
-    background-color: rgba(227, 242, 253, 0.06) !important;
-    color: rgb(227, 242, 253) !important;
-}
-
-.col-name {
-    width: 60%;
-}
-
-.col-modified {
-    width: 25%;
-}
-
-.col-size {
-    width: 15%;
-}
-
-/* Modal & Markdown Styling */
-
-.markdown-modal-content {
-    background-color: rgba(12, 47, 78, 0.98) !important;
-    color: rgb(227, 242, 253) !important;
-    border-radius: 16px !important;
-    border: 1px solid rgba(227, 242, 253, 0.2) !important;
-    box-shadow:
-        0 1.4rem 3rem rgba(0, 28, 58, 0.55),
-        inset 0 1px 0 rgba(227, 242, 253, 0.08) !important;
-    overflow: hidden;
-}
-
-.markdown-modal-content .modal-header {
-    background-color: rgba(28, 87, 137, 0.72);
-    border-bottom: 1px solid rgba(227, 242, 253, 0.18) !important;
-}
-
-.markdown-modal-content .modal-title,
-.markdown-modal-content .text-dark {
-    color: rgb(227, 242, 253) !important;
-}
-
-.markdown-modal-content .btn-close {
-    filter: invert(1) grayscale(100%) brightness(200%);
-    opacity: 0.85;
-}
-
-.markdown-modal-content .btn-close:hover {
-    opacity: 1;
-}
-
-.markdown-modal-content .btn-outline-dark {
-    color: rgb(227, 242, 253) !important;
-    border-color: rgba(227, 242, 253, 0.42) !important;
-    background-color: rgba(0, 28, 58, 0.22) !important;
-}
-
-.markdown-modal-content .btn-outline-dark:hover {
-    color: rgb(227, 242, 253) !important;
-    border-color: rgba(227, 242, 253, 0.72) !important;
-    background-color: rgba(87, 131, 177, 0.34) !important;
-}
-
 .markdown-body-container {
-    padding: 2rem !important;
-    max-height: 75vh;
-    overflow-y: auto;
-    color: rgba(227, 242, 253, 0.96) !important;
-    background:
-        linear-gradient(
-            180deg,
-            rgba(12, 47, 78, 0.98) 0%,
-            rgba(8, 38, 66, 0.98) 100%
-        );
-    font-family:
-        Inter,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Roboto,
-        sans-serif;
-    font-size: 0.96rem;
+    max-height: 78dvh;
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    color: var(--color-text);
+    font-family: var(--font-body);
+    font-size: 0.98rem;
     line-height: 1.78;
 }
 
 .markdown-body-container > *:not(.code-block-wrapper) {
     max-width: 72ch;
-    margin-left: auto;
-    margin-right: auto;
+    margin-inline: auto;
 }
-
-/* PDF preview must override markdown reading constraints */
-
-.markdown-body-container.pdf-modal-body {
-    height: min(78dvh, 860px);
-    max-height: none;
-    overflow: hidden;
-    padding: 0 !important;
-    background-color: rgba(8, 38, 66, 0.98);
-}
-
-.markdown-body-container.pdf-modal-body > * {
-    max-width: none !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-}
-
-.pdf-preview-frame {
-    display: block;
-    width: 100%;
-    height: 100%;
-    min-height: 28rem;
-    border: 0;
-    border-top: 1px solid rgba(227, 242, 253, 0.14);
-    border-radius: 0;
-    background-color: rgba(0, 28, 58, 0.55);
-}
-
-/* Markdown Typography Only */
 
 .markdown-body-container h1,
 .markdown-body-container h2,
@@ -183,44 +19,37 @@
 .markdown-body-container h4,
 .markdown-body-container h5,
 .markdown-body-container h6 {
-    color: rgb(245, 251, 255) !important;
-    line-height: 1.18;
-    font-weight: 800;
-    letter-spacing: -0.035em;
-    margin-top: 1.9rem;
-    margin-bottom: 0.8rem;
-}
-
-.markdown-body-container h1:first-child,
-.markdown-body-container h2:first-child,
-.markdown-body-container h3:first-child {
-    margin-top: 0;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-weight: 400;
+    line-height: 1.15;
 }
 
 .markdown-body-container h1 {
-    font-size: clamp(1.9rem, 4vw, 2.75rem);
+    font-size: clamp(2rem, 4vw, 3.5rem);
 }
-
 .markdown-body-container h2 {
-    font-size: clamp(1.45rem, 3vw, 1.95rem);
-    padding-bottom: 0.45rem;
-    border-bottom: 1px solid rgba(227, 242, 253, 0.18);
+    margin-top: 2rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-line);
+    font-size: clamp(1.55rem, 3vw, 2.3rem);
 }
-
 .markdown-body-container h3 {
-    font-size: clamp(1.18rem, 2.4vw, 1.38rem);
+    margin-top: 1.6rem;
+    font-size: 1.5rem;
 }
-
 .markdown-body-container h4 {
-    font-size: 1rem;
+    margin-top: 1.3rem;
+    font-size: 1.1rem;
 }
-
 .markdown-body-container h5,
 .markdown-body-container h6 {
-    font-size: 0.88rem;
+    margin-top: 1.1rem;
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: rgba(227, 242, 253, 0.72) !important;
 }
 
 .markdown-body-container p,
@@ -228,7 +57,7 @@
 .markdown-body-container blockquote,
 .markdown-body-container td,
 .markdown-body-container th {
-    color: rgba(227, 242, 253, 0.92) !important;
+    color: var(--color-text-muted);
 }
 
 .markdown-body-container p {
@@ -236,57 +65,44 @@
 }
 
 .markdown-body-container strong {
-    color: rgb(245, 251, 255);
-    font-weight: 800;
-}
-
-.markdown-body-container em {
-    color: rgba(227, 242, 253, 0.96);
-}
-
-.markdown-body-container ul,
-.markdown-body-container ol {
-    padding-left: 1.45rem;
-    margin-top: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-.markdown-body-container li {
-    margin-bottom: 0.45rem;
-    padding-left: 0.1rem;
-}
-
-.markdown-body-container li::marker {
-    color: rgb(180, 220, 255);
-}
-
-.markdown-body-container blockquote {
-    padding: 0.9rem 1rem;
-    margin: 1.4rem auto;
-    border-left: 3px solid rgba(180, 220, 255, 0.62);
-    background-color: rgba(0, 28, 58, 0.32);
-    border-radius: 0 0.65rem 0.65rem 0;
-}
-
-.markdown-body-container blockquote p:last-child {
-    margin-bottom: 0;
+    color: var(--color-text);
 }
 
 .markdown-body-container a {
-    color: rgb(180, 220, 255) !important;
+    color: var(--color-signal);
     text-decoration-thickness: 0.08em;
     text-underline-offset: 0.18em;
 }
 
 .markdown-body-container a:hover {
-    color: rgb(217, 238, 255) !important;
+    color: var(--color-signal-strong);
+}
+
+.markdown-body-container ul,
+.markdown-body-container ol {
+    margin: 0.5rem auto 1rem;
+    padding-left: 1.45rem;
+}
+
+.markdown-body-container li {
+    margin-bottom: 0.45rem;
+}
+.markdown-body-container li::marker {
+    color: var(--color-signal);
+}
+
+.markdown-body-container blockquote {
+    margin: 1.4rem auto;
+    border-left: 2px solid var(--color-signal);
+    padding: 0.9rem 1rem;
+    background: var(--color-surface-raised);
 }
 
 .markdown-body-container hr {
-    border-color: rgba(227, 242, 253, 0.22);
-    opacity: 1;
     max-width: 72ch;
     margin: 2rem auto;
+    border: 0;
+    border-top: 1px solid var(--color-line);
 }
 
 .markdown-body-container img {
@@ -294,137 +110,71 @@
     max-width: 100%;
     height: auto;
     margin: 1.5rem auto;
-    border-radius: 0.8rem;
-    border: 1px solid rgba(227, 242, 253, 0.16);
+    border: 1px solid var(--color-line);
 }
-
-/* Markdown Tables */
 
 .markdown-body-container table {
     width: 100%;
     max-width: 72ch;
-    color: rgb(227, 242, 253);
+    margin: 1.25rem auto;
     border-collapse: collapse;
-    margin-top: 1.25rem;
-    margin-bottom: 1.25rem;
-    background-color: rgba(0, 28, 58, 0.26);
-    border: 1px solid rgba(227, 242, 253, 0.16);
-    border-radius: 8px;
-    overflow: hidden;
-    font-size: 0.88rem;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    font-size: 0.9rem;
 }
 
 .markdown-body-container table th,
 .markdown-body-container table td {
-    border: 1px solid rgba(227, 242, 253, 0.16);
+    border: 1px solid var(--color-line);
     padding: 0.7rem 0.85rem;
 }
 
 .markdown-body-container table th {
-    background-color: rgba(87, 131, 177, 0.34);
-    color: rgb(245, 251, 255) !important;
-    font-weight: 800;
+    color: var(--color-text);
+    font-weight: 600;
 }
-
-/* Code Block Structure */
 
 .code-block-wrapper {
     max-width: 72ch;
     margin: 1.5rem auto;
-    border-radius: 10px;
     overflow: hidden;
-    border: 1px solid rgba(227, 242, 253, 0.18);
-    background-color: rgba(0, 28, 58, 0.78);
+    border: 1px solid var(--color-line);
+    background: var(--color-canvas);
 }
 
 .code-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: rgba(0, 28, 58, 0.88);
-    padding: 10px 16px;
-    color: rgba(227, 242, 253, 0.82);
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    border-bottom: 1px solid rgba(227, 242, 253, 0.14);
+    padding: 0.65rem 0.9rem;
+    border-bottom: 1px solid var(--color-line);
+    background: var(--color-surface);
 }
 
 .snippet-code-highlighter,
 .snippet-code-highlighter code,
 .snippet-code-highlighter code * {
-    font-family:
-        ui-monospace,
-        SFMono-Regular,
-        Menlo,
-        Monaco,
-        Consolas,
-        "Liberation Mono",
-        monospace !important;
-    font-size: 13px !important;
-    line-height: 1.65 !important;
-    white-space: pre !important;
-    word-break: normal !important;
-    word-wrap: normal !important;
-    overflow-wrap: normal !important;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    line-height: 1.65;
+    white-space: pre;
+    word-break: normal;
+    overflow-wrap: normal;
 }
 
 .snippet-code-highlighter {
-    overflow-x: auto !important;
+    overflow-x: auto;
 }
-
 .snippet-code-highlighter code {
     display: block;
     min-width: max-content;
 }
 
-.copy-btn {
-    background-color: rgba(87, 131, 177, 0.42);
-    border: 1px solid rgba(227, 242, 253, 0.24);
-    color: rgb(227, 242, 253);
-    padding: 4px 14px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-    min-width: 85px;
-    transition:
-        background-color 0.2s ease,
-        border-color 0.2s ease,
-        transform 0.2s ease;
-}
-
-.copy-btn:hover {
-    background-color: rgba(87, 131, 177, 0.68);
-    border-color: rgba(227, 242, 253, 0.42);
-    transform: translateY(-1px);
-}
-
-.copy-btn.copied {
-    background-color: rgba(47, 133, 90, 0.88) !important;
-    border-color: rgba(72, 187, 120, 0.9) !important;
-    color: #ffffff;
-}
-
 .inline-code {
-    background-color: rgba(0, 28, 58, 0.42);
-    color: rgb(245, 251, 255);
-    border: 1px solid rgba(227, 242, 253, 0.16);
+    border: 1px solid var(--color-line);
     padding: 0.16rem 0.38rem;
-    border-radius: 4px;
-    font-family:
-        ui-monospace,
-        SFMono-Regular,
-        Menlo,
-        Monaco,
-        Consolas,
-        "Liberation Mono",
-        monospace;
+    background: var(--color-surface-raised);
+    color: var(--color-text);
+    font-family: var(--font-mono);
     font-size: 0.9em;
 }
-
-/* Keep inline code inside headings visually consistent with heading size */
 
 .markdown-body-container h1 .inline-code,
 .markdown-body-container h2 .inline-code,
@@ -433,27 +183,23 @@
 .markdown-body-container h5 .inline-code,
 .markdown-body-container h6 .inline-code {
     display: inline;
-    font-size: inherit !important;
-    line-height: inherit;
-    font-weight: inherit;
-    vertical-align: baseline;
     padding: 0.04em 0.16em;
-    border-radius: 0.12em;
+    font-size: inherit;
+    line-height: inherit;
 }
 
-.markdown-body-container h1 .inline-code {
-    letter-spacing: -0.05em;
+.markdown-body-container.pdf-modal-body {
+    height: min(78dvh, 860px);
+    max-height: none;
+    overflow: hidden;
+    padding: 0;
 }
 
-@media (max-width: 575.98px) {
-    .markdown-modal-content {
-        min-height: 100dvh;
-        border-radius: 0 !important;
-    }
-
+@media (max-width: 640px) {
     .markdown-body-container {
-        padding: 1rem !important;
-        max-height: calc(100dvh - 4.5rem);
+        max-height: calc(100dvh - 5rem);
+        padding-top: 1rem;
+        padding-bottom: 1rem;
         font-size: 0.92rem;
     }
 
@@ -463,19 +209,6 @@
     }
 
     .markdown-body-container.pdf-modal-body {
-        height: calc(100dvh - 4.5rem);
-        max-height: none;
-        padding: 0 !important;
-    }
-
-    .markdown-body-container.pdf-modal-body > * {
-        max-width: none !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-    }
-
-    .pdf-preview-frame {
-        min-height: 0;
-        border-radius: 0;
+        height: calc(100dvh - 5rem);
     }
 }
