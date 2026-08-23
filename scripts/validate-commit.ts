@@ -1,6 +1,6 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSync } from "node:child_process";
 
-import { COMMIT_APPROVAL_ENV, CONSENTABLE_RESTRICTED_DIRS } from '../mcp/policy.ts';
+import { COMMIT_APPROVAL_ENV, CONSENTABLE_RESTRICTED_DIRS } from "../mcp/policy.ts";
 
 type GitResult = {
   readonly status: number;
@@ -13,27 +13,27 @@ export type CommitValidationResult =
   | { readonly ok: false; readonly message: string };
 
 function runGit(cwd: string, args: readonly string[]): GitResult {
-  const result = spawnSync('git', [...args], {
+  const result = spawnSync("git", [...args], {
     cwd,
-    encoding: 'utf8',
+    encoding: "utf8",
     maxBuffer: 4 * 1024 * 1024,
     shell: false,
   });
   return {
     status: result.status ?? -1,
-    stdout: result.stdout ?? '',
-    stderr: result.stderr ?? (result.error instanceof Error ? result.error.message : ''),
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? (result.error instanceof Error ? result.error.message : ""),
   };
 }
 
 export function stagedPaths(cwd = process.cwd()): readonly string[] {
-  const result = runGit(cwd, ['diff', '--cached', '--name-only', '--no-renames', '-z']);
-  if (result.status !== 0) throw new Error(result.stderr || 'Could not inspect the staged commit.');
-  return result.stdout.split('\0').filter(Boolean);
+  const result = runGit(cwd, ["diff", "--cached", "--name-only", "--no-renames", "-z"]);
+  if (result.status !== 0) throw new Error(result.stderr || "Could not inspect the staged commit.");
+  return result.stdout.split("\0").filter(Boolean);
 }
 
 export function isRestrictedPath(path: string): boolean {
-  return path.split('/').some((part) => CONSENTABLE_RESTRICTED_DIRS.has(part));
+  return path.split("/").some((part) => CONSENTABLE_RESTRICTED_DIRS.has(part));
 }
 
 export function validateStagedPaths(
@@ -41,19 +41,22 @@ export function validateStagedPaths(
   approvalMarker = process.env[COMMIT_APPROVAL_ENV],
 ): CommitValidationResult {
   if (paths.length === 0) {
-    return { ok: false, message: 'Commit blocked: no staged paths were found. Use the guarded repository MCP.' };
+    return {
+      ok: false,
+      message: "Commit blocked: no staged paths were found. Use the guarded repository MCP.",
+    };
   }
   if (paths.length !== 1) {
     return {
       ok: false,
-      message: `Commit blocked: exactly one staged path is required, but ${paths.length} were found (${paths.join(', ')}). Use prepare_working_tree_commit and git_commit_working_tree for per-file commits.`,
+      message: `Commit blocked: exactly one staged path is required, but ${paths.length} were found (${paths.join(", ")}). Use prepare_working_tree_commit and git_commit_working_tree for per-file commits.`,
     };
   }
   const restrictedPaths = paths.filter(isRestrictedPath);
   if (restrictedPaths.length > 0 && !approvalMarker?.trim()) {
     return {
       ok: false,
-      message: `Commit blocked: restricted developer paths require explicit MCP consent (${restrictedPaths.join(', ')}).`,
+      message: `Commit blocked: restricted developer paths require explicit MCP consent (${restrictedPaths.join(", ")}).`,
     };
   }
   return { ok: true, paths };
