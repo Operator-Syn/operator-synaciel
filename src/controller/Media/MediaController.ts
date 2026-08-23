@@ -1,9 +1,10 @@
 // src/controller/Media/MediaController.ts
-import { type Context } from 'hono';
-import { type Bindings } from '../../Api';
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { respondWithInternalError } from '../../utils/serverErrors';
+import type { Context } from "hono";
+import type { Bindings } from "../../Api";
+import { respondWithInternalError } from "../../utils/serverErrors";
 
 // Factory function to create a controller for a specific bucket directory
 export const createMediaController = (prefix: string) => ({
@@ -20,17 +21,17 @@ export const createMediaController = (prefix: string) => ({
         }));
       return c.json({ success: true, data: fileList });
     } catch (err: unknown) {
-      return respondWithInternalError(c, 'MediaController.list', err);
+      return respondWithInternalError(c, "MediaController.list", err);
     }
   },
 
   upload: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const formData = await c.req.formData();
-      const file = formData.get('file');
-      if (!file || !(file instanceof File)) return c.json({ error: 'No file provided' }, 400);
+      const file = formData.get("file");
+      if (!file || !(file instanceof File)) return c.json({ error: "No file provided" }, 400);
 
-      const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
+      const safeName = file.name.replace(/[^a-z0-9.]/gi, "_").toLowerCase();
       const key = `${prefix}${crypto.randomUUID()}-${safeName}`;
 
       const arrayBuffer = await file.arrayBuffer();
@@ -38,20 +39,20 @@ export const createMediaController = (prefix: string) => ({
 
       return c.json({ success: true, url: `${c.env.VITE_CDN_URL}/${key}`, key }, 201);
     } catch (err: unknown) {
-      return respondWithInternalError(c, 'MediaController.upload', err);
+      return respondWithInternalError(c, "MediaController.upload", err);
     }
   },
 
   presign: async (c: Context<{ Bindings: Bindings }>) => {
     try {
       const { filename, contentType } = await c.req.json();
-      if (!filename) return c.json({ error: 'Filename is required' }, 400);
+      if (!filename) return c.json({ error: "Filename is required" }, 400);
 
-      const safeName = filename.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
+      const safeName = filename.replace(/[^a-z0-9.]/gi, "_").toLowerCase();
       const key = `${prefix}${crypto.randomUUID()}-${safeName}`;
 
       const client = new S3Client({
-        region: 'auto',
+        region: "auto",
         endpoint: `https://${c.env.ACCOUNT_ID}.r2.cloudflarestorage.com`,
         credentials: {
           accessKeyId: c.env.R2_ACCESS_KEY_ID,
@@ -62,63 +63,64 @@ export const createMediaController = (prefix: string) => ({
       const command = new PutObjectCommand({
         Bucket: c.env.R2_BUCKET_NAME,
         Key: key,
-        ContentType: contentType || 'application/octet-stream',
+        ContentType: contentType || "application/octet-stream",
       });
 
       const uploadUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
       return c.json({ success: true, uploadUrl, publicUrl: `${c.env.VITE_CDN_URL}/${key}`, key });
     } catch (err: unknown) {
-      return respondWithInternalError(c, 'MediaController.presign', err);
+      return respondWithInternalError(c, "MediaController.presign", err);
     }
   },
 
   get: async (c: Context<{ Bindings: Bindings }>) => {
-    const key = c.req.param('key');
-    if (!key) return c.json({ error: 'Key is required' }, 400);
-    
+    const key = c.req.param("key");
+    if (!key) return c.json({ error: "Key is required" }, 400);
+
     const object = await c.env.BUCKET.get(key);
-    if (!object) return c.json({ error: 'Object not found' }, 404);
+    if (!object) return c.json({ error: "Object not found" }, 404);
 
     return c.json({
       key: object.key,
       size: object.size,
       contentType: object.httpMetadata?.contentType,
       uploaded: object.uploaded,
-      url: `${c.env.VITE_CDN_URL}/${object.key}`
+      url: `${c.env.VITE_CDN_URL}/${object.key}`,
     });
   },
 
   update: async (c: Context<{ Bindings: Bindings }>) => {
     try {
-      const key = c.req.param('key');
-      if (!key) return c.json({ error: 'Key is required' }, 400);
+      const key = c.req.param("key");
+      if (!key) return c.json({ error: "Key is required" }, 400);
 
       const formData = await c.req.formData();
-      const file = formData.get('file');
-      if (!file || !(file instanceof File)) return c.json({ error: 'No replacement file provided' }, 400);
+      const file = formData.get("file");
+      if (!file || !(file instanceof File))
+        return c.json({ error: "No replacement file provided" }, 400);
 
       const arrayBuffer = await file.arrayBuffer();
       await c.env.BUCKET.put(key, arrayBuffer, { httpMetadata: { contentType: file.type } });
       return c.json({ success: true, url: `${c.env.VITE_CDN_URL}/${key}` });
     } catch (err: unknown) {
-      return respondWithInternalError(c, 'MediaController.update', err);
+      return respondWithInternalError(c, "MediaController.update", err);
     }
   },
 
   delete: async (c: Context<{ Bindings: Bindings }>) => {
     try {
-      const key = c.req.param('key');
-      if (!key) return c.json({ error: 'Key is required' }, 400);
+      const key = c.req.param("key");
+      if (!key) return c.json({ error: "Key is required" }, 400);
 
       const object = await c.env.BUCKET.head(key);
-      if (!object) return c.json({ error: 'Resource not found' }, 404);
+      if (!object) return c.json({ error: "Resource not found" }, 404);
       await c.env.BUCKET.delete(key);
       return c.json({ success: true, message: `Asset ${key} deleted.` });
     } catch (err: unknown) {
-      return respondWithInternalError(c, 'MediaController.delete', err);
+      return respondWithInternalError(c, "MediaController.delete", err);
     }
-  }
+  },
 });
 
 // For backward compatibility with existing imports
-export const MediaController = createMediaController('Projects/');
+export const MediaController = createMediaController("Projects/");
