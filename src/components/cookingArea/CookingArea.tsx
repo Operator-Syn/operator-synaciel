@@ -1,18 +1,9 @@
-import { Fragment, type ReactNode } from 'react';
-import "./CookingArea.css";
+import type { ReactNode } from "react";
 
 interface CookingAreaProps {
-    children?: ReactNode;
+  children?: ReactNode;
 }
 
 export default function CookingArea({ children }: CookingAreaProps) {
-    return (
-        <Fragment>
-            <div className='container-fluid'>
-                <div className="cookingArea rounded shadow-sm">
-                    {children}
-                </div>
-            </div>
-        </Fragment>
-    )
+  return <div className="page-frame-wide">{children}</div>;
 }
