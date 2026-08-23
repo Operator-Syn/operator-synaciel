@@ -18,6 +18,22 @@
 - Graphify is code-only in this repository. Documentation is indexed through
   the Obsidian map, not the generated graph.
 
+## Agent tooling
+
+- `.mcp.json` is the clone-shared MCP registration; `.codex/config.toml` adds
+  Codex-specific approval policy. Both use the root-safe launcher and fail
+  outside a Git checkout.
+- Use `repository_workflow_status` before mutation when the local MCP is
+  available. The portable quality skill lives under
+  `.agents/skills/repository-quality/`; the Codex adapter is under
+  `.codex/skills/repository-quality/`.
+- Keep Graphify, the repository MCP, and visual skills as separate capabilities;
+  load only the one relevant to the current task. Use the project-local
+  Impeccable skill for UI audits and refinement.
+- Impeccable shared context belongs in `PRODUCT.md`, `DESIGN.md`, and
+  `.impeccable/config.json`; do not invent context files or commit
+  `.impeccable/config.local.json`.
+
 ## Repository MCP and commits
 
 - Use the local `operator-synaciel-repository` MCP for guarded file changes and
@@ -41,6 +57,8 @@
 ## Verification
 
 - `npm run docs:check` validates the vault links and documentation layout.
+- `npm run skills:check` runs the official skill validator against both local
+  repository-quality bundles through the Pipenv environment.
 - `npm run mcp:typecheck` and `npm run test:mcp` validate the repository MCP.
 - The documentation hook is read-only and advisory. It must not rewrite notes,
   update Graphify, access Cloudflare, or apply database migrations.
