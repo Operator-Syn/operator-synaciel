@@ -1,52 +1,29 @@
-// src/components/developmentLoadoutsComponent/DevelopmentLoadoutsComponent.tsx
-
-import { useEffect, useState } from "react";
-import DesktopComponent from "./DevelopmentLoadoutsComponentForDesktop";
-import MobileComponent from "./DevelopmentLoadoutsComponentForMobile";
-import DevelopmentLoadoutsPlaceholder from "./DevelopmentLoadoutsPlaceholder";
+import DevelopmentLoadoutsShowcase from "./DevelopmentLoadoutsShowcase";
 
 interface DevLoadoutSection {
-    category: string;
-    badges: string[];
+  category: string;
+  badges: string[];
 }
 
 interface DevLoadoutsContent {
-    header: string;
-    sections: DevLoadoutSection[];
+  header: string;
+  sections: DevLoadoutSection[];
 }
 
 interface DevLoadoutsProps {
-    content?: DevLoadoutsContent;
-    isLoading?: boolean;
+  content?: DevLoadoutsContent;
+  isLoading?: boolean;
 }
 
-export default function DevelopmentLoadoutsComponent({
-    content,
-    isLoading,
-}: DevLoadoutsProps) {
-    const [isSmall, setIsSmall] = useState<boolean>(() =>
-        typeof window !== "undefined" ? window.innerWidth <= 1400 : false,
+export default function DevelopmentLoadoutsComponent({ content, isLoading }: DevLoadoutsProps) {
+  if (isLoading || !content) {
+    return (
+      <div className="surface-panel min-h-72 animate-pulse p-6" aria-hidden="true">
+        <div className="h-6 w-1/2 bg-surface-raised" />
+        <div className="mt-8 h-32 w-full bg-surface-raised" />
+      </div>
     );
+  }
 
-    useEffect(() => {
-        const handleResize = () => {
-            setIsSmall(window.innerWidth <= 1400);
-        };
-
-        window.addEventListener("resize", handleResize);
-
-        return () => {
-            window.removeEventListener("resize", handleResize);
-        };
-    }, []);
-
-    if (isLoading || !content) {
-        return <DevelopmentLoadoutsPlaceholder isMobile={isSmall} />;
-    }
-
-    return isSmall ? (
-        <MobileComponent content={content} />
-    ) : (
-        <DesktopComponent content={content} />
-    );
+  return <DevelopmentLoadoutsShowcase content={content} />;
 }
