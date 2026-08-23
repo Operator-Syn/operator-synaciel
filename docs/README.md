@@ -16,6 +16,8 @@ root. Topic notes live in focused folders.
 
 ## Domain notes
 
+- [[design-system/README|Design system]] - shared visual language, tokens, and
+  Tailwind migration conventions.
 - [[architecture/overview|Architecture overview]] - runtime boundaries and
   frontend-to-Worker data flow.
 - [[architecture/repository-layout|Repository layout]] - source folders and
@@ -31,6 +33,8 @@ root. Topic notes live in focused folders.
   storage references.
 - [[database/migrations|Database migrations]] - readable SQL review and apply
   workflow.
+- [[database/drizzle|Drizzle tooling]] - typed schema ownership and migration
+  generation boundaries.
 - [[operations/local-development|Local development]] - install, check, build,
   Graphify, and database commands.
 - [[operations/repository-mcp|Repository MCP]] - guarded changes, verification,
