@@ -9,20 +9,29 @@ role: guide
 
 # D1 Migrations
 
-Top-level SQL files in `migrations/` contain future schema changes for the
-`my-personal-portfolio` D1 database. The current database predates this
-workflow. Keep [`src/data/Database-Schema.sql`](../../src/data/Database-Schema.sql)
-as the existing schema reference and
-[`src/data/Initial-Seed.sql`](../../src/data/Initial-Seed.sql) as bootstrap
-content. Do not replay the seed through migration history.
+Drizzle Kit generates the readable SQL files in `migrations/` from
+[`src/db/schema.ts`](../../src/db/schema.ts). Wrangler applies those files to
+the `my-personal-portfolio` D1 database and records them in `d1_migrations`.
+See [[database/drizzle|Drizzle tooling]] for schema ownership and command
+roles.
+
+The existing database predates this workflow. `0000_baseline.sql` is an
+idempotent schema baseline; [`src/data/Initial-Seed.sql`](../../src/data/Initial-Seed.sql)
+remains bootstrap content and must not be replayed through migration history.
+
+The project archive cursor rollout uses two forward migrations: `0001` first
+normalizes legacy `Projects.display_order` NULLs to the existing `0` default,
+then `0002` adds `idx_projects_display_order_id` for the stable
+`display_order, id` keyset order. Neither migration changes project content or
+the baseline file.
 
 ## File rules
 
-- Use one readable SQL file per logical schema change.
-- Use Wrangler's numeric names, such as `0001_add_project_slug.sql`.
+- Generate one readable SQL file per logical schema change with Drizzle.
+- Keep Drizzle's numeric names, such as `0001_add_project_slug.sql`.
 - Never edit a migration after it has been applied anywhere.
-- Do not use generated, minified, or placeholder SQL.
-- The first real schema change becomes migration `0001`.
+- Do not manually create a migration with `wrangler d1 migrations create`.
+- Do not edit files under `migrations/meta/` by hand.
 
 Start each migration with a review header:
 
@@ -36,16 +45,17 @@ Start each migration with a review header:
 
 ## Review workflow
 
-Create a migration without applying it:
+Generate a migration without applying it:
 
 ```bash
-npm run db:migration:create -- add_descriptive_change
+npm run db:migration:generate -- --name=add_descriptive_change
+npm run db:migration:check
 ```
 
 Read the SQL and inspect the exact diff:
 
 ```bash
-git diff -- migrations/ wrangler.toml package.json
+git diff -- src/db/schema.ts migrations/ drizzle.config.ts wrangler.toml package.json
 ```
 
 List and apply pending migrations locally first:
@@ -56,7 +66,7 @@ npm run db:migrations:apply:local
 ```
 
 After local schema and application checks pass, inspect the remote pending
-list:
+list. Listing is read-only; application is a separate authorized operation:
 
 ```bash
 npm run db:migrations:list:remote
@@ -69,4 +79,5 @@ deploy command:
 npm run db:migrations:apply:remote
 ```
 
-Do not run the remote command without reviewing the SQL and pending list.
+Do not run the remote command without reviewing the SQL, local result, and
+remote pending list. A Worker deploy never applies migrations.
