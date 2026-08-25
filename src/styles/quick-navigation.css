@@ -1,0 +1,63 @@
+/* Fixed quick-navigation utility and its compact navigation shell. */
+.quick-navigation {
+    --quick-navigation-edge-space: clamp(1rem, 2vw, 2rem);
+    --quick-navigation-inline-space: max(
+        var(--quick-navigation-edge-space),
+        calc(env(safe-area-inset-right) + 0.5rem)
+    );
+    --quick-navigation-block-space: max(
+        var(--quick-navigation-edge-space),
+        calc(env(safe-area-inset-bottom) + 0.5rem)
+    );
+    top: auto;
+    right: var(--quick-navigation-inline-space);
+    bottom: var(--quick-navigation-block-space);
+}
+
+.navigation-shell {
+    transition:
+        box-shadow var(--motion-feedback-duration) var(--motion-ease),
+        transform var(--motion-feedback-duration) var(--motion-ease);
+}
+
+@media (max-width: 1400px) {
+    .quick-navigation-toggle {
+        width: 3rem;
+        justify-content: center;
+        gap: 0;
+        padding-inline: 0.5rem;
+    }
+
+    .quick-navigation-toggle > svg:last-child {
+        display: none;
+    }
+}
+
+@media (max-width: 1023px) {
+    .navigation-shell[data-navigation-hidden="true"] {
+        transform: translateY(-100%);
+    }
+
+    .navigation-shell[data-navigation-hidden="true"]:focus-within {
+        transform: translateY(0);
+    }
+
+    .quick-navigation.is-open {
+        top: auto;
+        right: var(--quick-navigation-inline-space);
+        bottom: var(--quick-navigation-block-space);
+        width: calc(
+            100vw -
+            var(--quick-navigation-inline-space) -
+            var(--quick-navigation-inline-space)
+        );
+    }
+
+    .quick-navigation-panel {
+        width: 100%;
+    }
+
+    .quick-navigation.is-open .quick-navigation-toggle {
+        justify-self: end;
+    }
+}
