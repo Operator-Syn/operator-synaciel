@@ -65,7 +65,33 @@ function CertificateArchiveCard({
   const titleId = `certificate-archive-title-${certificate.id}`;
 
   return (
-    <article aria-labelledby={titleId} className="certificate-archive-card">
+    <article
+      aria-labelledby={titleId}
+      className="certificate-archive-card"
+      onClick={(event) => {
+        if (
+          !isInteractive ||
+          (event.target instanceof Element && event.target.closest("a, button, video"))
+        ) {
+          return;
+        }
+
+        onOpenCertificate(certificate);
+      }}
+      onKeyDown={(event) => {
+        if (
+          !isInteractive ||
+          (event.target instanceof Element && event.target.closest("a, button, video")) ||
+          (event.key !== "Enter" && event.key !== " ")
+        ) {
+          return;
+        }
+
+        event.preventDefault();
+        onOpenCertificate(certificate);
+      }}
+      tabIndex={isInteractive ? 0 : undefined}
+    >
       <div className="certificate-archive-index-wrap">
         <p className="certificate-archive-index">{certificateNumber}</p>
       </div>
