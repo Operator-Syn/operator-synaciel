@@ -1,13 +1,22 @@
-import { useQueries } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { type ReactNode, useState } from "react";
 import { PUBLIC_DATA_STALE_TIME_MS } from "../../../data/cacheSettings";
 import type { MediaItem } from "../../../types/MediaCardTypes";
 import CookingArea from "../../cookingArea/CookingArea";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
+import { LoadingBlock, LoadingRegion } from "../../loadingState/LoadingState";
 import MediaModal from "../../mediaModal/MediaModal";
-import PaginationControls from "../../pagination/PaginationControls";
+import CursorPaginationControls from "../../pagination/CursorPaginationControls";
 import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
 import CertificateArchive from "./CertificateArchive";
+
+interface ApiCertificateItem {
+  id: number;
+  certificate_id: number;
+  type: "image" | "video";
+  url: string;
+  display_order: number;
+}
 
 interface ApiCertification {
   id: number;
@@ -18,14 +27,18 @@ interface ApiCertification {
   long_description: string;
   certificate_link: string | null;
   display_order: number;
+  created_at: string;
+  items: ApiCertificateItem[];
 }
 
-interface ApiCertificateItem {
-  id: number;
-  certificate_id: number;
-  type: "image" | "video";
-  url: string;
-  display_order: number;
+interface CertificateArchiveResponse {
+  data: ApiCertification[];
+  pagination: {
+    limit: number;
+    total: number;
+    has_more: boolean;
+    next_cursor: string | null;
+  };
 }
 
 const FUTURE_CERT_CARD: MediaItem = {
@@ -42,91 +55,133 @@ const FUTURE_CERT_CARD: MediaItem = {
 const apiUrl = import.meta.env.VITE_API_URL;
 const CERTIFICATES_PER_PAGE = 6;
 
-const fetchCertifications = async (): Promise<ApiCertification[]> => {
-  const res = await fetch(`${apiUrl}/certificates`);
-  if (!res.ok) throw new Error("Failed to fetch certifications");
-  return res.json();
-};
+async function fetchCertificateArchive(cursor: string | null, signal: AbortSignal) {
+  const params = new URLSearchParams({ limit: String(CERTIFICATES_PER_PAGE) });
+  if (cursor) params.set("cursor", cursor);
 
-const fetchCertificateItems = async (certId: number): Promise<ApiCertificateItem[]> => {
-  const res = await fetch(`${apiUrl}/certificates/${certId}/items`);
-  if (!res.ok) return [];
-  return res.json();
-};
+  const response = await fetch(`${apiUrl}/v2/certificates/archive?${params.toString()}`, {
+    signal,
+  });
+  if (!response.ok) throw new Error("Failed to fetch the certificate archive");
+
+  return (await response.json()) as CertificateArchiveResponse;
+}
+
+function toMediaItem(certificate: ApiCertification): MediaItem {
+  return {
+    id: certificate.id,
+    title: certificate.title,
+    type: certificate.type,
+    url: certificate.url,
+    shortDescription: certificate.short_description,
+    longDescription: certificate.long_description,
+    projectLink: certificate.certificate_link ?? "",
+    gallery: certificate.items.map((item) => ({
+      type: item.type,
+      url: item.url,
+    })),
+  };
+}
+
+function scrollToArchiveTop() {
+  window.scrollTo({
+    top: 0,
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+  });
+}
+
+function CertificateArchiveState({ children }: { children: ReactNode }) {
+  return <div className="certificate-archive-state">{children}</div>;
+}
+
+function CertificateArchiveLoading() {
+  return (
+    <LoadingRegion
+      className="certificate-archive-grid certificate-archive-loading"
+      data-card-count="6"
+      label="Preparing certificate archive"
+    >
+      {["one", "two", "three", "four", "five", "six"].map((key) => (
+        <article className="certificate-archive-card certificate-archive-card-loading" key={key}>
+          <div className="certificate-archive-index-wrap">
+            <LoadingBlock className="certificate-archive-loading-index" />
+          </div>
+
+          <LoadingBlock className="certificate-archive-media certificate-archive-loading-media" />
+
+          <div className="certificate-archive-copy">
+            <LoadingBlock className="certificate-archive-loading-type" />
+            <LoadingBlock className="certificate-archive-loading-title" />
+            <LoadingBlock className="certificate-archive-loading-description" />
+
+            <div className="certificate-archive-actions">
+              <LoadingBlock className="certificate-archive-loading-action" />
+            </div>
+          </div>
+        </article>
+      ))}
+    </LoadingRegion>
+  );
+}
 
 export default function Certifications() {
   const [selectedCert, setSelectedCert] = useState<MediaItem | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [currentCursor, setCurrentCursor] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [cursorHistory, setCursorHistory] = useState<Array<string | null>>([null]);
 
-  const certsQuery = useQueries({
-    queries: [
-      {
-        queryKey: ["certificates"],
-        queryFn: fetchCertifications,
-        staleTime: PUBLIC_DATA_STALE_TIME_MS,
-      },
-    ],
-  })[0];
-
-  const certifications = useMemo(
-    () => [...(certsQuery.data ?? [])].sort((a, b) => a.display_order - b.display_order),
-    [certsQuery.data],
-  );
-  const totalCertificateCards = certifications.length + 1;
-  const totalPages = Math.max(Math.ceil(totalCertificateCards / CERTIFICATES_PER_PAGE), 1);
-  const pageStartIndex = (currentPage - 1) * CERTIFICATES_PER_PAGE;
-  const pageCertifications = useMemo(
-    () => certifications.slice(pageStartIndex, pageStartIndex + CERTIFICATES_PER_PAGE),
-    [certifications, pageStartIndex],
-  );
-  const showFutureCertCard =
-    pageStartIndex + pageCertifications.length < totalCertificateCards &&
-    pageStartIndex + CERTIFICATES_PER_PAGE >= totalCertificateCards;
-
-  useEffect(() => setCurrentPage((page) => Math.min(page, totalPages)), [totalPages]);
-
-  const itemQueries = useQueries({
-    queries: pageCertifications.map((cert) => ({
-      queryKey: ["certificate-items", cert.id],
-      queryFn: () => fetchCertificateItems(cert.id),
-      staleTime: PUBLIC_DATA_STALE_TIME_MS,
-      enabled: pageCertifications.length > 0,
-    })),
+  const certsQuery = useQuery({
+    queryKey: ["certificates-archive", currentCursor],
+    queryFn: ({ signal }) => fetchCertificateArchive(currentCursor, signal),
+    placeholderData: keepPreviousData,
+    staleTime: PUBLIC_DATA_STALE_TIME_MS,
   });
 
-  const displayCerts: MediaItem[] = useMemo(() => {
-    const mapped = pageCertifications.map((cert, index) => ({
-      id: cert.id,
-      title: cert.title,
-      type: cert.type,
-      url: cert.url,
-      shortDescription: cert.short_description,
-      longDescription: cert.long_description,
-      projectLink: cert.certificate_link ?? "",
-      gallery:
-        itemQueries[index]?.data
-          ?.slice()
-          .sort((a, b) => a.display_order - b.display_order)
-          .map((media) => ({
-            type: media.type,
-            url: media.url,
-          })) ?? [],
-    }));
+  const archive = certsQuery.data;
+  const apiCertifications = archive?.data.map(toMediaItem) ?? [];
+  const totalCertificateCards = archive ? archive.pagination.total + 1 : null;
+  const showFutureCertCard = Boolean(archive && !archive.pagination.has_more);
+  const displayCerts = showFutureCertCard
+    ? [...apiCertifications, FUTURE_CERT_CARD]
+    : apiCertifications;
 
-    return showFutureCertCard ? [...mapped, FUTURE_CERT_CARD] : mapped;
-  }, [itemQueries, pageCertifications, showFutureCertCard]);
-
-  const handleOpenCert = (cert: MediaItem) => {
-    if (cert.id === FUTURE_CERT_CARD.id) return;
-    setSelectedCert(cert);
+  const handleOpenCert = (certificate: MediaItem) => {
+    if (certificate.id === FUTURE_CERT_CARD.id) return;
+    setSelectedCert(certificate);
     setShowModal(true);
+  };
+
+  const handleNextPage = () => {
+    const nextCursor = archive?.pagination.next_cursor;
+    if (!nextCursor) return;
+
+    setCursorHistory((history) => {
+      const nextHistory = history.slice(0, currentPage);
+      nextHistory[currentPage] = nextCursor;
+      return nextHistory;
+    });
+    setCurrentCursor(nextCursor);
+    setCurrentPage((page) => page + 1);
+    scrollToArchiveTop();
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage === 1) return;
+
+    setCurrentCursor(cursorHistory[currentPage - 2] ?? null);
+    setCurrentPage((page) => page - 1);
+    scrollToArchiveTop();
   };
 
   const closeModal = () => {
     setShowModal(false);
     window.setTimeout(() => setSelectedCert(null), 300);
   };
+
+  const isInitialLoading = certsQuery.isPending && !archive;
+  const isInitialError = certsQuery.isError && !archive;
+  const isEmpty = Boolean(archive && displayCerts.length === 0);
 
   return (
     <>
@@ -138,9 +193,9 @@ export default function Certifications() {
       />
       <main aria-labelledby="certificates-page-title">
         <CookingArea>
-          <div className="certificate-archive-shell">
+          <div aria-busy={certsQuery.isFetching} className="certificate-archive-shell">
             <PointerCoordinates
-              activeSection={1}
+              activeSection={2}
               className="certificate-archive-coordinates"
               markerCount={3}
             />
@@ -155,53 +210,63 @@ export default function Certifications() {
                     continuous learning and professional growth.
                   </p>
                 </div>
-                <p className="meta-label">[ {totalCertificateCards} certifications ]</p>
+                <p className="meta-label">
+                  {totalCertificateCards === null ? (
+                    <LoadingBlock className="loading-count" />
+                  ) : (
+                    `[ ${totalCertificateCards} certifications ]`
+                  )}
+                </p>
               </div>
             </header>
 
-            {certsQuery.isLoading && (
-              <div className="certificate-archive-state">
-                <p className="eyebrow" aria-live="polite">
-                  Loading credentials
+            {isInitialLoading && <CertificateArchiveLoading />}
+
+            {isInitialError && (
+              <CertificateArchiveState>
+                <p className="certificate-archive-error" role="alert">
+                  Unable to load certificates.
                 </p>
-              </div>
-            )}
-            {certsQuery.isError && (
-              <div className="certificate-archive-state certificate-archive-error" role="alert">
-                <p>Unable to load certificates.</p>
                 <button className="action-quiet" onClick={() => certsQuery.refetch()} type="button">
                   Try again
                 </button>
-              </div>
+              </CertificateArchiveState>
             )}
-            {!certsQuery.isLoading && !certsQuery.isError && displayCerts.length === 0 && (
-              <div className="certificate-archive-state">
+
+            {!isInitialLoading && !isInitialError && isEmpty && (
+              <CertificateArchiveState>
+                <p className="eyebrow">Archive empty</p>
                 <p>No credentials are available yet.</p>
-              </div>
+              </CertificateArchiveState>
             )}
-            {!certsQuery.isLoading && !certsQuery.isError && displayCerts.length > 0 && (
+
+            {archive && !isEmpty && (
               <>
+                {certsQuery.isError && (
+                  <div className="certificate-archive-inline-error" role="alert">
+                    <span>That archive page could not be refreshed.</span>
+                    <button onClick={() => certsQuery.refetch()} type="button">
+                      Retry
+                    </button>
+                  </div>
+                )}
                 <CertificateArchive
                   certificates={displayCerts}
                   isInteractive={(certificate) => certificate.id !== FUTURE_CERT_CARD.id}
                   onOpenCertificate={handleOpenCert}
-                  startIndex={pageStartIndex}
+                  startIndex={(currentPage - 1) * CERTIFICATES_PER_PAGE}
                 />
-                <PaginationControls
+                <CursorPaginationControls
                   currentPage={currentPage}
+                  hasNextPage={archive.pagination.has_more}
+                  isFetching={certsQuery.isFetching}
                   itemLabel="certifications"
-                  onPageChange={(page) => {
-                    setCurrentPage(page);
-                    window.scrollTo({
-                      top: 0,
-                      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-                        ? "auto"
-                        : "smooth",
-                    });
-                  }}
+                  onNextPage={handleNextPage}
+                  onPreviousPage={handlePreviousPage}
                   pageSize={CERTIFICATES_PER_PAGE}
-                  totalItems={totalCertificateCards}
-                  totalPages={totalPages}
+                  totalItems={totalCertificateCards ?? 0}
+                  variant="certificate"
+                  visibleItemCount={displayCerts.length}
                 />
               </>
             )}
