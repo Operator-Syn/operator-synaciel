@@ -254,6 +254,25 @@
         color: var(--color-danger);
     }
 
+    .certificate-archive-inline-error {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        border-bottom: 1px solid var(--color-danger);
+        padding: 0.7rem 0;
+        color: var(--color-danger);
+        font-size: 0.9rem;
+    }
+
+    .certificate-archive-inline-error button {
+        color: var(--color-signal);
+        font-family: var(--font-mono);
+        font-size: var(--text-meta);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
     .certificate-pagination {
         display: flex;
         align-items: center;
