@@ -1,3 +1,5 @@
+import { LoadingBlock, LoadingRegion } from "../loadingState/LoadingState";
+
 interface ElevatorPitchItem {
   title: string;
   content: string;
@@ -11,11 +13,14 @@ interface ElevatorPitchProps {
 export default function ElevatorPitchComponent({ items, isLoading }: ElevatorPitchProps) {
   if (isLoading) {
     return (
-      <div className="surface-panel min-h-72 animate-pulse p-6" aria-hidden="true">
-        <div className="h-8 w-1/2 bg-surface-raised" />
-        <div className="mt-6 h-4 w-full bg-surface-raised" />
-        <div className="mt-3 h-4 w-5/6 bg-surface-raised" />
-      </div>
+      <LoadingRegion
+        className="surface-panel min-h-72 p-6 legacy-panel-loading"
+        label="Preparing profile note"
+      >
+        <LoadingBlock className="loading-line-title" />
+        <LoadingBlock className="loading-line-copy" />
+        <LoadingBlock className="loading-line-copy-short" />
+      </LoadingRegion>
     );
   }
 
