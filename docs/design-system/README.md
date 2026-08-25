@@ -32,6 +32,8 @@ implementation guidance for the four public routes.
 - [[design-system/certificates-fidelity|Certificates fidelity]] - the
   credential archive composition, interaction contract, responsive thresholds,
   and verification targets.
+- [[design-system/snippets-fidelity|Snippets fidelity]] - the file-index and
+  persistent preview composition, interaction contract, and API boundary.
 - [[design-system/interaction-patterns|Route interaction patterns]] - the
   shared pointer coordinate rail, inset archive feedback, and future adoption
   rules.
