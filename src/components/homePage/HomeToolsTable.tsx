@@ -11,6 +11,7 @@ import {
   Wrench,
 } from "lucide-react";
 import type { HomePageTypes } from "../../types/HomePageTypes";
+import { LoadingBlock, LoadingRegion } from "../loadingState/LoadingState";
 
 interface CategoryMeta {
   Icon: LucideIcon;
@@ -46,11 +47,11 @@ export default function HomeToolsTable({ isError, isLoading, sections }: HomeToo
         Tools I Work With
       </p>
       {isLoading ? (
-        <div className="homepage-tools-skeleton" aria-hidden="true">
+        <LoadingRegion className="homepage-tools-skeleton" label="Preparing tool list">
           {["one", "two", "three", "four", "five"].map((key) => (
-            <span key={key} />
+            <LoadingBlock key={key} />
           ))}
-        </div>
+        </LoadingRegion>
       ) : isError ? (
         <p className="homepage-inline-state">Tool data is temporarily unavailable.</p>
       ) : sections.length > 0 ? (
