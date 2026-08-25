@@ -6,14 +6,17 @@ interface ProjectArchiveProps {
   projects: MediaItem[];
   startIndex: number;
   onOpenProject: (project: MediaItem) => void;
+  isInteractive: (project: MediaItem) => boolean;
 }
 
 function ProjectMedia({
   project,
   onOpenProject,
+  isInteractive,
 }: {
   project: MediaItem;
   onOpenProject: (project: MediaItem) => void;
+  isInteractive: boolean;
 }) {
   const mediaLabel = `${project.title} preview`;
   const media = (
@@ -22,10 +25,11 @@ function ProjectMedia({
       type={project.type}
       url={project.url}
       className="project-archive-media-content"
+      cursorState={project.type === "image" && isInteractive ? "zoom-in" : undefined}
     />
   );
 
-  if (project.type === "video") {
+  if (project.type === "video" || !isInteractive) {
     return <div className="project-archive-media">{media}</div>;
   }
 
@@ -46,22 +50,50 @@ function ProjectArchiveRow({
   project,
   index,
   onOpenProject,
+  isInteractive,
 }: {
   project: MediaItem;
   index: number;
   onOpenProject: (project: MediaItem) => void;
+  isInteractive: boolean;
 }) {
   const projectNumber = String(index + 1).padStart(2, "0");
   const titleId = `project-archive-title-${project.id}`;
 
   return (
-    <article aria-labelledby={titleId} className="project-archive-row">
+    <article
+      aria-labelledby={titleId}
+      className="project-archive-row"
+      onClick={(event) => {
+        if (
+          !isInteractive ||
+          (event.target instanceof Element && event.target.closest("a, button, video"))
+        ) {
+          return;
+        }
+
+        onOpenProject(project);
+      }}
+      onKeyDown={(event) => {
+        if (
+          !isInteractive ||
+          (event.target instanceof Element && event.target.closest("a, button, video")) ||
+          (event.key !== "Enter" && event.key !== " ")
+        ) {
+          return;
+        }
+
+        event.preventDefault();
+        onOpenProject(project);
+      }}
+      tabIndex={isInteractive ? 0 : undefined}
+    >
       <div className="project-archive-index-wrap">
         <p className="project-archive-index">{projectNumber}</p>
         <span className="meta-label project-archive-mobile-type">{project.type}</span>
       </div>
 
-      <ProjectMedia project={project} onOpenProject={onOpenProject} />
+      <ProjectMedia isInteractive={isInteractive} onOpenProject={onOpenProject} project={project} />
 
       <div className="project-archive-copy" data-cursor="cell">
         <h2 id={titleId}>{project.title}</h2>
@@ -71,7 +103,9 @@ function ProjectArchiveRow({
       <aside className="project-archive-actions">
         <p className="meta-label project-archive-desktop-type">{project.type}</p>
 
-        {project.projectLink ? (
+        {!isInteractive ? (
+          <span className="meta-label">Coming soon</span>
+        ) : project.projectLink ? (
           <a
             className="project-archive-project-link"
             href={project.projectLink}
@@ -85,16 +119,18 @@ function ProjectArchiveRow({
           <span className="meta-label">Project link unavailable</span>
         )}
 
-        <button
-          aria-label={`Gallery / case study for ${project.title}`}
-          className="project-archive-gallery-link"
-          data-cursor="button"
-          onClick={() => onOpenProject(project)}
-          type="button"
-        >
-          <span>Gallery / case study</span>
-          <Grid2X2 aria-hidden="true" size={16} />
-        </button>
+        {isInteractive && (
+          <button
+            aria-label={`Gallery / case study for ${project.title}`}
+            className="project-archive-gallery-link"
+            data-cursor="button"
+            onClick={() => onOpenProject(project)}
+            type="button"
+          >
+            <span>Gallery / case study</span>
+            <Grid2X2 aria-hidden="true" size={16} />
+          </button>
+        )}
       </aside>
     </article>
   );
@@ -104,6 +140,7 @@ export default function ProjectArchive({
   projects,
   startIndex,
   onOpenProject,
+  isInteractive,
 }: ProjectArchiveProps) {
   return (
     <section aria-label="Project archive" className="project-archive-list">
@@ -111,6 +148,7 @@ export default function ProjectArchive({
         <ProjectArchiveRow
           index={startIndex + index}
           key={project.id}
+          isInteractive={isInteractive(project)}
           onOpenProject={onOpenProject}
           project={project}
         />
