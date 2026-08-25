@@ -1,0 +1,168 @@
+/* Pointer-state cursor mapping for fine pointers. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    body {
+        cursor:
+            url("/cursors/operator-default.svg") 2 2,
+            auto;
+    }
+
+    a,
+    [role="link"],
+    .cursor-pointer {
+        cursor:
+            url("/cursors/operator-open.svg") 10 3,
+            pointer;
+    }
+
+    button,
+    [role="button"] {
+        cursor:
+            url("/cursors/operator-activate.svg") 10 3,
+            pointer;
+    }
+
+    button:disabled,
+    .cursor-not-allowed {
+        cursor:
+            url("/cursors/operator-not-allowed.svg") 12 12,
+            not-allowed;
+    }
+
+    input,
+    textarea,
+    select,
+    [contenteditable="true"] {
+        cursor:
+            url("/cursors/operator-text.svg") 12 12,
+            text;
+    }
+
+    img[draggable="true"] {
+        cursor:
+            url("/cursors/operator-grab.svg") 12 12,
+            grab;
+    }
+
+    img[draggable="true"]:active,
+    [data-cursor="grab"]:active {
+        cursor:
+            url("/cursors/operator-grabbing.svg") 12 12,
+            grabbing;
+    }
+
+    [data-cursor="grab"] {
+        cursor:
+            url("/cursors/operator-grab.svg") 12 12,
+            grab;
+    }
+
+    [data-cursor="grabbing"] {
+        cursor:
+            url("/cursors/operator-grabbing.svg") 12 12,
+            grabbing;
+    }
+
+    [data-cursor="default"] {
+        cursor:
+            url("/cursors/operator-default.svg") 2 2,
+            default;
+    }
+
+    [data-cursor="pointer"],
+    [data-cursor="link"] {
+        cursor:
+            url("/cursors/operator-open.svg") 10 3,
+            pointer;
+    }
+
+    [data-cursor="button"] {
+        cursor:
+            url("/cursors/operator-activate.svg") 10 3,
+            pointer;
+    }
+
+    [data-cursor="text"] {
+        cursor:
+            url("/cursors/operator-text.svg") 12 12,
+            text;
+    }
+
+    [data-cursor="crosshair"] {
+        cursor:
+            url("/cursors/operator-crosshair.svg") 12 12,
+            crosshair;
+    }
+
+    [data-cursor="cell"] {
+        cursor:
+            url("/cursors/operator-cell.svg") 12 12,
+            cell;
+    }
+
+    [data-cursor="help"] {
+        cursor:
+            url("/cursors/operator-help.svg") 2 2,
+            help;
+    }
+
+    [data-cursor="context-menu"] {
+        cursor:
+            url("/cursors/operator-context-menu.svg") 2 2,
+            context-menu;
+    }
+
+    [data-cursor="wait"] {
+        cursor:
+            url("/cursors/operator-wait.svg") 12 12,
+            wait;
+    }
+
+    [data-cursor="progress"] {
+        cursor:
+            url("/cursors/operator-progress.svg") 12 12,
+            progress;
+    }
+
+    [data-cursor="copy"] {
+        cursor:
+            url("/cursors/operator-copy.svg") 12 12,
+            copy;
+    }
+
+    [data-cursor="alias"] {
+        cursor:
+            url("/cursors/operator-alias.svg") 2 2,
+            alias;
+    }
+
+    [data-cursor="move"] {
+        cursor:
+            url("/cursors/operator-move.svg") 12 12,
+            move;
+    }
+
+    [data-cursor="all-scroll"] {
+        cursor:
+            url("/cursors/operator-all-scroll.svg") 12 12,
+            all-scroll;
+    }
+
+    [data-cursor="no-drop"],
+    [data-cursor="not-allowed"] {
+        cursor:
+            url("/cursors/operator-not-allowed.svg") 12 12,
+            not-allowed;
+    }
+
+    [data-cursor="zoom-in"] {
+        cursor:
+            url("/cursors/operator-zoom-in.svg") 12 12,
+            zoom-in;
+    }
+
+    [data-cursor="zoom-out"] {
+        cursor:
+            url("/cursors/operator-zoom-out.svg") 12 12,
+            zoom-out;
+    }
+}
