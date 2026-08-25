@@ -2,6 +2,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
 type PointerKind = "mouse" | "pen" | "touch";
+type PointerSurface = "page" | "native";
 
 interface PointerPosition {
   kind: PointerKind;
@@ -42,6 +43,7 @@ export default function PointerCoordinates({
   const [pointerPosition, setPointerPosition] = useState<PointerPosition | null>(null);
   const [handshakeState, setHandshakeState] = useState<HandshakeState>("idle");
   const [handshakeAnnouncement, setHandshakeAnnouncement] = useState("");
+  const [pointerSurface, setPointerSurface] = useState<PointerSurface>("page");
   const pendingPositionRef = useRef<PointerPosition | null>(null);
   const activeContactIdRef = useRef<number | null>(null);
   const frameRef = useRef<number | null>(null);
@@ -177,14 +179,28 @@ export default function PointerCoordinates({
       });
     };
 
-    const schedulePositionUpdate = (event: PointerEvent, kind: PointerKind) => {
+    const schedulePositionUpdate = (kind: PointerKind, x: number, y: number) => {
       pendingPositionRef.current = {
         kind,
-        x: Math.round(event.clientX),
-        y: Math.round(event.clientY),
+        x: Math.round(x),
+        y: Math.round(y),
       };
 
       schedulePointerFrame();
+    };
+
+    const scheduleEventPositionUpdate = (
+      event: Pick<PointerEvent, "clientX" | "clientY">,
+      kind: PointerKind,
+      frame?: HTMLIFrameElement,
+    ) => {
+      if (!frame) {
+        schedulePositionUpdate(kind, event.clientX, event.clientY);
+        return;
+      }
+
+      const frameRect = frame.getBoundingClientRect();
+      schedulePositionUpdate(kind, frameRect.left + event.clientX, frameRect.top + event.clientY);
     };
 
     const handleViewportResize = () => {
@@ -206,7 +222,7 @@ export default function PointerCoordinates({
       coordinatesResizeObserver.observe(coordinates);
     }
 
-    const handlePointerDown = (event: PointerEvent) => {
+    const handlePointerDown = (event: PointerEvent, frame?: HTMLIFrameElement) => {
       const kind = getPointerKind(event.pointerType);
       if (!kind) return;
 
@@ -218,15 +234,19 @@ export default function PointerCoordinates({
         }
       }
 
-      schedulePositionUpdate(event, kind);
+      scheduleEventPositionUpdate(event, kind, frame);
     };
 
-    const handlePointerMove = (event: PointerEvent) => {
+    const handlePointerMove = (event: PointerEvent, frame?: HTMLIFrameElement) => {
       const kind = getPointerKind(event.pointerType);
       if (!kind) return;
       if (kind === "touch" && activeContactIdRef.current !== event.pointerId) return;
 
-      schedulePositionUpdate(event, kind);
+      scheduleEventPositionUpdate(event, kind, frame);
+    };
+
+    const handleMouseMove = (event: MouseEvent, frame?: HTMLIFrameElement) => {
+      scheduleEventPositionUpdate(event, "mouse", frame);
     };
 
     const handleContactEnd = (event: PointerEvent) => {
@@ -239,8 +259,130 @@ export default function PointerCoordinates({
       }, CONTACT_DISPLAY_TIMEOUT_MS);
     };
 
+    const iframeCleanups = new Map<HTMLIFrameElement, () => void>();
+
+    const bindIframe = (frame: HTMLIFrameElement) => {
+      if (iframeCleanups.has(frame)) return;
+
+      let childCleanup = () => {};
+
+      const bindChildPointerEvents = () => {
+        childCleanup();
+
+        try {
+          const childWindow = frame.contentWindow;
+          if (!childWindow) return;
+
+          const childPointerDown = (event: PointerEvent) => handlePointerDown(event, frame);
+          const childPointerMove = (event: PointerEvent) => handlePointerMove(event, frame);
+          const childPointerUp = (event: PointerEvent) => handleContactEnd(event);
+          const childPointerCancel = (event: PointerEvent) => handleContactEnd(event);
+          const childMouseMove = (event: MouseEvent) => handleMouseMove(event, frame);
+
+          childWindow.addEventListener("pointerdown", childPointerDown, true);
+          childWindow.addEventListener("pointermove", childPointerMove, {
+            capture: true,
+            passive: true,
+          });
+          childWindow.addEventListener("pointerup", childPointerUp, true);
+          childWindow.addEventListener("pointercancel", childPointerCancel, true);
+          childWindow.addEventListener("mousemove", childMouseMove, {
+            capture: true,
+            passive: true,
+          });
+
+          childCleanup = () => {
+            childWindow.removeEventListener("pointerdown", childPointerDown, true);
+            childWindow.removeEventListener("pointermove", childPointerMove, true);
+            childWindow.removeEventListener("pointerup", childPointerUp, true);
+            childWindow.removeEventListener("pointercancel", childPointerCancel, true);
+            childWindow.removeEventListener("mousemove", childMouseMove, true);
+          };
+        } catch {
+          childCleanup = () => {};
+        }
+      };
+
+      const handleFrameLoad = () => {
+        bindChildPointerEvents();
+      };
+      const handleFrameSurfaceEnter = () => {
+        if (frame.dataset.pointerSurface === "native") {
+          setPointerSurface("native");
+        }
+      };
+      const handleFrameSurfaceLeave = () => {
+        setPointerSurface("page");
+        pendingPositionRef.current = null;
+        setPointerPosition(null);
+      };
+      const handleFramePointerEnter = (event: PointerEvent) => {
+        handleFrameSurfaceEnter();
+        handlePointerMove(event);
+      };
+      const handleFramePointerMove = (event: PointerEvent) => handlePointerMove(event);
+      const handleFramePointerDown = (event: PointerEvent) => handlePointerDown(event);
+      const handleFramePointerUp = (event: PointerEvent) => handleContactEnd(event);
+      const handleFramePointerCancel = (event: PointerEvent) => handleContactEnd(event);
+      const handleFrameMouseEnter = (event: MouseEvent) => {
+        handleFrameSurfaceEnter();
+        handleMouseMove(event);
+      };
+      const handleFrameMouseMove = (event: MouseEvent) => handleMouseMove(event);
+      const handleFrameMouseLeave = () => handleFrameSurfaceLeave();
+
+      frame.addEventListener("load", handleFrameLoad);
+      frame.addEventListener("pointerenter", handleFramePointerEnter);
+      frame.addEventListener("pointermove", handleFramePointerMove, { passive: true });
+      frame.addEventListener("pointerleave", handleFrameSurfaceLeave);
+      frame.addEventListener("pointerdown", handleFramePointerDown);
+      frame.addEventListener("pointerup", handleFramePointerUp);
+      frame.addEventListener("pointercancel", handleFramePointerCancel);
+      frame.addEventListener("mouseenter", handleFrameMouseEnter);
+      frame.addEventListener("mousemove", handleFrameMouseMove, { passive: true });
+      frame.addEventListener("mouseleave", handleFrameMouseLeave);
+      bindChildPointerEvents();
+
+      iframeCleanups.set(frame, () => {
+        childCleanup();
+        frame.removeEventListener("load", handleFrameLoad);
+        frame.removeEventListener("pointerenter", handleFramePointerEnter);
+        frame.removeEventListener("pointermove", handleFramePointerMove);
+        frame.removeEventListener("pointerleave", handleFrameSurfaceLeave);
+        frame.removeEventListener("pointerdown", handleFramePointerDown);
+        frame.removeEventListener("pointerup", handleFramePointerUp);
+        frame.removeEventListener("pointercancel", handleFramePointerCancel);
+        frame.removeEventListener("mouseenter", handleFrameMouseEnter);
+        frame.removeEventListener("mousemove", handleFrameMouseMove);
+        frame.removeEventListener("mouseleave", handleFrameMouseLeave);
+      });
+    };
+
+    const bindCurrentIframes = () => {
+      const currentFrames = new Set(document.querySelectorAll("iframe"));
+
+      iframeCleanups.forEach((cleanup, frame) => {
+        if (!currentFrames.has(frame)) {
+          cleanup();
+          iframeCleanups.delete(frame);
+        }
+      });
+
+      currentFrames.forEach((frame) => {
+        bindIframe(frame);
+      });
+    };
+
+    const iframeObserver = new MutationObserver(bindCurrentIframes);
+
+    bindCurrentIframes();
+    if (document.body) {
+      iframeObserver.observe(document.body, { childList: true, subtree: true });
+    }
+
     window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
     window.addEventListener("pointerup", handleContactEnd);
     window.addEventListener("pointercancel", handleContactEnd);
     window.addEventListener("resize", handleViewportResize);
@@ -248,10 +390,16 @@ export default function PointerCoordinates({
     return () => {
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("pointerup", handleContactEnd);
       window.removeEventListener("pointercancel", handleContactEnd);
       window.removeEventListener("resize", handleViewportResize);
       coordinatesResizeObserver.disconnect();
+      iframeObserver.disconnect();
+      iframeCleanups.forEach((cleanup) => {
+        cleanup();
+      });
+      iframeCleanups.clear();
       if (frameRef.current !== null) {
         window.cancelAnimationFrame(frameRef.current);
       }
@@ -268,17 +416,27 @@ export default function PointerCoordinates({
     };
   }, []);
 
-  const x = formatCoordinate(pointerPosition?.x ?? null);
-  const y = formatCoordinate(pointerPosition?.y ?? null);
+  const visiblePointerPosition = pointerSurface === "native" ? null : pointerPosition;
+  const x = formatCoordinate(visiblePointerPosition?.x ?? null);
+  const y = formatCoordinate(visiblePointerPosition?.y ?? null);
   const inputLabel =
-    pointerPosition?.kind === "touch"
-      ? "TOUCH"
-      : pointerPosition?.kind === "pen"
-        ? "PEN"
-        : "SYS-OP-24";
+    pointerSurface === "native"
+      ? "PDF VIEWER"
+      : pointerPosition?.kind === "touch"
+        ? "TOUCH"
+        : pointerPosition?.kind === "pen"
+          ? "PEN"
+          : "SYS-OP-24";
+  const statusLabel =
+    pointerSurface === "native"
+      ? "PDF VIEWER"
+      : handshakeState === "complete"
+        ? "SIGNAL-OK"
+        : inputLabel;
   const pointerSignalPosition =
-    pointerPosition && (pointerPosition.kind === "mouse" || pointerPosition.kind === "pen")
-      ? pointerPosition
+    visiblePointerPosition &&
+    (visiblePointerPosition.kind === "mouse" || visiblePointerPosition.kind === "pen")
+      ? visiblePointerPosition
       : null;
   const coordinateClassName = [
     "coordinate-rail",
@@ -295,10 +453,11 @@ export default function PointerCoordinates({
 
   return (
     <button
-      aria-label="Run signal handshake"
+      aria-describedby="coordinate-rail-instruction"
       className={coordinateClassName}
       data-cursor="crosshair"
       data-handshake-state={handshakeState}
+      data-pointer-surface={pointerSurface}
       onClick={completeHandshake}
       onPointerDown={handleCoordinatePointerDown}
       onPointerEnter={handleCoordinatePointerEnter}
@@ -317,8 +476,11 @@ export default function PointerCoordinates({
           <i className={activeSection === marker.index ? "is-active" : undefined} key={marker.id} />
         ))}
       </span>
-      <span className="coordinate-rail-status" data-cursor="help" aria-hidden="true">
-        {handshakeState === "complete" ? "SIGNAL-OK" : inputLabel}
+      <span className="coordinate-rail-status" data-cursor="help">
+        {statusLabel}
+      </span>
+      <span className="sr-only" id="coordinate-rail-instruction">
+        Activate to run a signal handshake.
       </span>
       <span aria-live="polite" className="sr-only">
         {handshakeAnnouncement}
