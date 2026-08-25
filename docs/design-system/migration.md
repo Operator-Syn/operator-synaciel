@@ -30,9 +30,11 @@ not content ownership.
 
 - Keep `/api/settings`, `/api/profile`, `/api/sections`, and section-item calls.
 - Keep the existing `/api/projects` and gallery response shapes and modal
- behavior; the Projects archive uses the additive cursor-backed
+  behavior; the Projects archive uses the additive cursor-backed
   `/api/v2/projects/archive` route.
-- Keep certificate and certificate-item response shapes and pagination.
+- Keep the existing unversioned certificate and certificate-item response
+  shapes for older clients; the Certificates archive uses the additive
+  cursor-backed `/api/v2/certificates/archive` route.
 - Keep recursive snippets data, canonical paths, Markdown/PDF formats,
   preview, copy, download, loading, and error behavior.
 - Do not add D1 columns, tables, routes, or migrations for visual labels.
