@@ -6,9 +6,17 @@ type HeadProps = {
   image?: string;
   url?: string;
   jsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
+  robots?: string;
 };
 
-export default function GlobalHeadManager({ title, description, image, url, jsonLd }: HeadProps) {
+export default function GlobalHeadManager({
+  title,
+  description,
+  image,
+  url,
+  jsonLd,
+  robots,
+}: HeadProps) {
   useEffect(() => {
     const pageUrl = url || window.location.href;
 
@@ -69,6 +77,7 @@ export default function GlobalHeadManager({ title, description, image, url, json
     setMetaName("twitter:description", description);
     setMetaName("twitter:image", image);
     setMetaName("twitter:card", "summary_large_image");
+    setMetaName("robots", robots);
 
     document
       .querySelectorAll('script[type="application/ld+json"][data-global-head-manager="true"]')
@@ -85,7 +94,7 @@ export default function GlobalHeadManager({ title, description, image, url, json
       script.textContent = JSON.stringify(entry);
       document.head.appendChild(script);
     });
-  }, [title, description, image, url, jsonLd]);
+  }, [title, description, image, url, jsonLd, robots]);
 
   return null;
 }
