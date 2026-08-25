@@ -4,6 +4,7 @@ import { PUBLIC_DATA_STALE_TIME_MS } from "../../../data/cacheSettings";
 import type { MediaItem } from "../../../types/MediaCardTypes";
 import CookingArea from "../../cookingArea/CookingArea";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
+import { LoadingBlock, LoadingRegion } from "../../loadingState/LoadingState";
 import MediaModal from "../../mediaModal/MediaModal";
 import CursorPaginationControls from "../../pagination/CursorPaginationControls";
 import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
@@ -39,6 +40,17 @@ interface ProjectArchiveResponse {
     next_cursor: string | null;
   };
 }
+
+const FUTURE_PROJECTS_CARD: MediaItem = {
+  id: 999999,
+  title: "Still cooking",
+  type: "image",
+  url: "https://placehold.co/600x400/E2E8F0/64748B?text=In+Progress",
+  shortDescription: "More projects on the way. I'm always working on something new.",
+  longDescription: "",
+  projectLink: "",
+  gallery: [],
+};
 
 const apiUrl = import.meta.env.VITE_API_URL;
 const PROJECTS_PER_PAGE = 4;
@@ -86,6 +98,30 @@ function ProjectArchiveState({ children }: { children: ReactNode }) {
   return <div className="project-archive-state">{children}</div>;
 }
 
+function ProjectArchiveLoading() {
+  return (
+    <LoadingRegion
+      className="loading-archive-list loading-archive-list-project"
+      label="Preparing project archive"
+    >
+      {["one", "two", "three", "four"].map((key) => (
+        <div className="loading-archive-row loading-archive-row-project" key={key}>
+          <LoadingBlock className="loading-archive-index" />
+          <LoadingBlock className="loading-archive-media" />
+          <div className="loading-archive-copy">
+            <LoadingBlock className="loading-line-title" />
+            <LoadingBlock className="loading-line-copy" />
+          </div>
+          <div className="loading-archive-actions">
+            <LoadingBlock className="loading-line-title" />
+            <LoadingBlock className="loading-line-copy-short" />
+          </div>
+        </div>
+      ))}
+    </LoadingRegion>
+  );
+}
+
 export default function Projects() {
   const [selectedProject, setSelectedProject] = useState<MediaItem | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -101,9 +137,13 @@ export default function Projects() {
   });
 
   const archive = projectsQuery.data;
-  const projects = archive?.data.map(toMediaItem) ?? [];
+  const apiProjects = archive?.data.map(toMediaItem) ?? [];
+  const totalProjectCards = archive ? archive.pagination.total + 1 : null;
+  const showFutureProjectCard = Boolean(archive && !archive.pagination.has_more);
+  const projects = showFutureProjectCard ? [...apiProjects, FUTURE_PROJECTS_CARD] : apiProjects;
 
   const handleOpenProject = (project: MediaItem) => {
+    if (project.id === FUTURE_PROJECTS_CARD.id) return;
     setSelectedProject(project);
     setShowModal(true);
   };
@@ -137,7 +177,7 @@ export default function Projects() {
 
   const isInitialLoading = projectsQuery.isPending && !archive;
   const isInitialError = projectsQuery.isError && !archive;
-  const isEmpty = archive && archive.data.length === 0;
+  const isEmpty = Boolean(archive && projects.length === 0);
 
   return (
     <>
@@ -149,11 +189,11 @@ export default function Projects() {
       />
       <main aria-labelledby="projects-page-title">
         <CookingArea>
-          <div className="project-archive-shell">
+          <div aria-busy={projectsQuery.isFetching} className="project-archive-shell">
             <PointerCoordinates
-              activeSection={0}
+              activeSection={1}
               className="project-archive-coordinates"
-              markerCount={1}
+              markerCount={3}
             />
 
             <header className="project-archive-header">
@@ -163,17 +203,17 @@ export default function Projects() {
                   <h1 id="projects-page-title">Selected work / Project archive</h1>
                   <p>A focused collection of light and purposeful projects I've been working on.</p>
                 </div>
-                <p className="meta-label">[ {archive?.pagination.total ?? "--"} projects ]</p>
+                <p className="meta-label">
+                  {totalProjectCards === null ? (
+                    <LoadingBlock className="loading-count" />
+                  ) : (
+                    `[ ${totalProjectCards} projects ]`
+                  )}
+                </p>
               </div>
             </header>
 
-            {isInitialLoading && (
-              <ProjectArchiveState>
-                <p className="eyebrow" aria-live="polite">
-                  Loading archive
-                </p>
-              </ProjectArchiveState>
-            )}
+            {isInitialLoading && <ProjectArchiveLoading />}
 
             {isInitialError && (
               <ProjectArchiveState>
@@ -208,6 +248,7 @@ export default function Projects() {
                   </div>
                 )}
                 <ProjectArchive
+                  isInteractive={(project) => project.id !== FUTURE_PROJECTS_CARD.id}
                   onOpenProject={handleOpenProject}
                   projects={projects}
                   startIndex={(currentPage - 1) * PROJECTS_PER_PAGE}
@@ -220,7 +261,8 @@ export default function Projects() {
                   onNextPage={handleNextPage}
                   onPreviousPage={handlePreviousPage}
                   pageSize={PROJECTS_PER_PAGE}
-                  totalItems={archive.pagination.total}
+                  totalItems={totalProjectCards ?? 0}
+                  visibleItemCount={projects.length}
                 />
               </>
             )}
