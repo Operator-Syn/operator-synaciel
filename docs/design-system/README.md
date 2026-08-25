@@ -29,6 +29,9 @@ implementation guidance for the four public routes.
   for the four route compositions.
 - [[design-system/homepage-fidelity|Homepage fidelity]] - the implemented Home
   composition contract, data boundary, and verification targets.
+- [[design-system/certificates-fidelity|Certificates fidelity]] - the
+  credential archive composition, interaction contract, responsive thresholds,
+  and verification targets.
 - [[design-system/interaction-patterns|Route interaction patterns]] - the
   shared pointer coordinate rail, inset archive feedback, and future adoption
   rules.
