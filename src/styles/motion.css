@@ -1,0 +1,110 @@
+/* Shared keyframes and the reduced-motion override pass. */
+@keyframes image-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes homepage-entry-rise {
+    from {
+        opacity: 0;
+        transform: translateY(0.75rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes homepage-title-reveal {
+    from {
+        opacity: 0;
+        transform: translateY(0.75rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes homepage-handshake-marker {
+    0% {
+        opacity: 0.45;
+        transform: scaleY(1);
+    }
+
+    45% {
+        opacity: 1;
+        transform: scaleY(1.6);
+    }
+
+    100% {
+        opacity: 0.75;
+        transform: scaleY(1);
+    }
+}
+
+@keyframes homepage-handshake-signal {
+    0% {
+        opacity: 0.72;
+        transform: translate(-50%, -50%) rotate(45deg) scale(1);
+    }
+
+    45% {
+        opacity: 1;
+        transform: translate(-50%, -50%) rotate(45deg) scale(1.65);
+    }
+
+    100% {
+        opacity: 0.72;
+        transform: translate(-50%, -50%) rotate(45deg) scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    #root,
+    #root *,
+    #root *::before,
+    #root *::after {
+        transition-duration: 0.01ms;
+        animation-duration: 0.01ms;
+        animation-iteration-count: 1;
+    }
+
+    .homepage-motion-ready .coordinate-rail,
+    .homepage-motion-ready .homepage-hero-index,
+    .homepage-motion-ready .homepage-hero-title,
+    .homepage-motion-ready .homepage-hero-kicker,
+    .homepage-motion-ready .homepage-hero-body,
+    .homepage-motion-ready .homepage-hero-actions,
+    .homepage-motion-ready .homepage-hero-side,
+    .homepage-motion-ready .homepage-work,
+    .homepage-motion-ready .homepage-footer {
+        animation: none;
+        clip-path: none;
+        opacity: 1;
+        transform: none;
+    }
+
+    .coordinate-rail[data-handshake-state="complete"]::after {
+        animation: none;
+        opacity: 1;
+        transform: translate(-50%, -50%) rotate(45deg);
+    }
+
+    .coordinate-rail[data-handshake-state="complete"] .coordinate-rail-markers i {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+}
