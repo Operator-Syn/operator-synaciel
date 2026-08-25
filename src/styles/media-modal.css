@@ -1,0 +1,269 @@
+/* Media dialog, gallery navigation, zoom, and modal-local responsive rules. */
+.media-modal-backdrop {
+    padding: clamp(0.5rem, 2vw, 1.5rem);
+}
+
+.media-modal {
+    display: flex;
+    width: min(100%, 90rem);
+    max-height: calc(100dvh - 2rem);
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--color-line-strong);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-media);
+    outline: none;
+}
+
+.media-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    border-bottom: 1px solid var(--color-line);
+    padding: clamp(1rem, 2vw, 1.5rem) clamp(1rem, 3vw, 2.5rem);
+}
+
+.media-modal-kicker {
+    margin-bottom: 0.55rem;
+}
+
+.media-modal-title {
+    max-width: 78rem;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: clamp(2.25rem, 4vw, 4.2rem);
+    font-weight: 400;
+    letter-spacing: -0.025em;
+    line-height: 0.92;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+}
+
+.media-modal-close {
+    display: inline-grid;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid var(--color-line-strong);
+    background: transparent;
+    color: var(--color-text);
+    transition:
+        border-color var(--motion-feedback-duration) var(--motion-ease),
+        color var(--motion-feedback-duration) var(--motion-ease),
+        background-color var(--motion-feedback-duration) var(--motion-ease);
+}
+
+.media-modal-close:hover,
+.media-modal-close:focus-visible {
+    border-color: var(--color-signal);
+    background: var(--color-surface-raised);
+    color: var(--color-signal);
+}
+
+.media-modal-media {
+    position: relative;
+    display: block;
+    width: 100%;
+    min-height: 0;
+    flex: 1 1 auto;
+    aspect-ratio: 16 / 9;
+    max-height: min(52dvh, 52rem);
+    overflow: hidden;
+    border-bottom: 1px solid var(--color-line);
+    background: var(--color-canvas);
+}
+
+.media-modal-media.is-zoomed {
+    overflow: auto;
+}
+
+.media-modal-media-stage {
+    position: absolute;
+    inset: 0;
+}
+
+.media-modal-media-stage.is-zoomed {
+    position: relative;
+    min-width: 150%;
+    min-height: 150%;
+}
+
+.media-modal-renderer {
+    display: block;
+}
+
+.media-modal-nav-button {
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    display: inline-grid;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    place-items: center;
+    border: 1px solid var(--color-line-strong);
+    background: rgb(16 17 17 / 86%);
+    color: var(--color-text);
+    transform: translateY(-50%);
+    transition:
+        border-color var(--motion-feedback-duration) var(--motion-ease),
+        background-color var(--motion-feedback-duration) var(--motion-ease),
+        color var(--motion-feedback-duration) var(--motion-ease);
+}
+
+.media-modal-nav-button-previous {
+    left: 1rem;
+}
+
+.media-modal-nav-button-next {
+    right: 1rem;
+}
+
+.media-modal-nav-button:hover,
+.media-modal-nav-button:focus-visible {
+    border-color: var(--color-signal);
+    background: var(--color-surface-raised);
+    color: var(--color-signal);
+}
+
+.media-modal-slide-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    border-bottom: 1px solid var(--color-line);
+    padding: 0.8rem clamp(1rem, 3vw, 2.5rem);
+}
+
+.media-modal-slide {
+    width: 2.5rem;
+    height: 0.45rem;
+    border: 1px solid var(--color-line-strong);
+    background: transparent;
+    transition:
+        border-color var(--motion-feedback-duration) var(--motion-ease),
+        background-color var(--motion-feedback-duration) var(--motion-ease);
+}
+
+.media-modal-slide.is-active {
+    border-color: var(--color-signal);
+    background: var(--color-signal);
+}
+
+.media-modal-details {
+    display: grid;
+    min-height: 0;
+    grid-template-columns: minmax(9rem, 0.24fr) minmax(0, 1fr);
+    flex: 0 1 auto;
+    gap: 1rem clamp(2rem, 5vw, 5rem);
+    max-height: min(15rem, 28dvh);
+    overflow-y: auto;
+    padding: clamp(1.1rem, 2vw, 1.75rem) clamp(1rem, 3vw, 2.5rem);
+    scrollbar-gutter: stable;
+}
+
+.media-modal-details-label {
+    align-self: start;
+    border-top: 1px solid var(--color-line);
+    padding-top: 0.45rem;
+}
+
+.media-modal-copy {
+    max-width: none;
+    color: var(--color-text-muted);
+    font-size: clamp(1rem, 1.1vw, 1.15rem);
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
+}
+
+.media-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    border-top: 1px solid var(--color-line);
+    padding: clamp(0.9rem, 1.5vw, 1.25rem) clamp(1rem, 3vw, 2.5rem);
+}
+
+.media-modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.7rem;
+}
+
+.media-modal-action {
+    min-height: 2.75rem;
+}
+
+@media (max-width: 700px) {
+    .media-modal-backdrop {
+        padding: 0.5rem;
+    }
+
+    .media-modal {
+        max-height: calc(100dvh - 1rem);
+    }
+
+    .media-modal-header {
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .media-modal-title {
+        font-size: clamp(2rem, 9vw, 3rem);
+    }
+
+    .media-modal-media {
+        flex: 0 0 auto;
+        aspect-ratio: 16 / 10;
+        max-height: none;
+    }
+
+    .media-modal-nav-button-previous {
+        left: 0.6rem;
+    }
+
+    .media-modal-nav-button-next {
+        right: 0.6rem;
+    }
+
+    .media-modal-details {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.7rem;
+        max-height: min(18rem, 32dvh);
+        padding: 1.1rem 1rem 1.25rem;
+    }
+
+    .media-modal-details-label {
+        border-top: 0;
+        padding-top: 0;
+    }
+
+    .media-modal-copy {
+        font-size: 0.95rem;
+        line-height: 1.55;
+    }
+
+    .media-modal-footer {
+        padding: 1rem;
+    }
+
+    .media-modal-actions {
+        width: 100%;
+    }
+
+    .media-modal-action {
+        flex: 1 1 9rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .media-modal-close,
+    .media-modal-nav-button,
+    .media-modal-slide {
+        transition: none;
+    }
+}
