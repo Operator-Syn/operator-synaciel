@@ -1,3 +1,4 @@
+import { LoadingBlock, LoadingRegion } from "../loadingState/LoadingState";
 import ProfileImageComponent from "../profileImageComponent/ProfileImageComponent";
 
 interface ProfileInfoItem {
@@ -31,11 +32,11 @@ export default function HomeIdentityPanel({
             Profile
           </h2>
           {isLoading ? (
-            <div className="homepage-identity-skeleton" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-            </div>
+            <LoadingRegion className="homepage-identity-skeleton" label="Preparing profile details">
+              <LoadingBlock />
+              <LoadingBlock />
+              <LoadingBlock />
+            </LoadingRegion>
           ) : (
             <dl>
               {profile.map((item) => (
