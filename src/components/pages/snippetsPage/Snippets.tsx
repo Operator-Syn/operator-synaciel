@@ -1,32 +1,31 @@
 // src/components/pages/snippetsPage/Snippets.tsx
 
 import { useQuery } from "@tanstack/react-query";
-import { Download, FileText, Folder, X } from "lucide-react";
 import {
-  Component,
-  type ComponentPropsWithoutRef,
-  lazy,
-  type ReactNode,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import ReactMarkdown from "react-markdown";
-import { useLocation, useNavigate } from "react-router-dom";
-import remarkGfm from "remark-gfm";
+  Copy,
+  Download,
+  FileCode2,
+  FileText,
+  Folder,
+  Home as HomeIcon,
+  Info,
+  Link as LinkIcon,
+  X,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
-import CookingArea from "../../cookingArea/CookingArea";
-import "./Snippets.css";
 import { SNIPPETS_REFETCH_INTERVAL_MS, SNIPPETS_STALE_TIME_MS } from "../../../data/cacheSettings";
+import CookingArea from "../../cookingArea/CookingArea";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
+import { LoadingBlock, LoadingRegion } from "../../loadingState/LoadingState";
+import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
+import SnippetMarkdown from "./SnippetMarkdown";
+import { getSnippetDocumentRoute, SNIPPETS_ROOT_PATH } from "./snippetRoutes";
+import "./Snippets.css";
 
-const SyntaxRenderer = lazy(() => import("./SyntaxRenderer"));
-
-const INTERNAL_ROOT_PATH = "/snippets";
-const ROUTE_ROOT_PATH = "/snippets/root";
+const INTERNAL_ROOT_PATH = SNIPPETS_ROOT_PATH;
+const apiUrl = import.meta.env.VITE_API_URL;
 
 type FileNode = {
   id: number;
@@ -38,60 +37,6 @@ type FileNode = {
   path?: string | null;
   children?: FileNode[];
 };
-
-type MarkdownErrorBoundaryProps = {
-  resetKey: string;
-  children: ReactNode;
-};
-
-type MarkdownErrorBoundaryState = {
-  hasError: boolean;
-  message: string;
-};
-
-class MarkdownErrorBoundary extends Component<
-  MarkdownErrorBoundaryProps,
-  MarkdownErrorBoundaryState
-> {
-  state: MarkdownErrorBoundaryState = {
-    hasError: false,
-    message: "",
-  };
-
-  static getDerivedStateFromError(error: unknown): MarkdownErrorBoundaryState {
-    return {
-      hasError: true,
-      message: error instanceof Error ? error.message : "Unknown render error",
-    };
-  }
-
-  componentDidUpdate(previousProps: MarkdownErrorBoundaryProps) {
-    if (previousProps.resetKey !== this.props.resetKey && this.state.hasError) {
-      this.setState({
-        hasError: false,
-        message: "",
-      });
-    }
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="text-warning text-center py-5">
-          <div className="fw-bold mb-2">This Markdown file could not be rendered.</div>
-          <div className="small opacity-75">
-            {this.state.message || "The file may contain unsupported Markdown or code syntax."}
-          </div>
-          <div className="small opacity-75 mt-2">
-            You can still use the Download button to inspect the raw file.
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
 
 const formatBytes = (bytes?: number) => {
   if (!bytes) return "—";
@@ -135,31 +80,36 @@ const generateFileIndex = (
   return index;
 };
 
-const slugifyPathSegment = (segment: string) =>
-  segment.trim().replace(/\s+/g, "-").replace(/-+/g, "-");
+const slugifyPathSegment = (segment: string) => segment.trim();
 
-const unslugifyPathSegment = (segment: string) => {
+const unslugifyPathSegment = (segment: string, legacySlug = false) => {
   try {
-    return decodeURIComponent(segment).replace(/-/g, " ");
+    const decodedSegment = decodeURIComponent(segment);
+    return legacySlug ? decodedSegment.replace(/-/g, " ") : decodedSegment;
   } catch {
-    return segment.replace(/-/g, " ");
+    return legacySlug ? segment.replace(/-/g, " ") : segment;
   }
 };
 
 const getInternalPathFromRoutePath = (pathname: string) => {
-  const normalizedPathname = pathname.replace(/\/+$/, "");
+  const normalizedPathname = pathname.replace(/\/+$/, "") || "/";
+  const usesLegacyRoot =
+    normalizedPathname === "/snippets/root" || normalizedPathname.startsWith("/snippets/root/");
+  const routeRoot = usesLegacyRoot ? "/snippets/root" : "/snippets";
 
-  if (normalizedPathname === "/snippets" || normalizedPathname === ROUTE_ROOT_PATH) {
+  if (normalizedPathname === "/snippets" || normalizedPathname === "/snippets/root") {
     return INTERNAL_ROOT_PATH;
   }
 
-  if (!normalizedPathname.startsWith(`${ROUTE_ROOT_PATH}/`)) {
+  if (!normalizedPathname.startsWith(`${routeRoot}/`)) {
     return INTERNAL_ROOT_PATH;
   }
 
-  const relativePath = normalizedPathname.slice(`${ROUTE_ROOT_PATH}/`.length);
-
-  const decodedSegments = relativePath.split("/").filter(Boolean).map(unslugifyPathSegment);
+  const relativePath = normalizedPathname.slice(`${routeRoot}/`.length);
+  const decodedSegments = relativePath
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => unslugifyPathSegment(segment, usesLegacyRoot));
 
   return [INTERNAL_ROOT_PATH, ...decodedSegments].join("/");
 };
@@ -172,22 +122,50 @@ const getRoutePathFromInternalPath = (internalPath: string) => {
     .map((segment) => encodeURIComponent(slugifyPathSegment(segment)))
     .join("/");
 
-  return `${ROUTE_ROOT_PATH}/${relativePath ? `${relativePath}/` : ""}`;
+  return `/snippets/${relativePath ? `${relativePath}/` : ""}`;
 };
 
 const getCanonicalRoutePath = (pathname: string) =>
   getRoutePathFromInternalPath(getInternalPathFromRoutePath(pathname));
 
-const createSafeCodeBlockId = (value: string) => {
-  let hash = 0;
+function SnippetIndexLoading() {
+  return (
+    <LoadingRegion className="snippets-index-loading" label="Preparing snippet index">
+      <div className="snippets-index-loading-heading">
+        <LoadingBlock />
+        <LoadingBlock />
+        <LoadingBlock />
+      </div>
+      {["one", "two", "three", "four", "five"].map((key) => (
+        <div className="snippets-index-loading-row" key={key}>
+          <LoadingBlock />
+          <LoadingBlock />
+          <LoadingBlock />
+        </div>
+      ))}
+    </LoadingRegion>
+  );
+}
 
-  for (let i = 0; i < value.length; i += 1) {
-    hash = Math.imul(31, hash) + value.charCodeAt(i);
-    hash |= 0;
-  }
+function SnippetPreviewLoading({ format }: { format?: FileNode["format"] }) {
+  const isPdf = format === "pdf";
 
-  return `code-${Math.abs(hash).toString(36)}-${value.length}`;
-};
+  return (
+    <LoadingRegion
+      className={
+        isPdf
+          ? "snippets-preview-loading snippets-preview-loading-pdf"
+          : "snippets-preview-loading snippets-preview-loading-md"
+      }
+      label={isPdf ? "Preparing PDF preview" : "Preparing Markdown preview"}
+    >
+      <LoadingBlock />
+      <LoadingBlock />
+      <LoadingBlock />
+      <LoadingBlock />
+    </LoadingRegion>
+  );
+}
 
 const fetchSnippets = async (): Promise<FileNode[]> => {
   const response = await fetch(`${import.meta.env.VITE_API_URL}/snippets`, {
@@ -207,7 +185,12 @@ export default function Snippets() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { data: rootFileSystem, isLoading } = useQuery({
+  const {
+    data: rootFileSystem,
+    isError,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: ["snippets"],
     queryFn: fetchSnippets,
     refetchInterval: SNIPPETS_REFETCH_INTERVAL_MS,
@@ -218,16 +201,13 @@ export default function Snippets() {
 
   const [previewContent, setPreviewContent] = useState<string | null>(null);
   const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null);
-  const [previewFileName, setPreviewFileName] = useState<string>("");
-  const [previewFileFormat, setPreviewFileFormat] = useState<FileNode["format"]>(undefined);
+  const [selectedFile, setSelectedFile] = useState<FileNode | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState<boolean>(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [previewTruncated, setPreviewTruncated] = useState(false);
 
   const previewRequestIdRef = useRef(0);
   const previewAbortControllerRef = useRef<AbortController | null>(null);
-  const previewDialogRef = useRef<HTMLDivElement | null>(null);
-  const previousPreviewFocusRef = useRef<HTMLElement | null>(null);
 
   const fileIndex = useMemo(
     () => (rootFileSystem ? generateFileIndex(rootFileSystem) : {}),
@@ -239,8 +219,8 @@ export default function Snippets() {
     [location.pathname],
   );
   const canonicalUrl = `https://syn-forge.com${getCanonicalRoutePath(location.pathname)}`;
-
   const currentItems = fileIndex[currentPathStr] || [];
+  const selectedFilePath = selectedFile ? `${currentPathStr}/${selectedFile.name}` : null;
 
   useEffect(() => {
     const canonicalPath = getCanonicalRoutePath(location.pathname);
@@ -251,12 +231,12 @@ export default function Snippets() {
   }, [location.pathname, navigate]);
 
   useEffect(() => {
-    if (!isLoading && rootFileSystem && !fileIndex[currentPathStr]) {
+    if (!isLoading && !isError && rootFileSystem && !fileIndex[currentPathStr]) {
       navigate(getRoutePathFromInternalPath(INTERNAL_ROOT_PATH), {
         replace: true,
       });
     }
-  }, [currentPathStr, fileIndex, isLoading, navigate, rootFileSystem]);
+  }, [currentPathStr, fileIndex, isError, isLoading, navigate, rootFileSystem]);
 
   useEffect(() => {
     return () => {
@@ -272,46 +252,43 @@ export default function Snippets() {
     };
   }, []);
 
-  const handleCopy = async (code: string, id: string) => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopiedId(id);
-      window.setTimeout(() => setCopiedId(null), 2000);
-    } catch {
-      setCopiedId(null);
-    }
-  };
+  const handleDownloadFullFile = async () => {
+    if (!selectedFile || isPreviewLoading) return;
 
-  const handleDownloadFullFile = () => {
-    if (!previewContent && !previewFileUrl) return;
-
-    const element = document.createElement("a");
-
-    if (previewFileFormat === "pdf" && previewFileUrl) {
+    if (selectedFile.format === "pdf" && previewFileUrl) {
+      const element = document.createElement("a");
       element.href = previewFileUrl;
-      element.download = previewFileName || "snippet.pdf";
-    } else if (previewContent) {
-      const file = new Blob([previewContent], {
-        type: "text/markdown;charset=utf-8",
+      element.download = selectedFile.name;
+      document.body.appendChild(element);
+      element.click();
+      element.remove();
+      return;
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/snippets/${selectedFile.id}/content`, {
+        cache: "no-store",
       });
 
-      const objectUrl = URL.createObjectURL(file);
+      if (!response.ok) {
+        throw new Error("Failed to download file");
+      }
 
+      const objectUrl = URL.createObjectURL(await response.blob());
+      const element = document.createElement("a");
       element.href = objectUrl;
-      element.download = previewFileName || "snippet.md";
-
-      window.setTimeout(() => {
-        URL.revokeObjectURL(objectUrl);
-      }, 1000);
+      element.download = selectedFile.name;
+      document.body.appendChild(element);
+      element.click();
+      element.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch {
+      setPreviewError("Failed to download file. Try again.");
     }
-
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
   };
 
-  const handleFileClick = async (file: FileNode) => {
-    if (!file.format) return;
+  const handleFileSelect = async (file: FileNode) => {
+    if (file.type !== "file" || !file.format) return;
 
     previewAbortControllerRef.current?.abort();
 
@@ -321,25 +298,41 @@ export default function Snippets() {
     const controller = new AbortController();
     previewAbortControllerRef.current = controller;
 
-    setPreviewFileName(file.name);
-    setPreviewFileFormat(file.format);
+    setSelectedFile(file);
     setPreviewContent(null);
     setPreviewFileUrl(null);
     setPreviewError(null);
+    setPreviewTruncated(false);
     setIsPreviewLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/snippets/${file.id}/content`, {
+      const previewResponse = await fetch(`${apiUrl}/v2/snippets/${file.id}/preview`, {
         signal: controller.signal,
         cache: "no-store",
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch file");
+      if (!previewResponse.ok) {
+        throw new Error("Failed to fetch file preview");
       }
 
+      const previewPayload = (await previewResponse.json()) as {
+        data: {
+          excerpt: string | null;
+          truncated: boolean;
+        };
+      };
+
       if (file.format === "pdf") {
-        const blob = await response.blob();
+        const contentResponse = await fetch(`${apiUrl}/v2/snippets/${file.id}/content`, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+
+        if (!contentResponse.ok) {
+          throw new Error("Failed to fetch PDF preview");
+        }
+
+        const blob = await contentResponse.blob();
         const fileUrl = URL.createObjectURL(blob);
 
         if (previewRequestIdRef.current !== requestId || controller.signal.aborted) {
@@ -349,20 +342,19 @@ export default function Snippets() {
 
         setPreviewFileUrl(fileUrl);
       } else {
-        const content = await response.text();
-
         if (previewRequestIdRef.current !== requestId || controller.signal.aborted) {
           return;
         }
 
-        setPreviewContent(content);
+        setPreviewContent(previewPayload.data.excerpt);
+        setPreviewTruncated(previewPayload.data.truncated);
       }
     } catch {
       if (previewRequestIdRef.current !== requestId || controller.signal.aborted) {
         return;
       }
 
-      setPreviewError("Failed to load file.");
+      setPreviewError("Failed to load file preview. Try again or download the raw file.");
     } finally {
       if (previewRequestIdRef.current === requestId) {
         previewAbortControllerRef.current = null;
@@ -376,15 +368,16 @@ export default function Snippets() {
     previewAbortControllerRef.current?.abort();
     previewAbortControllerRef.current = null;
 
+    setSelectedFile(null);
     setPreviewContent(null);
     setPreviewFileUrl(null);
-    setPreviewFileName("");
-    setPreviewFileFormat(undefined);
     setPreviewError(null);
+    setPreviewTruncated(false);
     setIsPreviewLoading(false);
   }, []);
 
   const handleFolderClick = (folderName: string) => {
+    handleClosePreview();
     navigate(getRoutePathFromInternalPath(`${currentPathStr}/${folderName}`));
   };
 
@@ -392,54 +385,24 @@ export default function Snippets() {
     const parentPath =
       currentPathStr.substring(0, currentPathStr.lastIndexOf("/")) || INTERNAL_ROOT_PATH;
 
+    handleClosePreview();
     navigate(getRoutePathFromInternalPath(parentPath));
   };
 
-  const isModalOpen = isPreviewLoading || !!previewContent || !!previewFileUrl || !!previewError;
-
   useEffect(() => {
-    if (!isModalOpen) return;
-
-    previousPreviewFocusRef.current = document.activeElement as HTMLElement | null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    previewDialogRef.current?.focus();
+    if (!selectedFile && !isPreviewLoading && !previewError) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         handleClosePreview();
-        return;
-      }
-
-      if (event.key !== "Tab") return;
-
-      const focusable = previewDialogRef.current?.querySelectorAll<HTMLElement>(
-        "button:not(:disabled), a[href], [tabindex]:not([tabindex='-1'])",
-      );
-
-      if (!focusable || focusable.length === 0) return;
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleClosePreview, isPreviewLoading, previewError, selectedFile]);
 
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", handleKeyDown);
-      previousPreviewFocusRef.current?.focus();
-    };
-  }, [handleClosePreview, isModalOpen]);
-
+  const breadcrumbSegments = currentPathStr.split("/").filter(Boolean).slice(1);
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -454,8 +417,18 @@ export default function Snippets() {
         "@type": "ListItem",
         position: 2,
         name: "Snippets",
-        item: canonicalUrl,
+        item: "https://syn-forge.com/snippets/",
       },
+      ...breadcrumbSegments.map((segment, index) => ({
+        "@type": "ListItem",
+        position: index + 3,
+        name: segment,
+        item:
+          "https://syn-forge.com" +
+          getRoutePathFromInternalPath(
+            [INTERNAL_ROOT_PATH, ...breadcrumbSegments.slice(0, index + 1)].join("/"),
+          ),
+      })),
     ],
   };
 
@@ -469,236 +442,320 @@ export default function Snippets() {
         jsonLd={breadcrumbSchema}
       />
 
-      <CookingArea>
-        <div className="py-10 sm:py-14">
-          {isLoading && (
-            <div
-              className="grid min-h-72 place-items-center border-y border-line"
-              data-cursor="wait"
-            >
-              <p className="eyebrow animate-pulse">Loading snippets</p>
-            </div>
-          )}
+      <main aria-labelledby="snippets-page-title">
+        <CookingArea>
+          <div className="snippets-shell">
+            <PointerCoordinates
+              activeSection={0}
+              className="snippets-coordinates"
+              markerCount={1}
+            />
 
-          {!isLoading && (
-            <div className="border-y border-line">
-              <div className="border-b border-line py-6">
-                <p className="eyebrow mb-4">04 / 04</p>
-                <h1 className="text-page-title text-text">
-                  <span>Index of&nbsp;</span>
-                  <span
-                    className="font-mono text-[0.55em] text-signal sm:text-[0.6em]"
-                    title={`${currentPathStr}/`}
-                  >
-                    {currentPathStr}/
-                  </span>
-                </h1>
-                <p className="mt-4 max-w-2xl text-lg text-text-muted">
-                  Browse folders and open Markdown or PDF notes when you need them.
-                </p>
-              </div>
-
-              <table className="w-full table-fixed text-left">
-                <thead className="font-mono text-meta uppercase tracking-[0.06em] text-text-faint">
-                  <tr>
-                    <th className="w-[60%] border-b border-line px-3 py-4 sm:px-5">NAME</th>
-                    <th className="hidden w-[25%] border-b border-line px-3 py-4 md:table-cell sm:px-5">
-                      MODIFIED
-                    </th>
-                    <th className="hidden w-[15%] border-b border-line px-3 py-4 text-right md:table-cell sm:px-5">
-                      SIZE
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {currentPathStr !== INTERNAL_ROOT_PATH && (
-                    <tr
-                      className="group cursor-pointer border-b border-line text-text hover:bg-surface-raised"
-                      data-cursor="alias"
-                      onClick={handleParentClick}
+            <div className="snippets-workspace">
+              <section className="snippets-index-panel" aria-labelledby="snippets-page-title">
+                <div className="snippets-index-content">
+                  <nav aria-label="Snippet breadcrumbs" className="snippets-breadcrumb">
+                    <Link
+                      aria-label="Snippets index root"
+                      className="snippets-breadcrumb-home"
+                      data-cursor="open"
+                      to={getRoutePathFromInternalPath(INTERNAL_ROOT_PATH)}
                     >
-                      <td className="px-3 py-4 font-mono text-sm font-semibold sm:px-5" colSpan={3}>
-                        <span className="mr-3 text-signal">../</span>
-                        Parent folder
-                      </td>
-                    </tr>
+                      <HomeIcon aria-hidden="true" size={18} />
+                    </Link>
+                    <span aria-hidden="true">/</span>
+                    <span className="snippets-breadcrumb-current">snippets</span>
+                    <span aria-hidden="true">/</span>
+                    {breadcrumbSegments.map((segment) => (
+                      <span className="snippets-breadcrumb-segment" key={segment}>
+                        {segment}
+                      </span>
+                    ))}
+                  </nav>
+
+                  <h1 className="sr-only" id="snippets-page-title">
+                    Code snippets index
+                  </h1>
+
+                  {isLoading && <SnippetIndexLoading />}
+
+                  {!isLoading && isError && (
+                    <div className="snippets-state snippets-error-state">
+                      <p role="alert">The snippet index could not be loaded.</p>
+                      <button className="action-quiet" onClick={() => void refetch()} type="button">
+                        Try again
+                      </button>
+                    </div>
                   )}
 
-                  {currentItems.map((item) => (
-                    <tr
-                      key={item.id}
-                      className="group cursor-pointer border-b border-line text-text transition-colors hover:bg-surface-raised"
-                      data-cursor={item.type === "dir" ? "context-menu" : "alias"}
-                      onClick={() =>
-                        item.type === "dir" ? handleFolderClick(item.name) : handleFileClick(item)
-                      }
-                    >
-                      <td className="truncate px-3 py-4 text-sm sm:px-5">
-                        {item.type === "dir" ? (
-                          <Folder
-                            aria-hidden="true"
-                            className="mr-3 inline text-signal"
-                            size={17}
-                          />
-                        ) : (
-                          <FileText
-                            aria-hidden="true"
-                            className="mr-3 inline text-text-muted"
-                            size={17}
-                          />
-                        )}
-                        {item.name}
-                      </td>
+                  {!isLoading && !isError && (
+                    <>
+                      <div className="sr-only">
+                        <span id="snippets-folder-action">Opens this folder.</span>
+                        <span id="snippets-file-action">Previews this file.</span>
+                      </div>
+                      <table className="snippets-file-table">
+                        <caption className="sr-only">Files and folders in {currentPathStr}</caption>
+                        <thead>
+                          <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Modified</th>
+                            <th scope="col">Size</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {currentPathStr !== INTERNAL_ROOT_PATH && (
+                            <tr className="snippet-parent-row">
+                              <td colSpan={3}>
+                                <button
+                                  className="snippet-file-action"
+                                  data-cursor="alias"
+                                  onClick={handleParentClick}
+                                  type="button"
+                                >
+                                  <span className="snippet-file-primary">
+                                    <span className="snippet-parent-mark">../</span>
+                                    <span>Parent folder</span>
+                                  </span>
+                                </button>
+                              </td>
+                            </tr>
+                          )}
 
-                      <td className="hidden px-3 py-4 font-mono text-meta text-text-muted md:table-cell sm:px-5">
-                        {formatDate(item.modified)}
-                      </td>
+                          {currentItems.map((item) => {
+                            const isSelected = item.type === "file" && selectedFile?.id === item.id;
+                            const itemSize = item.type === "dir" ? "—" : formatBytes(item.size);
 
-                      <td className="hidden px-3 py-4 text-right font-mono text-meta text-text-muted md:table-cell sm:px-5">
-                        {item.type === "dir" ? "—" : formatBytes(item.size)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                            return (
+                              <tr className={isSelected ? "is-selected" : undefined} key={item.id}>
+                                <td colSpan={3}>
+                                  <button
+                                    aria-describedby={
+                                      item.type === "dir"
+                                        ? "snippets-folder-action"
+                                        : "snippets-file-action"
+                                    }
+                                    aria-pressed={item.type === "file" ? isSelected : undefined}
+                                    className="snippet-file-action"
+                                    data-cursor={item.type === "dir" ? "context-menu" : "open"}
+                                    onClick={() => {
+                                      if (item.type === "dir") {
+                                        handleFolderClick(item.name);
+                                      } else {
+                                        void handleFileSelect(item);
+                                      }
+                                    }}
+                                    type="button"
+                                  >
+                                    <span className="snippet-file-primary">
+                                      {item.type === "dir" ? (
+                                        <Folder
+                                          aria-hidden="true"
+                                          className="snippet-file-icon"
+                                          size={18}
+                                        />
+                                      ) : (
+                                        <FileText
+                                          aria-hidden="true"
+                                          className="snippet-file-icon snippet-file-icon-muted"
+                                          size={18}
+                                        />
+                                      )}
+                                      <span className="snippet-file-name">{item.name}</span>
+                                      <span className="snippet-file-mobile-meta">
+                                        {formatDate(item.modified)} · {itemSize}
+                                      </span>
+                                    </span>
+                                    <span className="snippet-file-meta">
+                                      {formatDate(item.modified)}
+                                    </span>
+                                    <span className="snippet-file-meta snippet-file-size">
+                                      {itemSize}
+                                    </span>
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
 
-              <p className="border-t border-line px-3 py-4 font-mono text-meta text-text-faint sm:px-5">
-                Folders open to canonical paths. Files are fetched only when selected.
-              </p>
-            </div>
-          )}
+                          {currentItems.length === 0 && (
+                            <tr>
+                              <td className="snippets-empty-index" colSpan={3}>
+                                No files or folders in this directory.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </>
+                  )}
+                </div>
 
-          {isModalOpen && (
-            <div
-              className="fixed inset-0 z-50 grid place-items-center bg-canvas/90 p-4 backdrop-blur-sm"
-              data-cursor={isPreviewLoading ? "progress" : "zoom-out"}
-              role="dialog"
-              aria-modal="true"
-              aria-label={previewFileName || "Snippet preview"}
-            >
-              <div
-                ref={previewDialogRef}
-                className="flex max-h-[calc(100dvh-2rem)] w-full max-w-6xl flex-col overflow-hidden border border-line-strong bg-surface shadow-panel outline-none"
-                data-cursor="default"
-                tabIndex={-1}
+                <footer className="snippets-index-note">
+                  <Info aria-hidden="true" size={18} />
+                  <div>
+                    <p>Folders open to /snippets/&lt;name&gt;/. Markdown and PDF previews.</p>
+                  </div>
+                </footer>
+              </section>
+
+              <aside
+                aria-busy={isPreviewLoading}
+                aria-labelledby="snippets-preview-title"
+                className="snippets-preview-panel"
               >
-                <header className="flex items-center justify-between gap-4 border-b border-line px-4 py-3 sm:px-6">
-                  <h2 className="truncate font-mono text-sm uppercase tracking-[0.06em] text-text">
-                    {previewFileName || "Snippet preview"}
-                  </h2>
+                <header className="snippets-preview-header">
+                  <div className="snippets-preview-heading">
+                    <FileCode2 aria-hidden="true" size={21} />
+                    <span id="snippets-preview-title">Preview</span>
+                    {selectedFile?.format && (
+                      <span className="snippets-preview-format">
+                        {selectedFile.format.toUpperCase()}
+                      </span>
+                    )}
+                    <span className="snippets-preview-path">
+                      {selectedFilePath || "No file selected"}
+                    </span>
+                  </div>
 
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="snippets-preview-actions">
+                    {selectedFile?.format === "md" && (
+                      <>
+                        <Link
+                          aria-label={`Read more about ${selectedFile.name}`}
+                          className="snippets-preview-read-more"
+                          data-cursor="alias"
+                          to={getSnippetDocumentRoute(selectedFile.id, selectedFile.name)}
+                        >
+                          <LinkIcon aria-hidden="true" size={16} />
+                          <span>Read more</span>
+                        </Link>
+                        <button
+                          aria-label="Download file"
+                          className="snippets-preview-download"
+                          disabled={isPreviewLoading}
+                          onClick={() => void handleDownloadFullFile()}
+                          type="button"
+                        >
+                          <Download aria-hidden="true" size={17} />
+                          <span>Download</span>
+                        </button>
+                      </>
+                    )}
                     <button
-                      type="button"
-                      aria-label="Download file"
-                      className="action-quiet min-h-10 px-3"
-                      onClick={handleDownloadFullFile}
-                      disabled={!previewContent && !previewFileUrl}
-                    >
-                      <Download aria-hidden="true" size={15} />
-                      <span className="hidden sm:inline">Download</span>
-                    </button>
-                    <button
-                      type="button"
                       aria-label="Close preview"
-                      className="inline-grid min-h-10 min-w-10 place-items-center border border-line-strong bg-transparent text-text hover:border-signal hover:text-signal"
+                      className="snippets-preview-close"
+                      disabled={!selectedFile && !isPreviewLoading && !previewError}
                       onClick={handleClosePreview}
+                      type="button"
                     >
-                      <X aria-hidden="true" size={18} />
+                      <X aria-hidden="true" size={19} />
                     </button>
                   </div>
                 </header>
 
-                <div
-                  className={`markdown-body-container overflow-y-auto px-4 sm:px-8 ${previewFileFormat === "pdf" ? "pdf-modal-body" : ""}`}
-                >
-                  {isPreviewLoading && (
-                    <div className="grid min-h-64 place-items-center">
-                      <p className="eyebrow animate-pulse">Loading file</p>
+                <div className="snippets-preview-body" data-cursor="default">
+                  {!selectedFile && !isPreviewLoading && !previewError && (
+                    <div className="snippets-empty-preview">
+                      <div aria-hidden="true" className="snippets-empty-preview-mark">
+                        <FileCode2 size={44} strokeWidth={1.5} />
+                      </div>
+                      <p className="snippets-empty-preview-kicker">Preview / Standby</p>
+                      <h2 id="snippets-empty-preview-title">Select a file to inspect</h2>
+                      <p className="snippets-empty-preview-copy">
+                        Choose a Markdown or PDF file from the index to begin.
+                      </p>
+                      <div className="snippets-supported-actions">
+                        <div className="snippets-supported-actions-heading">
+                          <span>Available in preview</span>
+                          <span>02 actions</span>
+                        </div>
+                        <ul>
+                          <li>
+                            <Copy aria-hidden="true" size={18} />
+                            Copy code blocks
+                          </li>
+                          <li>
+                            <Download aria-hidden="true" size={18} />
+                            Download source file
+                          </li>
+                        </ul>
+                      </div>
                     </div>
                   )}
 
+                  {isPreviewLoading && <SnippetPreviewLoading format={selectedFile?.format} />}
+
                   {!isPreviewLoading && previewError && (
-                    <div className="py-16 text-center text-danger">{previewError}</div>
+                    <div className="snippets-state snippets-error-state">
+                      <p role="alert">{previewError}</p>
+                      {selectedFile && (
+                        <button
+                          className="action-quiet"
+                          onClick={() => void handleFileSelect(selectedFile)}
+                          type="button"
+                        >
+                          Retry
+                        </button>
+                      )}
+                    </div>
                   )}
 
-                  {!isPreviewLoading && previewFileUrl && previewFileFormat === "pdf" && (
+                  {!isPreviewLoading && previewFileUrl && selectedFile?.format === "pdf" && (
                     <iframe
-                      className="h-[min(78dvh,860px)] w-full border-0"
+                      className="snippets-pdf-frame"
+                      data-pointer-surface="native"
                       src={previewFileUrl}
-                      title={previewFileName}
+                      title={selectedFile.name}
                     />
                   )}
 
-                  {!isPreviewLoading && previewContent && (
-                    <MarkdownErrorBoundary resetKey={`${previewFileName}-${previewContent.length}`}>
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          code({
-                            className,
-                            children,
-                            ...props
-                          }: ComponentPropsWithoutRef<"code">) {
-                            const rawCode = String(children ?? "");
-                            const codeString = rawCode.replace(/\n$/, "");
-                            const match = /language-([\w-]+)/.exec(className || "");
-
-                            const isBlock = Boolean(match) || rawCode.includes("\n");
-
-                            if (!isBlock) {
-                              return (
-                                <code className="inline-code" {...props}>
-                                  {children}
-                                </code>
-                              );
-                            }
-
-                            const language = match?.[1] || "text";
-                            const blockId = createSafeCodeBlockId(`${language}:${codeString}`);
-
-                            return (
-                              <div className="code-block-wrapper" data-cursor="text">
-                                <div className="code-header flex items-center justify-between">
-                                  <span className="font-mono text-meta text-text-muted">
-                                    {language.toUpperCase()}
-                                  </span>
-
-                                  <button
-                                    type="button"
-                                    className={`action-quiet min-h-9 px-3 ${
-                                      copiedId === blockId ? "border-success text-success" : ""
-                                    }`}
-                                    data-cursor="copy"
-                                    onClick={() => handleCopy(codeString, blockId)}
-                                  >
-                                    {copiedId === blockId ? "Copied" : "Copy"}
-                                  </button>
-                                </div>
-
-                                <Suspense
-                                  fallback={
-                                    <div className="p-3 text-text-muted">Loading Syntax...</div>
-                                  }
-                                >
-                                  <SyntaxRenderer language={language} codeString={codeString} />
-                                </Suspense>
-                              </div>
-                            );
-                          },
-                        }}
-                      >
-                        {previewContent}
-                      </ReactMarkdown>
-                    </MarkdownErrorBoundary>
-                  )}
+                  {!isPreviewLoading &&
+                    previewContent !== null &&
+                    selectedFile?.format === "md" && (
+                      <>
+                        <SnippetMarkdown
+                          content={previewContent}
+                          resetKey={`${selectedFile.name || ""}-${previewContent.length}`}
+                        />
+                        <div className="snippets-preview-document-cta">
+                          <span>
+                            {previewTruncated
+                              ? "Preview ends here. Read the full document for the complete file."
+                              : "Open the document in its dedicated reading view."}
+                          </span>
+                          <Link
+                            aria-label={`Read the full document ${selectedFile.name}`}
+                            className="snippets-preview-read-more"
+                            data-cursor="alias"
+                            to={getSnippetDocumentRoute(selectedFile.id, selectedFile.name)}
+                          >
+                            <LinkIcon aria-hidden="true" size={16} />
+                            <span>Read more</span>
+                          </Link>
+                        </div>
+                      </>
+                    )}
                 </div>
-              </div>
+
+                <footer className="snippets-preview-footer">
+                  <span className={previewError ? "snippets-status is-error" : "snippets-status"}>
+                    {isPreviewLoading && (
+                      <span aria-hidden="true" className="loading-inline-signal" />
+                    )}
+                    {previewError ? "Error" : isPreviewLoading ? "Preview" : "Ready"}
+                  </span>
+                  <span>
+                    {selectedFile?.format === "md" && previewContent !== null
+                      ? "Preview is bounded; read more opens the full document."
+                      : "Files load only when selected."}
+                  </span>
+                </footer>
+              </aside>
             </div>
-          )}
-        </div>
-      </CookingArea>
+          </div>
+        </CookingArea>
+      </main>
     </>
   );
 }
