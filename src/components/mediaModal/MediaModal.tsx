@@ -1,6 +1,9 @@
-import { ArrowLeft, ArrowRight, ExternalLink, X, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, ArrowRight, ExternalLink, RotateCcw, X, ZoomIn, ZoomOut } from "lucide-react";
 import {
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -18,6 +21,59 @@ interface MediaModalProps {
   ctaLabel?: string;
 }
 
+type MediaView = {
+  zoom: number;
+  panX: number;
+  panY: number;
+};
+
+type PointerPoint = {
+  x: number;
+  y: number;
+};
+
+type GestureState =
+  | {
+      type: "tap" | "pan";
+      pointerId: number;
+      startX: number;
+      startY: number;
+      startPanX: number;
+      startPanY: number;
+      moved: boolean;
+    }
+  | {
+      type: "pinch";
+      startDistance: number;
+      startZoom: number;
+      startPanX: number;
+      startPanY: number;
+      startCenterX: number;
+      startCenterY: number;
+    };
+
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 4;
+const ZOOM_STEP = 0.5;
+const PAN_THRESHOLD = 6;
+const DOUBLE_TAP_DELAY = 320;
+const DOUBLE_TAP_DISTANCE = 32;
+
+function clamp(value: number, minimum: number, maximum: number) {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
+function getDistance(first: PointerPoint, second: PointerPoint) {
+  return Math.hypot(second.x - first.x, second.y - first.y);
+}
+
+function getMidpoint(first: PointerPoint, second: PointerPoint) {
+  return {
+    x: (first.x + second.x) / 2,
+    y: (first.y + second.y) / 2,
+  };
+}
+
 export default function MediaModal({
   item,
   show,
@@ -26,31 +82,140 @@ export default function MediaModal({
   ctaLabel = "View Project Source",
 }: MediaModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const mediaFrameRef = useRef<HTMLDivElement>(null);
+  const mediaStageRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
-  const panStartRef = useRef<{
-    x: number;
-    y: number;
-    scrollLeft: number;
-    scrollTop: number;
-  } | null>(null);
+  const previousBodyOverflowRef = useRef("");
+  const viewRef = useRef<MediaView>({ zoom: MIN_ZOOM, panX: 0, panY: 0 });
+  const pointersRef = useRef(new Map<number, PointerPoint>());
+  const gestureRef = useRef<GestureState | null>(null);
+  const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null);
+  const viewerActivityTimeoutRef = useRef<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPanning, setIsPanning] = useState(false);
-  const [isZoomed, setIsZoomed] = useState(false);
+  const [isViewerActive, setIsViewerActive] = useState(false);
+  const [zoomScale, setZoomScale] = useState(MIN_ZOOM);
+  const [hasPan, setHasPan] = useState(false);
 
   const gallery = useMemo(() => {
     if (!item) return [];
     return item.gallery && item.gallery.length > 0 ? item.gallery : [item];
   }, [item]);
 
+  const activeMedia = gallery[activeIndex] ?? gallery[0];
+  const canZoom = activeMedia?.type === "image";
+
+  const markViewerActive = useCallback(() => {
+    setIsViewerActive(true);
+    if (viewerActivityTimeoutRef.current !== null) {
+      window.clearTimeout(viewerActivityTimeoutRef.current);
+    }
+    viewerActivityTimeoutRef.current = window.setTimeout(() => {
+      viewerActivityTimeoutRef.current = null;
+      setIsViewerActive(false);
+    }, 900);
+  }, []);
+
+  const updateView = useCallback((nextView: MediaView) => {
+    const zoom = clamp(nextView.zoom, MIN_ZOOM, MAX_ZOOM);
+    const frame = mediaFrameRef.current;
+    const width = frame?.clientWidth ?? 0;
+    const height = frame?.clientHeight ?? 0;
+    const maxPanX = Math.max(0, (width * (zoom - 1)) / 2);
+    const maxPanY = Math.max(0, (height * (zoom - 1)) / 2);
+    const view = {
+      zoom,
+      panX: clamp(nextView.panX, -maxPanX, maxPanX),
+      panY: clamp(nextView.panY, -maxPanY, maxPanY),
+    };
+
+    viewRef.current = view;
+    const stage = mediaStageRef.current;
+    stage?.style.setProperty("--media-zoom", String(view.zoom));
+    stage?.style.setProperty("--media-pan-x", `${view.panX}px`);
+    stage?.style.setProperty("--media-pan-y", `${view.panY}px`);
+    setZoomScale((current) => (current === view.zoom ? current : view.zoom));
+    setHasPan((current) => {
+      const next = Math.abs(view.panX) > 0.5 || Math.abs(view.panY) > 0.5;
+      return current === next ? current : next;
+    });
+  }, []);
+
+  const resetMediaView = useCallback(() => {
+    pointersRef.current.clear();
+    gestureRef.current = null;
+    lastTapRef.current = null;
+    setIsPanning(false);
+    updateView({ zoom: MIN_ZOOM, panX: 0, panY: 0 });
+  }, [updateView]);
+
+  const zoomAtPoint = useCallback(
+    (targetZoom: number, clientX?: number, clientY?: number) => {
+      const current = viewRef.current;
+      const nextZoom = clamp(targetZoom, MIN_ZOOM, MAX_ZOOM);
+
+      if (clientX === undefined || clientY === undefined) {
+        updateView({ zoom: nextZoom, panX: current.panX, panY: current.panY });
+        return;
+      }
+
+      const frame = mediaFrameRef.current;
+      if (!frame) {
+        updateView({ zoom: nextZoom, panX: current.panX, panY: current.panY });
+        return;
+      }
+
+      const bounds = frame.getBoundingClientRect();
+      const focalX = clientX - (bounds.left + bounds.width / 2);
+      const focalY = clientY - (bounds.top + bounds.height / 2);
+      const contentX = (focalX - current.panX) / current.zoom;
+      const contentY = (focalY - current.panY) / current.zoom;
+
+      updateView({
+        zoom: nextZoom,
+        panX: focalX - contentX * nextZoom,
+        panY: focalY - contentY * nextZoom,
+      });
+    },
+    [updateView],
+  );
+
+  const changeSlide = useCallback(
+    (direction: number) => {
+      if (gallery.length <= 1) return;
+      resetMediaView();
+      setActiveIndex((current) => (current + direction + gallery.length) % gallery.length);
+    },
+    [gallery.length, resetMediaView],
+  );
+
+  const showSlide = useCallback(
+    (index: number) => {
+      resetMediaView();
+      setActiveIndex(index);
+    },
+    [resetMediaView],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (viewerActivityTimeoutRef.current !== null) {
+        window.clearTimeout(viewerActivityTimeoutRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (!show || !item) return;
 
     previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+    previousBodyOverflowRef.current = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    dialogRef.current?.focus();
+    const focusFrame = window.requestAnimationFrame(() => dialogRef.current?.focus());
 
     return () => {
-      document.body.style.overflow = "";
+      window.cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousBodyOverflowRef.current;
       previouslyFocusedRef.current?.focus();
     };
   }, [item, show]);
@@ -58,27 +223,239 @@ export default function MediaModal({
   useEffect(() => {
     if (!item) return;
     setActiveIndex(0);
+    setIsViewerActive(false);
+    resetMediaView();
+  }, [item, resetMediaView]);
+
+  const handleMediaPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!canZoom || (event.pointerType === "mouse" && event.button !== 0)) return;
+
+    const target = event.target as Element;
+    if (target.closest("button, a")) return;
+
+    markViewerActive();
+    event.preventDefault();
+    const point = { x: event.clientX, y: event.clientY };
+    pointersRef.current.set(event.pointerId, point);
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    if (pointersRef.current.size >= 2) {
+      const points = Array.from(pointersRef.current.values());
+      const center = getMidpoint(points[0], points[1]);
+      gestureRef.current = {
+        type: "pinch",
+        startDistance: Math.max(getDistance(points[0], points[1]), 1),
+        startZoom: viewRef.current.zoom,
+        startPanX: viewRef.current.panX,
+        startPanY: viewRef.current.panY,
+        startCenterX: center.x,
+        startCenterY: center.y,
+      };
+      setIsPanning(true);
+      return;
+    }
+
+    const view = viewRef.current;
+    gestureRef.current = {
+      type: view.zoom > MIN_ZOOM ? "pan" : "tap",
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startPanX: view.panX,
+      startPanY: view.panY,
+      moved: false,
+    };
     setIsPanning(false);
-    setIsZoomed(false);
-    panStartRef.current = null;
-  }, [item]);
+  };
+
+  const handleMediaPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!canZoom || !pointersRef.current.has(event.pointerId)) return;
+
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const points = Array.from(pointersRef.current.values());
+
+    if (points.length >= 2) {
+      let gesture = gestureRef.current;
+      if (!gesture || gesture.type !== "pinch") {
+        const center = getMidpoint(points[0], points[1]);
+        gesture = {
+          type: "pinch",
+          startDistance: Math.max(getDistance(points[0], points[1]), 1),
+          startZoom: viewRef.current.zoom,
+          startPanX: viewRef.current.panX,
+          startPanY: viewRef.current.panY,
+          startCenterX: center.x,
+          startCenterY: center.y,
+        };
+        gestureRef.current = gesture;
+      }
+
+      const center = getMidpoint(points[0], points[1]);
+      const nextZoom =
+        gesture.startZoom * (getDistance(points[0], points[1]) / gesture.startDistance);
+      const frame = mediaFrameRef.current;
+      if (!frame) return;
+
+      const bounds = frame.getBoundingClientRect();
+      const startFocalX = gesture.startCenterX - (bounds.left + bounds.width / 2);
+      const startFocalY = gesture.startCenterY - (bounds.top + bounds.height / 2);
+      const contentX = (startFocalX - gesture.startPanX) / gesture.startZoom;
+      const contentY = (startFocalY - gesture.startPanY) / gesture.startZoom;
+      const currentFocalX = center.x - (bounds.left + bounds.width / 2);
+      const currentFocalY = center.y - (bounds.top + bounds.height / 2);
+
+      updateView({
+        zoom: nextZoom,
+        panX: currentFocalX - contentX * nextZoom,
+        panY: currentFocalY - contentY * nextZoom,
+      });
+      setIsPanning(true);
+      return;
+    }
+
+    const gesture = gestureRef.current;
+    if (!gesture || gesture.type === "pinch") return;
+
+    const view = viewRef.current;
+    if (view.zoom <= MIN_ZOOM) return;
+
+    if (gesture.type === "tap") {
+      gesture.type = "pan";
+      gesture.startPanX = view.panX;
+      gesture.startPanY = view.panY;
+    }
+
+    const deltaX = event.clientX - gesture.startX;
+    const deltaY = event.clientY - gesture.startY;
+    if (Math.abs(deltaX) < PAN_THRESHOLD && Math.abs(deltaY) < PAN_THRESHOLD) return;
+
+    gesture.moved = true;
+    updateView({
+      zoom: view.zoom,
+      panX: gesture.startPanX + deltaX,
+      panY: gesture.startPanY + deltaY,
+    });
+    setIsPanning(true);
+  };
+
+  const handleMediaPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const gesture = gestureRef.current;
+    const isFinalPointer = pointersRef.current.size === 1;
+    const isTap =
+      isFinalPointer &&
+      event.pointerType === "touch" &&
+      (gesture?.type === "tap" || gesture?.type === "pan") &&
+      !gesture.moved;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    pointersRef.current.delete(event.pointerId);
+
+    if (isTap) {
+      const now = performance.now();
+      const previousTap = lastTapRef.current;
+      const isDoubleTap =
+        previousTap &&
+        now - previousTap.time < DOUBLE_TAP_DELAY &&
+        Math.hypot(event.clientX - previousTap.x, event.clientY - previousTap.y) <
+          DOUBLE_TAP_DISTANCE;
+
+      if (isDoubleTap) {
+        event.preventDefault();
+        zoomAtPoint(
+          viewRef.current.zoom > MIN_ZOOM ? MIN_ZOOM : Math.min(MAX_ZOOM, MIN_ZOOM + ZOOM_STEP * 2),
+          event.clientX,
+          event.clientY,
+        );
+        lastTapRef.current = null;
+      } else {
+        lastTapRef.current = { time: now, x: event.clientX, y: event.clientY };
+      }
+    }
+
+    if (pointersRef.current.size === 0) {
+      gestureRef.current = null;
+      setIsPanning(false);
+      return;
+    }
+
+    if (pointersRef.current.size === 1 && viewRef.current.zoom > MIN_ZOOM) {
+      const [pointerId, point] = Array.from(pointersRef.current.entries())[0];
+      gestureRef.current = {
+        type: "pan",
+        pointerId,
+        startX: point.x,
+        startY: point.y,
+        startPanX: viewRef.current.panX,
+        startPanY: viewRef.current.panY,
+        moved: false,
+      };
+      setIsPanning(false);
+    }
+  };
+
+  const handleMediaPointerCancel = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    pointersRef.current.clear();
+    gestureRef.current = null;
+    lastTapRef.current = null;
+    setIsPanning(false);
+  };
+
+  const handleMediaWheel = useCallback(
+    (event: WheelEvent) => {
+      if (!canZoom) return;
+
+      event.preventDefault();
+      markViewerActive();
+      const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
+      zoomAtPoint(viewRef.current.zoom * Math.exp(-delta * 0.0015), event.clientX, event.clientY);
+    },
+    [canZoom, markViewerActive, zoomAtPoint],
+  );
+
+  const handleMediaDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!canZoom || (event.target as Element).closest("button, a")) return;
+
+    markViewerActive();
+    event.preventDefault();
+    zoomAtPoint(
+      viewRef.current.zoom > MIN_ZOOM ? MIN_ZOOM : Math.min(MAX_ZOOM, MIN_ZOOM + ZOOM_STEP * 2),
+      event.clientX,
+      event.clientY,
+    );
+  };
+
+  useEffect(() => {
+    const frame = mediaFrameRef.current;
+    if (!show || !canZoom || !frame) return;
+
+    frame.addEventListener("wheel", handleMediaWheel, { passive: false });
+    return () => frame.removeEventListener("wheel", handleMediaWheel);
+  }, [canZoom, handleMediaWheel, show]);
 
   useEffect(() => {
     if (!show) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-      if (event.key === "ArrowLeft") {
-        setIsPanning(false);
-        setIsZoomed(false);
-        panStartRef.current = null;
-        setActiveIndex((current) => (current - 1 + gallery.length) % gallery.length);
+      if (event.key === "Escape") {
+        onClose();
+        return;
       }
-      if (event.key === "ArrowRight") {
-        setIsPanning(false);
-        setIsZoomed(false);
-        panStartRef.current = null;
-        setActiveIndex((current) => (current + 1) % gallery.length);
+
+      if (event.key === "ArrowLeft" && gallery.length > 1) {
+        event.preventDefault();
+        changeSlide(-1);
+        return;
+      }
+
+      if (event.key === "ArrowRight" && gallery.length > 1) {
+        event.preventDefault();
+        changeSlide(1);
+        return;
       }
 
       if (event.key === "Tab") {
@@ -98,49 +475,51 @@ export default function MediaModal({
           event.preventDefault();
           first.focus();
         }
+        return;
+      }
+
+      if (!canZoom) return;
+
+      if (event.key === "+" || event.key === "=") {
+        markViewerActive();
+        event.preventDefault();
+        zoomAtPoint(viewRef.current.zoom + ZOOM_STEP);
+      } else if (event.key === "-" || event.key === "_") {
+        markViewerActive();
+        event.preventDefault();
+        zoomAtPoint(viewRef.current.zoom - ZOOM_STEP);
+      } else if (event.key === "0") {
+        markViewerActive();
+        event.preventDefault();
+        resetMediaView();
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [gallery.length, onClose, show]);
+  }, [
+    canZoom,
+    changeSlide,
+    gallery.length,
+    markViewerActive,
+    onClose,
+    resetMediaView,
+    show,
+    zoomAtPoint,
+  ]);
 
-  if (!show || !item || gallery.length === 0) return null;
+  if (!show || !item || !activeMedia) return null;
 
-  const activeMedia = gallery[activeIndex];
   const hasMultipleSlides = gallery.length > 1;
-  const canZoom = activeMedia.type === "image";
   const modalTitleId = `media-modal-title-${item.id}`;
   const modalDetailsId = `media-modal-details-${item.id}`;
-
-  const handleMediaPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!isZoomed || !canZoom || event.pointerType === "touch") return;
-
-    panStartRef.current = {
-      x: event.clientX,
-      y: event.clientY,
-      scrollLeft: event.currentTarget.scrollLeft,
-      scrollTop: event.currentTarget.scrollTop,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setIsPanning(true);
-  };
-
-  const handleMediaPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const start = panStartRef.current;
-    if (!start) return;
-
-    event.currentTarget.scrollLeft = start.scrollLeft - (event.clientX - start.x);
-    event.currentTarget.scrollTop = start.scrollTop - (event.clientY - start.y);
-  };
-
-  const endMediaPan = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    panStartRef.current = null;
-    setIsPanning(false);
-  };
+  const zoomPercentage = Math.round(zoomScale * 100);
+  const mediaCursor = zoomScale > MIN_ZOOM ? (isPanning ? "grabbing" : "grab") : "zoom-in";
+  const stageStyle = {
+    "--media-zoom": viewRef.current.zoom,
+    "--media-pan-x": `${viewRef.current.panX}px`,
+    "--media-pan-y": `${viewRef.current.panY}px`,
+  } as CSSProperties;
 
   return createPortal(
     <div
@@ -175,25 +554,91 @@ export default function MediaModal({
         </header>
 
         <div
-          className={`media-modal-media ${isZoomed && canZoom ? "is-zoomed" : ""}`}
-          data-cursor={isZoomed && canZoom ? "all-scroll" : undefined}
-          onPointerCancel={endMediaPan}
+          ref={mediaFrameRef}
+          className={`media-modal-media ${canZoom ? "is-image" : "is-video"}${isPanning ? " is-interacting" : ""}`}
+          data-cursor={mediaCursor}
+          aria-label="Interactive image viewer"
+          role="application"
+          onDoubleClick={handleMediaDoubleClick}
+          onPointerCancel={handleMediaPointerCancel}
           onPointerDown={handleMediaPointerDown}
           onPointerMove={handleMediaPointerMove}
-          onPointerUp={endMediaPan}
+          onPointerUp={handleMediaPointerEnd}
         >
           <div
-            className={`media-modal-media-stage ${isZoomed && canZoom ? "is-zoomed" : ""}`}
-            data-cursor={isZoomed && canZoom ? "all-scroll" : undefined}
+            ref={mediaStageRef}
+            className={`media-modal-media-stage${zoomScale > MIN_ZOOM ? " is-zoomed" : ""}${isPanning ? " is-interacting" : ""}`}
+            data-cursor={mediaCursor}
+            style={stageStyle}
           >
             <MediaRenderer
               alt={`${item.title} media ${activeIndex + 1}`}
               type={activeMedia.type}
               url={activeMedia.url}
-              className={`media-modal-renderer h-full w-full object-contain ${isZoomed && canZoom ? "scale-150" : ""}`}
-              cursorState={isZoomed && canZoom ? (isPanning ? "grabbing" : "grab") : undefined}
+              className="media-modal-renderer h-full w-full object-contain"
+              cursorState={mediaCursor}
             />
           </div>
+
+          {canZoom && (
+            <div
+              className={`media-modal-viewer-overlay${isPanning || isViewerActive ? " is-active" : ""}`}
+            >
+              <fieldset className="media-modal-viewer-tools">
+                <legend className="sr-only">Image controls</legend>
+                <button
+                  aria-label="Zoom out image"
+                  className="media-modal-viewer-tool"
+                  data-cursor="zoom-out"
+                  disabled={zoomScale <= MIN_ZOOM}
+                  onClick={() => {
+                    markViewerActive();
+                    zoomAtPoint(viewRef.current.zoom - ZOOM_STEP);
+                  }}
+                  title="Zoom out"
+                  type="button"
+                >
+                  <ZoomOut aria-hidden="true" size={16} />
+                </button>
+                <output
+                  aria-live="polite"
+                  aria-label={`Image zoom ${zoomPercentage} percent`}
+                  className="media-modal-zoom-level"
+                >
+                  {zoomPercentage}%
+                </output>
+                <button
+                  aria-label="Zoom in image"
+                  className="media-modal-viewer-tool"
+                  data-cursor="zoom-in"
+                  disabled={zoomScale >= MAX_ZOOM}
+                  onClick={() => {
+                    markViewerActive();
+                    zoomAtPoint(viewRef.current.zoom + ZOOM_STEP);
+                  }}
+                  title="Zoom in"
+                  type="button"
+                >
+                  <ZoomIn aria-hidden="true" size={16} />
+                </button>
+                <button
+                  aria-label="Reset image view"
+                  className="media-modal-viewer-tool"
+                  data-cursor="zoom-out"
+                  disabled={!hasPan && zoomScale <= MIN_ZOOM}
+                  onClick={() => {
+                    markViewerActive();
+                    resetMediaView();
+                  }}
+                  title="Reset view"
+                  type="button"
+                >
+                  <RotateCcw aria-hidden="true" size={16} />
+                </button>
+              </fieldset>
+              <p className="media-modal-viewer-hint">Scroll or pinch to zoom · drag to inspect</p>
+            </div>
+          )}
 
           {hasMultipleSlides && (
             <>
@@ -201,12 +646,7 @@ export default function MediaModal({
                 aria-label="Previous media"
                 className="media-modal-nav-button media-modal-nav-button-previous"
                 data-cursor="move"
-                onClick={() => {
-                  setIsPanning(false);
-                  setIsZoomed(false);
-                  panStartRef.current = null;
-                  setActiveIndex((current) => (current - 1 + gallery.length) % gallery.length);
-                }}
+                onClick={() => changeSlide(-1)}
                 type="button"
               >
                 <ArrowLeft aria-hidden="true" size={19} />
@@ -215,12 +655,7 @@ export default function MediaModal({
                 aria-label="Next media"
                 className="media-modal-nav-button media-modal-nav-button-next"
                 data-cursor="move"
-                onClick={() => {
-                  setIsPanning(false);
-                  setIsZoomed(false);
-                  panStartRef.current = null;
-                  setActiveIndex((current) => (current + 1) % gallery.length);
-                }}
+                onClick={() => changeSlide(1)}
                 type="button"
               >
                 <ArrowRight aria-hidden="true" size={19} />
@@ -235,14 +670,9 @@ export default function MediaModal({
               <button
                 aria-label={`Show media ${index + 1}`}
                 aria-current={index === activeIndex ? "true" : undefined}
-                className={`media-modal-slide ${index === activeIndex ? "is-active" : ""}`}
-                key={`${media.url}-${index}`}
-                onClick={() => {
-                  setIsPanning(false);
-                  setIsZoomed(false);
-                  panStartRef.current = null;
-                  setActiveIndex(index);
-                }}
+                className={`media-modal-slide${index === activeIndex ? " is-active" : ""}`}
+                key={`${media.type}-${media.url}`}
+                onClick={() => showSlide(index)}
                 type="button"
               />
             ))}
@@ -258,22 +688,6 @@ export default function MediaModal({
 
         <footer className="media-modal-footer">
           <div className="media-modal-actions">
-            {canZoom && (
-              <button
-                aria-label={isZoomed ? "Zoom out media" : "Zoom in media"}
-                className="action-quiet media-modal-action"
-                data-cursor={isZoomed ? "zoom-out" : "zoom-in"}
-                onClick={() => setIsZoomed((current) => !current)}
-                type="button"
-              >
-                {isZoomed ? (
-                  <ZoomOut aria-hidden="true" size={16} />
-                ) : (
-                  <ZoomIn aria-hidden="true" size={16} />
-                )}
-                <span>{isZoomed ? "Zoom out" : "Zoom in"}</span>
-              </button>
-            )}
             <button className="action-quiet media-modal-action" onClick={onClose} type="button">
               Close
             </button>
