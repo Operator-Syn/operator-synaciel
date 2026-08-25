@@ -103,7 +103,10 @@ export const certificates = sqliteTable(
     displayOrder: integer("display_order").default(0),
     createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   },
-  (table) => [check("certificates_type_check", sql`${table.type} IN ('video', 'image')`)],
+  (table) => [
+    check("certificates_type_check", sql`${table.type} IN ('video', 'image')`),
+    index("idx_certificates_display_order_id").on(table.displayOrder, table.id),
+  ],
 );
 
 export const certificateItems = sqliteTable(
