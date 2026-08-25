@@ -37,7 +37,8 @@ export default function AsyncImage({
   return (
     <span
       data-cursor={cursorState}
-      className={`relative inline-block leading-none ${wrapperClassName} ${showDefaultCssPlaceholder ? "animate-pulse bg-surface-raised" : ""}`}
+      aria-busy={!isLoaded}
+      className={`relative inline-block leading-none ${wrapperClassName} ${showDefaultCssPlaceholder ? "loading-placeholder" : ""}`}
     >
       {/* A. CUSTOM LOADER: Render this while waiting, if provided */}
       {!isLoaded && loader && <span className="async-loader-content">{loader}</span>}
