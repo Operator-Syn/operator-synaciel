@@ -23,7 +23,8 @@ into API-facing objects. `SnippetsPageModel` also receives an `R2Bucket`.
 | `ProjectsModel` and `GalleryModel` | CRUD and row mapping for projects and project media. |
 | `ProjectsPageModel` | Builds cursor-backed project archive pages, counts the archive, and batches nested gallery rows. |
 | `CertificatesModel` and `CertificateItemsModel` | Certificate and certificate-media CRUD plus row mapping. |
-| `SnippetsPageModel` | Recursive snippet-tree queries, file/folder rules, R2 content operations, and cleanup. |
+| `CertificatesPageModel` | Builds cursor-backed certificate archive pages, counts the archive, and batches certificate items. |
+| `SnippetsPageModel` | Recursive snippet-tree queries, file/folder rules, bounded preview/document metadata, R2 content operations, and cleanup. |
 
 ## Model responsibilities
 
@@ -36,6 +37,9 @@ Models currently own more than query strings:
 - R2 upload, read, and deletion coordination for snippet files;
 - compensating R2 cleanup when a snippet database insert fails;
 - content type, download header, and safe filename decisions for snippet files.
+- bounded R2-prefix reads, paragraph/line/code-fence-safe excerpts, derived
+  document paths, and inline-versus-download content disposition for the v2
+  snippet read contracts.
 
 Drizzle is currently a schema and migration-generation tool only. It does not
 replace these runtime model queries in this phase.
