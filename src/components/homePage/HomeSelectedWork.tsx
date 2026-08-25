@@ -1,6 +1,7 @@
 import { ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { HomeProject } from "../../types/HomePageTypes";
+import { LoadingBlock, LoadingRegion } from "../loadingState/LoadingState";
 
 interface HomeSelectedWorkProps {
   isError: boolean;
@@ -35,11 +36,20 @@ export default function HomeSelectedWork({ isError, isLoading, projects }: HomeS
       </div>
 
       {isLoading ? (
-        <div className="homepage-work-grid" aria-hidden="true">
+        <LoadingRegion
+          className="homepage-work-grid homepage-work-grid-loading"
+          label="Preparing selected work"
+        >
           {["first", "second", "third"].map((key) => (
-            <div className="homepage-work-card is-loading" key={key} />
+            <div className="homepage-work-card is-loading" key={key}>
+              <LoadingBlock />
+              <div className="homepage-work-loading-copy">
+                <LoadingBlock />
+                <LoadingBlock />
+              </div>
+            </div>
           ))}
-        </div>
+        </LoadingRegion>
       ) : isError ? (
         <p className="homepage-inline-state homepage-work-state">
           Selected work is temporarily unavailable.
