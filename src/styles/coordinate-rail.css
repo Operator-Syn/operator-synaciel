@@ -14,7 +14,7 @@
         border-radius: 0;
         background: transparent;
         padding: 0 1.1rem;
-        color: var(--color-text-faint);
+        color: var(--color-text-muted);
         appearance: none;
         font-family: var(--font-mono);
         font-size: var(--text-meta);
@@ -58,6 +58,10 @@
         pointer-events: none;
         transform: translate(-50%, -50%) rotate(45deg);
         animation: homepage-handshake-signal 700ms var(--motion-ease) both;
+    }
+
+    .coordinate-rail[data-pointer-surface="native"]::after {
+        display: none;
     }
 
     .coordinate-rail-status {
