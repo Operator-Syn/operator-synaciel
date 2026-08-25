@@ -1,4 +1,5 @@
 import { ArrowUpRight } from "lucide-react";
+import { LoadingBlock, LoadingRegion } from "../../loadingState/LoadingState";
 
 interface SocialLink {
   href: string;
@@ -14,10 +15,13 @@ interface SocialLinksComponentProps {
 export default function SocialLinksComponent({ badges, isLoading }: SocialLinksComponentProps) {
   if (isLoading) {
     return (
-      <div className="surface-panel animate-pulse p-5" aria-hidden="true">
-        <div className="h-4 w-1/2 bg-surface-raised" />
-        <div className="mt-4 h-4 w-4/5 bg-surface-raised" />
-      </div>
+      <LoadingRegion
+        className="surface-panel p-5 legacy-panel-loading"
+        label="Preparing social links"
+      >
+        <LoadingBlock className="loading-line-title" />
+        <LoadingBlock className="loading-line-copy-short" />
+      </LoadingRegion>
     );
   }
 
