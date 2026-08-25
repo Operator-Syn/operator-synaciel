@@ -1,5 +1,6 @@
-// MediaRenderer.tsx
+import { useState } from "react";
 import AsyncImage from "../asyncImageLoader/AsyncImage";
+import { LoadingStatus } from "../loadingState/LoadingState";
 
 interface MediaRendererProps {
   type: "video" | "image";
@@ -23,34 +24,44 @@ export default function MediaRenderer({
   cursorState,
 }: MediaRendererProps) {
   const classes = className || "h-full w-full object-cover";
+  const [readyUrl, setReadyUrl] = useState<string | null>(null);
+  const isReady = readyUrl === url;
 
   if (type === "video") {
     return (
-      <video
-        controls={!autoPlay}
-        autoPlay={autoPlay}
-        muted={autoPlay}
-        loop={autoPlay}
-        aria-label={alt}
-        className={classes}
-        data-cursor={cursorState}
-        onPlay={onPlay}
-        onPause={onPause}
-        onEnded={onPause}
-        playsInline
-        preload="metadata"
-        crossOrigin="anonymous"
-        onLoadedMetadata={(e) => {
-          // Intelligent Thumbnailing:
-          // If not autoplaying, seek to 0.5s to show a preview frame
-          if (!autoPlay) {
-            e.currentTarget.currentTime = 0.5;
-          }
-        }}
-      >
-        <source src={url} />
-        Your browser does not support the video tag.
-      </video>
+      <span aria-busy={!isReady} className="media-renderer-frame">
+        {!isReady && (
+          <>
+            <span aria-hidden="true" className="media-renderer-placeholder loading-placeholder" />
+            <LoadingStatus label="Preparing media" />
+          </>
+        )}
+        <video
+          controls={!autoPlay}
+          autoPlay={autoPlay}
+          muted={autoPlay}
+          loop={autoPlay}
+          aria-label={alt}
+          className={classes}
+          data-cursor={cursorState}
+          onPlay={onPlay}
+          onPause={onPause}
+          onEnded={onPause}
+          onLoadedData={() => setReadyUrl(url)}
+          onError={() => setReadyUrl(url)}
+          playsInline
+          preload="metadata"
+          crossOrigin="anonymous"
+          onLoadedMetadata={(e) => {
+            if (!autoPlay) {
+              e.currentTarget.currentTime = 0.5;
+            }
+          }}
+        >
+          <source src={url} />
+          Your browser does not support the video tag.
+        </video>
+      </span>
     );
   }
 
