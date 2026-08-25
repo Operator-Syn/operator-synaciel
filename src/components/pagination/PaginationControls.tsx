@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 type PaginationControlsProps = {
   currentPage: number;
@@ -24,30 +24,27 @@ export default function PaginationControls({
   const pages = Array.from({ length: totalPages }, (_, index) => index + 1);
 
   return (
-    <div className="mt-8 flex flex-col gap-4 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
-      <p className="font-mono text-meta uppercase tracking-[0.06em] text-text-muted">
-        Showing {firstVisibleItem}-{lastVisibleItem} of {totalItems} {itemLabel}
+    <div className="certificate-pagination">
+      <p className="certificate-pagination-label">
+        {firstVisibleItem}–{lastVisibleItem} of {totalItems} {itemLabel}
       </p>
 
-      <nav
-        className="flex flex-wrap items-center justify-end gap-2"
-        aria-label={`${itemLabel} pages`}
-      >
+      <nav aria-label={`${itemLabel} pages`} className="certificate-pagination-nav">
         <button
           aria-label="Previous page"
-          className="inline-grid min-h-10 min-w-10 place-items-center border border-line-strong bg-transparent text-text transition-colors hover:border-signal hover:text-signal disabled:opacity-40"
+          className="certificate-pagination-button"
           disabled={currentPage === 1}
           onClick={() => onPageChange(currentPage - 1)}
           title="Previous page"
           type="button"
         >
-          <ChevronLeft aria-hidden="true" size={18} />
+          <ArrowLeft aria-hidden="true" size={17} />
         </button>
 
         {pages.map((page) => (
           <button
             aria-current={page === currentPage ? "page" : undefined}
-            className={`inline-grid min-h-10 min-w-10 place-items-center border bg-transparent font-mono text-meta transition-colors ${page === currentPage ? "border-signal bg-signal text-canvas" : "border-line-strong text-text hover:border-signal hover:text-signal"}`}
+            className={`certificate-pagination-number ${page === currentPage ? "is-active" : ""}`}
             key={page}
             onClick={() => onPageChange(page)}
             type="button"
@@ -58,13 +55,13 @@ export default function PaginationControls({
 
         <button
           aria-label="Next page"
-          className="inline-grid min-h-10 min-w-10 place-items-center border border-line-strong bg-transparent text-text transition-colors hover:border-signal hover:text-signal disabled:opacity-40"
+          className="certificate-pagination-button"
           disabled={currentPage === totalPages}
           onClick={() => onPageChange(currentPage + 1)}
           title="Next page"
           type="button"
         >
-          <ChevronRight aria-hidden="true" size={18} />
+          <ArrowRight aria-hidden="true" size={17} />
         </button>
       </nav>
     </div>
