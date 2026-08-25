@@ -24,11 +24,13 @@ These GET routes are registered before the private auth middleware:
 | --- | --- |
 | Projects | `GET /api/projects`, `GET /api/project/:id`, `GET /api/project/:projectId/gallery` |
 | Projects archive v2 | `GET /api/v2/projects/archive` |
+| Certificate archive v2 | `GET /api/v2/certificates/archive` |
 | Snippets | `GET /api/snippets`, `GET /api/snippets/:id`, `GET /api/snippets/:id/content` |
+| Snippets document v2 | `GET /api/v2/snippets/:id`, `GET /api/v2/snippets/:id/preview`, `GET /api/v2/snippets/:id/content` |
 | Home content | `GET /api/settings`, `GET /api/profile`, `GET /api/sections`, `GET /api/sections/:sectionId/items` |
 | Project media | `GET /api/projects/media`, `GET /api/projects/media/:key{.+}` |
 | Certificate media | `GET /api/certificates/media`, `GET /api/certificates/media/:key{.+}` |
-| Certificates | `GET /api/certificates`, `GET /api/certificates/:id`, `GET /api/certificates/:certId/items` |
+| Certificates (legacy/public) | `GET /api/certificates`, `GET /api/certificates/:id`, `GET /api/certificates/:certId/items` |
 
 ## Private routes
 
@@ -58,3 +60,35 @@ opaque `cursor`; it does not accept offset pagination. The response contains
 `data` with nested gallery items and a `pagination` object with `total`,
 `has_more`, and `next_cursor`. The existing `GET /api/projects` array
 response remains unchanged for Home and compatibility with existing clients.
+
+## Certificate archive pagination
+
+`GET /api/v2/certificates/archive` is the cursor-backed read contract used by the
+Certificates archive. It accepts `limit` (default `6`, maximum `12`) and an
+opaque `cursor`; it rejects `offset`. Its `data` rows preserve certificate
+fields and include batched `items`, while `pagination` contains `limit`,
+`total`, `has_more`, and `next_cursor`. The unversioned
+`/api/certificates`, `/api/certificates/:id`, and
+`/api/certificates/:certId/items` contracts remain unchanged for older
+portfolio clients.
+
+## Snippets document reads
+
+The v2 snippet reads are additive contracts for the public archive and its
+canonical document pages:
+
+- `GET /api/v2/snippets/:id` returns stable file metadata, the derived parent
+  path segments, and the current document identity used to build a shareable
+  URL.
+- `GET /api/v2/snippets/:id/preview` returns metadata plus a bounded Markdown
+  excerpt and `truncated` state. The model chooses a paragraph, line, or hard
+  boundary and closes an open fenced block before marking the excerpt.
+- `GET /api/v2/snippets/:id/content` streams the full file inline for the
+  dedicated document route. The legacy `/api/snippets/:id/content` download
+  route remains unchanged for existing clients.
+
+The document URL is `/snippets/document/<id>/<slug>/`; the slug is derived
+from the current file name and is normalized when a stale name is requested.
+No offset or cursor parameter is involved in snippet document reads, and no
+D1 migration is required because path and excerpt values are derived at read
+time.
