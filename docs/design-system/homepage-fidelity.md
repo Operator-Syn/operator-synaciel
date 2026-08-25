@@ -71,7 +71,7 @@ accepted local origins by the Worker CORS allowlist.
 ## Motion and interaction contract
 
 The homepage's motion thesis is a calm operator system coming online once. Motion
-establishes hierarchy, reports real pointer/section state, and acknowledges
+establishes hierarchy, reports real pointer state, and acknowledges
 project-link focus without changing the composition or delaying content. The
 resting markup is visible before JavaScript adds the
 `homepage-motion-ready` enhancement class.
@@ -79,7 +79,7 @@ resting markup is visible before JavaScript adds the
 | Pattern | Owner | Trigger | Treatment | Reduced-motion behavior |
 | --- | --- | --- | --- | --- |
 | Entry choreography | `Home` + `app.css` | Initial mount | Coordinate bar, hero evidence, selected work, and footer arrive in a short stagger; the title uses a restrained rise/fade without occluding glyphs. | Content stays visible and arrives instantly. |
-| Section orientation | `useHomepageMotion` + `HomeCoordinates` | Natural scroll | `IntersectionObserver` marks the active hero, work, or footer band with the existing three signal markers. | The active marker still updates immediately. |
+| Route rail order | `HomeCoordinates` + archive routes | Route mount | Home uses the first marker, Projects the second, and Certificates the third; the rail is a route index rather than a scroll progress indicator. | The active route marker remains visible immediately. |
 | Work feedback | `HomeSelectedWork` + `app.css` | Mouse hover or keyboard focus | The existing card surface, number, title, and external-link arrow shift/color without changing size or order. | Focus and color feedback remain; spatial movement is removed. |
 | Pointer signal | `HomeCoordinates` | Mouse or pen movement | Existing viewport coordinates remain the source of truth; the signal mark converts the pointer's viewport `x` into the coordinate rail's local position per animation frame, keeping it aligned with the actual cursor without positional easing. | The coordinate text remains available without the decorative mark. |
 | Operator cursor | `app.css` + `public/cursors/` | Fine-pointer movement over the site shell | The cursor pack uses a brutalist vector grammar and the shared dark/cream/amber palette: native-feeling silhouettes carry the state first, with hard mitered geometry. Idle states stay cream/ink; amber is reserved for meaningful state signals—the under-finger activation line, the grip engagement point, denial marks, zoom signs, and geometric registration points. It includes the arrow, pointing hand, open grab hand, closed grabbing fist, and utility states. `AsyncImage` keeps ordinary portfolio images non-draggable and opts into the complete grab/grabbing surface only when `draggable` is explicitly requested. No DOM overlay, trail, or cursor-follow animation is used. | Custom cursor is absent; browser defaults and coordinate text remain. |
@@ -110,8 +110,9 @@ interaction exists.
 - Reuse the shared [[design-system/interaction-patterns|route interaction
   patterns]] when another public page needs pointer coordinates or archive-row
   feedback; `PointerCoordinates` owns the event and handshake lifecycle.
-- Add new scroll-aware bands with `data-home-section-index` only when they
-  represent real orientation landmarks; do not create a second progress widget.
+- Keep the shared marker order aligned with the public route sequence: Home
+  first, Projects second, Certificates third. Do not turn the rail into a
+  second progress widget.
 - Use `:focus-within` for composite project interactions so keyboard and touch
   paths do not depend on hover.
 - Keep coordinates and signal marks decorative with `aria-hidden="true"`; never
