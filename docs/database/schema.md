@@ -29,11 +29,17 @@ Wrangler applies them.
 - `Snippets` stores a recursive directory/file tree. File entries reference an
   R2 `storage_path`; directory entries have no `file_format`.
 
-The schema indexes section and gallery foreign keys, project display-order
-lookups, certificate ownership, and snippet parent/order lookups. The project
-display-order/index pair provides the stable keyset boundary used by the
-cursor-backed archive. `Snippets` restricts file formats to `pdf` or `md` when
-the entry is a file.
+The snippets archive derives display paths, canonical document slugs, and bounded
+Markdown excerpts at read time. The v2 document reads therefore use the existing
+stable ID, name, parent, format, size, and R2 path; they do not require a new
+column or migration. A future filename-independent slug would be a separate
+staged nullable-column migration with a backfill and uniqueness constraint.
+
+The schema indexes section and gallery foreign keys, project and certificate
+display-order lookups, certificate ownership, and snippet parent/order lookups.
+The project and certificate display-order/index pairs provide the stable keyset
+boundaries used by the cursor-backed archives. `Snippets` restricts file
+formats to `pdf` or `md` when the entry is a file.
 
 ## Migration baseline
 
