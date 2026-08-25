@@ -1,3 +1,4 @@
+import { LoadingBlock, LoadingRegion } from "../loadingState/LoadingState";
 import DevelopmentLoadoutsShowcase from "./DevelopmentLoadoutsShowcase";
 
 interface DevLoadoutSection {
@@ -18,10 +19,13 @@ interface DevLoadoutsProps {
 export default function DevelopmentLoadoutsComponent({ content, isLoading }: DevLoadoutsProps) {
   if (isLoading || !content) {
     return (
-      <div className="surface-panel min-h-72 animate-pulse p-6" aria-hidden="true">
-        <div className="h-6 w-1/2 bg-surface-raised" />
-        <div className="mt-8 h-32 w-full bg-surface-raised" />
-      </div>
+      <LoadingRegion
+        className="surface-panel min-h-72 p-6 legacy-panel-loading"
+        label="Preparing development loadouts"
+      >
+        <LoadingBlock className="loading-line-title" />
+        <LoadingBlock className="loading-loadout-stage" />
+      </LoadingRegion>
     );
   }
 
