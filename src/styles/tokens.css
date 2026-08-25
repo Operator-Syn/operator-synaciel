@@ -1,0 +1,39 @@
+/* Shared design tokens and semantic theme variables. */
+@theme {
+    --color-canvas: #101111;
+    --color-surface: #171918;
+    --color-surface-raised: #202321;
+    --color-text: #f2ede3;
+    --color-text-muted: #b7b1a7;
+    --color-text-faint: #7e7b74;
+    --color-line: rgb(242 237 227 / 18%);
+    --color-line-strong: rgb(242 237 227 / 35%);
+    --color-signal: #f0a42a;
+    --color-signal-strong: #ffbb52;
+    --color-danger: #d96a5c;
+    --color-success: #98bd79;
+    --font-display: "Newsreader", Georgia, serif;
+    --font-body: "IBM Plex Sans", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+    --text-display: clamp(3.4rem, 8vw, 7rem);
+    --text-display--line-height: 0.92;
+    --text-page-title: clamp(2.6rem, 5vw, 5.2rem);
+    --text-page-title--line-height: 0.98;
+    --text-meta: 0.72rem;
+    --text-meta--line-height: 1.3;
+    --radius-control: 2px;
+    --radius-panel: 4px;
+    --shadow-panel: 0 1.25rem 3rem rgb(0 0 0 / 25%);
+    --shadow-media: 0 0.5rem 1.5rem rgb(0 0 0 / 30%);
+    --ease-editorial: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+    color-scheme: dark;
+    --focus-ring: var(--color-signal-strong);
+    --content-width: 1440px;
+    --page-gutter: clamp(1rem, 6.25vw, 6.25rem);
+    --motion-feedback-duration: 160ms;
+    --motion-entry-duration: 480ms;
+    --motion-ease: var(--ease-editorial);
+}
