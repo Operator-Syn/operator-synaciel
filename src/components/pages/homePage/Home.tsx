@@ -11,6 +11,7 @@ import HomeIdentityPanel from "../../homePage/HomeIdentityPanel";
 import HomeSelectedWork from "../../homePage/HomeSelectedWork";
 import HomeToolsTable from "../../homePage/HomeToolsTable";
 import useHomepageMotion from "../../homePage/useHomepageMotion";
+import { LoadingBlock } from "../../loadingState/LoadingState";
 
 interface SectionApiItem {
   content?: string;
@@ -144,7 +145,7 @@ function getHeroCopy(site: HomePageTypes["site"]) {
 }
 
 export default function Home() {
-  const { activeSection, isMotionReady } = useHomepageMotion();
+  const { isMotionReady } = useHomepageMotion();
   const queries = useQueries({
     queries: [
       { queryKey: ["settings"], queryFn: fetchSettings, staleTime: PUBLIC_DATA_STALE_TIME_MS },
@@ -187,11 +188,11 @@ export default function Home() {
 
       <CookingArea>
         <div className={`homepage-shell${isMotionReady ? " homepage-motion-ready" : ""}`}>
-          <HomeCoordinates activeSection={activeSection} />
+          <HomeCoordinates />
 
           <section
+            aria-busy={isHeroLoading}
             className="homepage-hero"
-            data-home-section-index="0"
             aria-labelledby="homepage-hero-title"
           >
             <div className="homepage-hero-grid">
@@ -202,11 +203,33 @@ export default function Home() {
                   </span>
                 </div>
                 <h1 className="homepage-hero-title" id="homepage-hero-title">
-                  {heroCopy.title}
+                  {isHeroLoading ? (
+                    <span aria-hidden="true" className="homepage-hero-title-placeholder">
+                      <LoadingBlock />
+                    </span>
+                  ) : (
+                    heroCopy.title
+                  )}
                 </h1>
-                <p className="homepage-hero-kicker">{heroCopy.kicker}</p>
+                <p className="homepage-hero-kicker">
+                  {isHeroLoading ? (
+                    <span
+                      aria-hidden="true"
+                      className="homepage-hero-kicker-placeholder loading-block"
+                    />
+                  ) : (
+                    heroCopy.kicker
+                  )}
+                </p>
                 <div className="homepage-hero-body" data-cursor="text">
-                  {sections.pitch.items.length > 0 ? (
+                  {isHeroLoading ? (
+                    <div aria-hidden="true" className="homepage-hero-body-placeholder">
+                      <LoadingBlock />
+                      <LoadingBlock />
+                      <LoadingBlock />
+                      <LoadingBlock />
+                    </div>
+                  ) : sections.pitch.items.length > 0 ? (
                     sections.pitch.items.map((item, index) => (
                       <p key={`${item.title}-${index}`}>{item.content}</p>
                     ))
@@ -251,7 +274,7 @@ export default function Home() {
             isLoading={projectsQuery.isLoading}
             projects={projects}
           />
-          <HomeFooter links={sections.social.items} />
+          <HomeFooter isLoading={sectionsQuery.isLoading} links={sections.social.items} />
         </div>
       </CookingArea>
     </>
