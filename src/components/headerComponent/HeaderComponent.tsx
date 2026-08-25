@@ -1,5 +1,6 @@
 import { ArrowDownRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { LoadingBlock, LoadingRegion } from "../loadingState/LoadingState";
 
 interface HeaderComponentProps {
   headerPhrase?: string;
@@ -14,10 +15,10 @@ export default function HeaderComponent({
 }: HeaderComponentProps) {
   if (isLoading) {
     return (
-      <div className="animate-pulse" aria-hidden="true">
-        <div className="h-24 w-4/5 bg-surface-raised" />
-        <div className="mt-5 h-5 w-2/5 bg-surface-raised" />
-      </div>
+      <LoadingRegion className="header-loading" label="Preparing page introduction">
+        <LoadingBlock className="header-loading-title" />
+        <LoadingBlock className="header-loading-kicker" />
+      </LoadingRegion>
     );
   }
 
