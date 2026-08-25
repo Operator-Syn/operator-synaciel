@@ -33,9 +33,9 @@ it immediately.
 | Request parsing and HTTP status | Controllers | JSON, multipart forms, path parameters, response bodies, and status codes. |
 | Basic request validation | Mixed | Controllers validate transport input; models validate storage and domain constraints. |
 | D1 SQL and row mapping | Models | Models use `D1Database.prepare()` and return typed or mapped results. |
-| Cross-table aggregation | Aggregate models | `HomePageModel` and `ProjectsPageModel` build response-oriented structures. |
+| Cross-table aggregation | Aggregate models | `HomePageModel`, `ProjectsPageModel`, and `CertificatesPageModel` build response-oriented structures. |
 | Generic media storage | `MediaController` | Direct R2 list/get/put/delete and S3-compatible presigning. |
-| Snippet storage and tree rules | `SnippetsPageModel` | D1 recursive queries, R2 content, parent validation, cycle checks, and cleanup. |
+| Snippet storage, tree, and read rules | `SnippetsPageModel` | D1 recursive queries, R2 content, parent validation, cycle checks, bounded excerpts, derived document paths, and cleanup. |
 | Error-to-response mapping | Controllers and `serverErrors.ts` | The convention is mixed between shared handling and local error responses. |
 
 ## Change guidance
