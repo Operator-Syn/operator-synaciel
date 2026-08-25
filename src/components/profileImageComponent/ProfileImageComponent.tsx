@@ -1,4 +1,5 @@
 import AsyncImage from "../asyncImageLoader/AsyncImage";
+import { LoadingBlock, LoadingRegion } from "../loadingState/LoadingState";
 
 interface ProfileImageProps {
   figureClassName?: string;
@@ -13,10 +14,12 @@ export default function ProfileImageComponent({
 }: ProfileImageProps) {
   if (isLoading || !src) {
     return (
-      <div
-        className={`aspect-square w-44 animate-pulse border border-line bg-surface-raised lg:justify-self-end ${figureClassName}`}
-        aria-hidden="true"
-      />
+      <LoadingRegion
+        className={`aspect-square w-44 border border-line bg-surface-raised lg:justify-self-end ${figureClassName}`}
+        label="Preparing profile image"
+      >
+        <LoadingBlock className="loading-image-square" />
+      </LoadingRegion>
     );
   }
 
