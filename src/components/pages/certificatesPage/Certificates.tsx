@@ -4,9 +4,10 @@ import { PUBLIC_DATA_STALE_TIME_MS } from "../../../data/cacheSettings";
 import type { MediaItem } from "../../../types/MediaCardTypes";
 import CookingArea from "../../cookingArea/CookingArea";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
-import Grid from "../../grid/Grid";
 import MediaModal from "../../mediaModal/MediaModal";
 import PaginationControls from "../../pagination/PaginationControls";
+import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
+import CertificateArchive from "./CertificateArchive";
 
 interface ApiCertification {
   id: number;
@@ -15,7 +16,7 @@ interface ApiCertification {
   url: string;
   short_description: string;
   long_description: string;
-  certificate_link: string;
+  certificate_link: string | null;
   display_order: number;
 }
 
@@ -102,19 +103,14 @@ export default function Certifications() {
       url: cert.url,
       shortDescription: cert.short_description,
       longDescription: cert.long_description,
-      projectLink: cert.certificate_link,
+      projectLink: cert.certificate_link ?? "",
       gallery:
         itemQueries[index]?.data
-          ?.sort((a, b) => a.display_order - b.display_order)
+          ?.slice()
+          .sort((a, b) => a.display_order - b.display_order)
           .map((media) => ({
-            id: media.id,
-            title: "",
             type: media.type,
             url: media.url,
-            shortDescription: "",
-            longDescription: "",
-            projectLink: "",
-            gallery: [],
           })) ?? [],
     }));
 
@@ -140,57 +136,86 @@ export default function Certifications() {
         image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
         url="https://syn-forge.com/certificates"
       />
-      <CookingArea>
-        <div className="py-10 sm:py-14">
-          <header className="mb-8 border-b border-line pb-8">
-            <div className="flex flex-wrap items-end justify-between gap-6">
-              <div>
-                <p className="eyebrow mb-5">03 / 04</p>
-                <h1 className="text-page-title text-text">Credentials / learning archive</h1>
-                <p className="mt-4 max-w-2xl text-lg text-text-muted">
-                  Training completed through workshops, programs, and certifications.
+      <main aria-labelledby="certificates-page-title">
+        <CookingArea>
+          <div className="certificate-archive-shell">
+            <PointerCoordinates
+              activeSection={1}
+              className="certificate-archive-coordinates"
+              markerCount={3}
+            />
+
+            <header className="certificate-archive-header">
+              <p className="eyebrow">03 / 04</p>
+              <div className="certificate-archive-heading">
+                <div>
+                  <h1 id="certificates-page-title">Credentials / learning archive</h1>
+                  <p>
+                    Training completed through workshops, programs, and certifications that support
+                    continuous learning and professional growth.
+                  </p>
+                </div>
+                <p className="meta-label">[ {totalCertificateCards} certifications ]</p>
+              </div>
+            </header>
+
+            {certsQuery.isLoading && (
+              <div className="certificate-archive-state">
+                <p className="eyebrow" aria-live="polite">
+                  Loading credentials
                 </p>
               </div>
-              <p className="meta-label">[ {certifications.length} certifications ]</p>
-            </div>
-          </header>
+            )}
+            {certsQuery.isError && (
+              <div className="certificate-archive-state certificate-archive-error" role="alert">
+                <p>Unable to load certificates.</p>
+                <button className="action-quiet" onClick={() => certsQuery.refetch()} type="button">
+                  Try again
+                </button>
+              </div>
+            )}
+            {!certsQuery.isLoading && !certsQuery.isError && displayCerts.length === 0 && (
+              <div className="certificate-archive-state">
+                <p>No credentials are available yet.</p>
+              </div>
+            )}
+            {!certsQuery.isLoading && !certsQuery.isError && displayCerts.length > 0 && (
+              <>
+                <CertificateArchive
+                  certificates={displayCerts}
+                  isInteractive={(certificate) => certificate.id !== FUTURE_CERT_CARD.id}
+                  onOpenCertificate={handleOpenCert}
+                  startIndex={pageStartIndex}
+                />
+                <PaginationControls
+                  currentPage={currentPage}
+                  itemLabel="certifications"
+                  onPageChange={(page) => {
+                    setCurrentPage(page);
+                    window.scrollTo({
+                      top: 0,
+                      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                        ? "auto"
+                        : "smooth",
+                    });
+                  }}
+                  pageSize={CERTIFICATES_PER_PAGE}
+                  totalItems={totalCertificateCards}
+                  totalPages={totalPages}
+                />
+              </>
+            )}
 
-          {certsQuery.isLoading && (
-            <div className="grid min-h-72 place-items-center border-y border-line">
-              <p className="eyebrow animate-pulse">Loading credentials</p>
-            </div>
-          )}
-          {certsQuery.isError && (
-            <div className="border-y border-danger py-8 text-danger">
-              Unable to load certificates.
-            </div>
-          )}
-          {!certsQuery.isLoading && !certsQuery.isError && (
-            <>
-              <Grid projects={displayCerts} onProjectClick={handleOpenCert} />
-              <PaginationControls
-                currentPage={currentPage}
-                itemLabel="certifications"
-                onPageChange={(page) => {
-                  setCurrentPage(page);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                pageSize={CERTIFICATES_PER_PAGE}
-                totalItems={totalCertificateCards}
-                totalPages={totalPages}
-              />
-            </>
-          )}
-
-          <MediaModal
-            item={selectedCert}
-            show={showModal}
-            onClose={closeModal}
-            detailsLabel="Certification Details"
-            ctaLabel="View Credential"
-          />
-        </div>
-      </CookingArea>
+            <MediaModal
+              item={selectedCert}
+              show={showModal}
+              onClose={closeModal}
+              detailsLabel="Certification Details"
+              ctaLabel="View Credential"
+            />
+          </div>
+        </CookingArea>
+      </main>
     </>
   );
 }
