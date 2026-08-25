@@ -20,13 +20,13 @@ second route list; see [[api/routes|API routes]] for route paths.
 
 | Group | Responsibility | Shape |
 | --- | --- | --- |
-| `HomePageController` and `ProjectsPageController` | Call aggregate models and wrap results or errors. | Thin adapters |
+| `HomePageController`, `ProjectsPageController`, and `CertificatesPageController` | Call aggregate models and wrap results or errors. | Thin adapters |
 | Home CRUD controllers | Pass settings, profile, section, and section-item input to models. | Mostly thin; section items also normalize payload aliases and order fields. |
 | Project and gallery controllers | Parse IDs, pass JSON payloads to models, and return created or updated rows. | Thin CRUD adapters |
 | Certificate controllers | Parse IDs, pass CRUD payloads to models, and reload affected records. | Thin to moderate adapters |
 | `CertificateItemsController` | Normalize certificate-item IDs and payload fields before model calls. | Moderate adapter |
 | `MediaController` | List, upload, replace, presign, fetch, and delete R2-backed media. | Thick storage boundary |
-| `SnippetsPageController` | Handle JSON folders, multipart uploads, IDs, parent/order validation, content types, streams, and HTTP errors. | Thickest request boundary |
+| `SnippetsPageController` | Handle JSON folders, multipart uploads, IDs, parent/order validation, versioned preview/document reads, content types, streams, and HTTP errors. | Thickest request boundary |
 
 ## Boundary behavior
 
@@ -43,6 +43,10 @@ it owns direct R2 operations and an S3-compatible presign client. The snippets
 controller is also more than a pass-through because one endpoint accepts two
 content types and it validates parent and display-order inputs before invoking
 the model.
+
+Its additive v2 read handlers keep transport concerns explicit: metadata and bounded
+preview responses are separate from full inline content, while the existing
+unversioned download handler retains its legacy response behavior.
 
 ## Error handling
 
