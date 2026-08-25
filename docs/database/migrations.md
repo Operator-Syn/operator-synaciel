@@ -25,6 +25,12 @@ then `0002` adds `idx_projects_display_order_id` for the stable
 `display_order, id` keyset order. Neither migration changes project content or
 the baseline file.
 
+The certificate archive cursor rollout follows the same two-step pattern: `0003`
+normalizes legacy `Certificates.display_order` NULLs to `0`, then `0004` adds
+`idx_certificates_display_order_id` for the stable `display_order, id` keyset
+order. Both are forward-compatible with the unversioned certificate routes;
+they do not rewrite certificate content or the baseline file.
+
 ## File rules
 
 - Generate one readable SQL file per logical schema change with Drizzle.
