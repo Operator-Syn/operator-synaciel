@@ -22,7 +22,8 @@ remaining public routes when their existing layouts are refined.
 [`PointerCoordinates`](../../src/components/pointerCoordinates/PointerCoordinates.tsx)
 is the shared source for the coordinate/status rail. Home uses the
 `HomeCoordinates` wrapper with three section markers; Projects uses the same
-component with one archive marker and a route-specific visual modifier.
+component with one archive marker; Certificates reuses the rail with its
+center position active.
 
 The rail:
 
@@ -57,6 +58,13 @@ changing grid tracks or causing layout shift.
 The state must remain understandable through keyboard focus and touch input;
 hover is only an additional fine-pointer affordance. Keep the content, media,
 and action hit areas in their existing DOM order.
+
+Certificates use the same full-record feedback contract in a two-column grid
+above their content-fit breakpoint. A certificate record keeps its index,
+contained media, copy, and credential link together; on narrower frames the
+grid becomes one column and then each record stacks into index, media, copy,
+and action bands. The credential link uses the existing `alias` cursor state,
+while the preview media uses `zoom-in` to open the shared media modal.
 
 The archive shell uses its own inline-size container for the structural
 breakpoint. When the available frame is below `1240px`, the action rail moves
