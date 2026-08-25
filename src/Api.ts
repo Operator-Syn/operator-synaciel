@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { CertificateItemsController } from "./controller/CertificatesPage/CertificateItemsController";
 import { CertificatesController } from "./controller/CertificatesPage/CertificatesController";
+import { CertificatesPageController } from "./controller/CertificatesPageController";
 import { ProfileController } from "./controller/HomePage/ProfileController";
 import { SectionsController } from "./controller/HomePage/SectionsController";
 import { SectionItemsController } from "./controller/HomePage/SectionsItemsController";
@@ -88,9 +89,13 @@ app.get("/", (c) => c.redirect("https://www.syn-forge.com", 301));
 
 app.get("/api/projects", ProjectsController.list);
 app.get(`${API_V2_PREFIX}/projects/archive`, ProjectsPageController.handleProjects);
+app.get(`${API_V2_PREFIX}/certificates/archive`, CertificatesPageController.handleCertificates);
 app.get("/api/project/:id", ProjectsController.get);
 app.get("/api/project/:projectId/gallery", GalleryController.listByProject);
 
+app.get(`${API_V2_PREFIX}/snippets/:id/preview`, SnippetsPageController.getSnippetPreview);
+app.get(`${API_V2_PREFIX}/snippets/:id/content`, SnippetsPageController.streamSnippetDocument);
+app.get(`${API_V2_PREFIX}/snippets/:id`, SnippetsPageController.getSnippetDocument);
 app.get("/api/snippets", SnippetsPageController.getSnippets);
 app.get("/api/snippets/:id", SnippetsPageController.getSnippet);
 app.get("/api/snippets/:id/content", SnippetsPageController.downloadSnippet);
