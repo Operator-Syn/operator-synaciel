@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "include": [
+    "/",
+    "/social-image.png",
+    "/projects",
+    "/projects/*",
+    "/certificates",
+    "/certificates/*",
+    "/snippets",
+    "/snippets/*",
+    "/privacy-policy",
+    "/privacy-policy/*",
+    "/terms-and-conditions",
+    "/terms-and-conditions/*",
+    "/netbird",
+    "/netbird/*",
+    "/atelier",
+    "/atelier/*"
+  ],
+  "exclude": ["/assets/*", "/cursors/*", "/robots.txt", "/sitemap.xml"]
+}
