@@ -1,5 +1,5 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import type { CustomThemeDocument } from "../../preferences/customTheme";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CustomThemeDocument, serializeCustomTheme } from "../../preferences/customTheme";
 import {
   applySitePreferences,
   CUSTOM_THEME_STORAGE_KEY,
@@ -11,16 +11,54 @@ import {
   type SiteTheme,
 } from "../../preferences/sitePreferences";
 import { SitePreferencesContext } from "./SitePreferencesContext";
+import { createThemeTransitionController, type ThemeTransitionController } from "./themeTransition";
 
 export default function SitePreferencesProvider({ children }: { children: ReactNode }) {
   const [{ theme, reducedMotion, customTheme }, setPreferences] = useState(readSitePreferences);
   const [systemReducedMotion, setSystemReducedMotion] = useState(isSystemReducedMotion);
+  const [themeTransitionId, setThemeTransitionId] = useState<number | null>(null);
+  const themeTransitionControllerRef = useRef<ThemeTransitionController | null>(null);
+  const visualThemeKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const controller = createThemeTransitionController(
+      document.documentElement,
+      setThemeTransitionId,
+    );
+    themeTransitionControllerRef.current = controller;
+
+    return () => {
+      controller.cancel();
+      themeTransitionControllerRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     const preferences = { theme, reducedMotion, customTheme };
-    applySitePreferences(preferences);
+    const visualThemeKey =
+      theme === "custom" && customTheme
+        ? `custom:${serializeCustomTheme(customTheme)}`
+        : theme === "custom"
+          ? "dalan"
+          : theme;
+    const shouldAnimate =
+      visualThemeKeyRef.current !== null &&
+      visualThemeKeyRef.current !== visualThemeKey &&
+      !reducedMotion &&
+      !systemReducedMotion;
+
+    visualThemeKeyRef.current = visualThemeKey;
     persistSitePreferences(preferences);
-  }, [customTheme, reducedMotion, theme]);
+
+    const controller = themeTransitionControllerRef.current;
+    if (!controller) {
+      applySitePreferences(preferences);
+      return;
+    }
+
+    controller.start(() => applySitePreferences(preferences), shouldAnimate);
+    return controller.cancel;
+  }, [customTheme, reducedMotion, systemReducedMotion, theme]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -44,7 +82,6 @@ export default function SitePreferencesProvider({ children }: { children: ReactN
 
       const preferences = readSitePreferences(event.storageArea);
       setPreferences(preferences);
-      applySitePreferences(preferences);
     };
 
     window.addEventListener("storage", handleStorage);
@@ -105,6 +142,11 @@ export default function SitePreferencesProvider({ children }: { children: ReactN
   );
 
   return (
-    <SitePreferencesContext.Provider value={value}>{children}</SitePreferencesContext.Provider>
+    <SitePreferencesContext.Provider value={value}>
+      {children}
+      {themeTransitionId !== null && (
+        <span aria-hidden="true" className="theme-transition-wipe" key={themeTransitionId} />
+      )}
+    </SitePreferencesContext.Provider>
   );
 }
