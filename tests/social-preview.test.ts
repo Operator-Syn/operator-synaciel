@@ -17,6 +17,9 @@ test("normalizes route paths and falls back safely", () => {
   assert.equal(normalizeSocialPreviewPath("/"), "/");
   assert.equal(normalizeSocialPreviewPath(""), "/");
   assert.equal(getSocialPreviewMetadata("/unknown").route, "home");
+  assert.equal(getSocialPreviewMetadata("/").routeIndex, "01 / 08");
+  assert.equal(getSocialPreviewMetadata("/projects").routeIndex, "02 / 08");
+  assert.equal(getSocialPreviewMetadata("/unknown").routeIndex, "01 / 08");
   assert.equal(
     getSocialPreviewMetadata("/snippets/document/22/database-migrations.md").route,
     "snippets",
@@ -67,6 +70,8 @@ test("keeps Pages image generation and crawler rewriting in the Pages boundary",
   assert.match(middleware, /ImageResponse/);
   assert.match(middleware, /HTMLRewriter/);
   assert.match(middleware, /SOCIAL_PREVIEW_IMAGE_SUFFIX/);
+  assert.match(middleware, /metadata\.routeIndex/);
+  assert.match(middleware, /Working archive/);
 
   const routesConfig = JSON.parse(routes);
   assert.ok(routesConfig.include.includes("/social-image.png"));
