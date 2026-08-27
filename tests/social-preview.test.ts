@@ -24,9 +24,9 @@ test("normalizes route paths and falls back safely", () => {
   assert.equal(normalizeSocialPreviewPath("/"), "/");
   assert.equal(normalizeSocialPreviewPath(""), "/");
   assert.equal(getSocialPreviewMetadata("/unknown").route, "home");
-  assert.equal(getSocialPreviewMetadata("/").routeIndex, "01 / 08");
-  assert.equal(getSocialPreviewMetadata("/projects").routeIndex, "02 / 08");
-  assert.equal(getSocialPreviewMetadata("/unknown").routeIndex, "01 / 08");
+  assert.equal(getSocialPreviewMetadata("/").routeIndex, "01 / 09");
+  assert.equal(getSocialPreviewMetadata("/projects").routeIndex, "02 / 09");
+  assert.equal(getSocialPreviewMetadata("/unknown").routeIndex, "01 / 09");
   assert.equal(
     getSocialPreviewMetadata("/snippets/document/22/database-migrations.md").route,
     "snippets",
@@ -54,6 +54,7 @@ test("creates distinct top-level image URLs", () => {
   assert.equal(new Set(imageUrls).size, SOCIAL_PREVIEW_ROUTES.length);
   assert.equal(getSocialPreviewImagePath("/"), "/social-image.png");
   assert.equal(getSocialPreviewImagePath("/projects/"), "/projects/social-image.png");
+  assert.equal(getSocialPreviewImagePath("/ai"), "/ai/social-image.png");
   assert.equal(
     getSocialPreviewImageUrl("/projects/"),
     "https://syn-forge.com/projects/social-image.png",
@@ -125,4 +126,5 @@ test("keeps Pages head rewriting and static image routing in the Pages boundary"
     assert.ok(routesConfig.exclude.includes(assetPath));
   }
   assert.ok(routesConfig.exclude.includes("/assets/*"));
+  assert.ok(routesConfig.exclude.includes("/llms.txt"));
 });
