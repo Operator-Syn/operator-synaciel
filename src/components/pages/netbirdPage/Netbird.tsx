@@ -5,7 +5,6 @@ const netbirdPageConfig: StaticAppPageConfig = {
   title: "NetBird",
   description:
     "NetBird access homepage for Syn-Forge infrastructure and Google project verification.",
-  image: "https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png",
   url: "https://syn-forge.com/netbird",
   kicker: "Syn-Forge private access",
   heading: "NetBird",
