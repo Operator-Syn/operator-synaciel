@@ -24,7 +24,8 @@ export type SocialPreviewRouteKey =
   | "privacy"
   | "terms"
   | "netbird"
-  | "atelier";
+  | "atelier"
+  | "ai";
 
 export type SocialPreviewRouteDefinition = {
   readonly route: SocialPreviewRouteKey;
@@ -104,6 +105,14 @@ export const SOCIAL_PREVIEW_ROUTES = [
     title: "Atelier",
     description:
       "Atelier dashboard homepage for Syn-Forge portfolio administration and application verification.",
+  },
+  {
+    route: "ai",
+    pathname: "/ai",
+    label: "AI and MCP",
+    title: "AI and MCP Access",
+    description:
+      "Connect AI agents to Syn-Forge's public portfolio MCP for grounded profile, project, certificate, and public snippet information.",
   },
 ] as const satisfies readonly SocialPreviewRouteDefinition[];
 
