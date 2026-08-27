@@ -1,9 +1,11 @@
 import { ArrowLeft, ArrowUp, Home, ListTree, X } from "lucide-react";
-import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import CookingArea from "../../cookingArea/CookingArea";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
-import "../privacyPolicyPage/PrivacyPolicy.css";
+import usePageNavigate from "../../pageTransition/usePageNavigate";
+import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
+import "../privacyPolicyPage/LegalPolicyPage.css";
 
 type TermsSummaryItem = {
   label: string;
@@ -182,20 +184,38 @@ const termsSections: TermsSection[] = [
 
 export default function TermsAndConditions() {
   const location = useLocation();
-  const navigate = useNavigate();
+  const navigate = usePageNavigate();
   const pageRef = useRef<HTMLElement | null>(null);
+  const actionTriggerRef = useRef<HTMLButtonElement>(null);
   const activeSectionIdRef = useRef(termsSections[0].id);
-  const [visibleSectionIds, setVisibleSectionIds] = useState<Set<string>>(() => new Set());
   const [activeSectionId, setActiveSectionId] = useState(termsSections[0].id);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
-  const visibleClassNames = useMemo(() => visibleSectionIds, [visibleSectionIds]);
   const activeSectionIndex = Math.max(
     termsSections.findIndex((section) => section.id === activeSectionId),
     0,
   );
   const activeSection = termsSections[activeSectionIndex];
   const returnContext = getReturnContext(location.state);
+
+  const closeQuickActions = useCallback(() => {
+    setQuickActionsOpen(false);
+    window.requestAnimationFrame(() => actionTriggerRef.current?.focus());
+  }, []);
+
+  useEffect(() => {
+    if (!quickActionsOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+
+      event.preventDefault();
+      closeQuickActions();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [closeQuickActions, quickActionsOpen]);
 
   useEffect(() => {
     activeSectionIdRef.current = activeSectionId;
@@ -215,7 +235,7 @@ export default function TermsAndConditions() {
       block: "start",
     });
     updateSectionHash(sectionId);
-    setQuickActionsOpen(false);
+    closeQuickActions();
   };
 
   const handleBackToTop = () => {
@@ -223,33 +243,24 @@ export default function TermsAndConditions() {
       behavior: "smooth",
       block: "start",
     });
-    setQuickActionsOpen(false);
+    closeQuickActions();
   };
 
   const handleBackToHome = () => {
     navigate("/");
-    setQuickActionsOpen(false);
+    closeQuickActions();
   };
 
   const handleReturnToSource = () => {
     if (!returnContext) return;
 
     navigate(returnContext.to);
-    setQuickActionsOpen(false);
+    closeQuickActions();
   };
 
   useEffect(() => {
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-    if (reduceMotion.matches) {
-      setVisibleSectionIds(new Set(termsSections.map((section) => section.id)));
-    }
-
     const handleScroll = () => {
-      const offset = Math.min(window.scrollY * 0.12, 90);
       const page = pageRef.current;
-
-      pageRef.current?.style.setProperty("--policy-parallax", `${offset}px`);
 
       if (!page) return;
 
@@ -276,28 +287,6 @@ export default function TermsAndConditions() {
 
     if (!elements.length) return;
 
-    const revealObserver = new IntersectionObserver(
-      (entries) => {
-        setVisibleSectionIds((current) => {
-          const next = new Set(current);
-
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              next.add(entry.target.id);
-            } else {
-              next.delete(entry.target.id);
-            }
-          });
-
-          return next;
-        });
-      },
-      {
-        rootMargin: "0px 0px -12% 0px",
-        threshold: 0.08,
-      },
-    );
-
     const activeObserver = new IntersectionObserver(
       (entries) => {
         const visibleEntries = entries
@@ -321,12 +310,10 @@ export default function TermsAndConditions() {
     );
 
     elements.forEach((element) => {
-      revealObserver.observe(element);
       activeObserver.observe(element);
     });
 
     return () => {
-      revealObserver.disconnect();
       activeObserver.disconnect();
     };
   }, [updateSectionHash]);
@@ -361,7 +348,8 @@ export default function TermsAndConditions() {
       />
 
       <CookingArea>
-        <main className="privacy-policy-page" ref={pageRef}>
+        <main className="privacy-policy-page legal-policy-page" ref={pageRef}>
+          <PointerCoordinates className="legal-policy-coordinates" markerCount={0} />
           {returnContext && (
             <button
               className="privacy-policy-context-return"
@@ -406,10 +394,9 @@ export default function TermsAndConditions() {
           <article className="privacy-policy-document">
             {termsSections.map((section, index) => (
               <section
-                className={`privacy-policy-section ${visibleClassNames.has(section.id) ? "is-visible" : ""}`}
+                className="privacy-policy-section is-visible"
                 id={section.id}
                 key={section.id}
-                style={{ "--section-delay": `${Math.min(index, 3) * 35}ms` } as CSSProperties}
               >
                 <div className="privacy-policy-section-heading">
                   <span className="privacy-policy-section-number">
@@ -435,9 +422,16 @@ export default function TermsAndConditions() {
 
           <div
             className={`privacy-policy-quick-actions ${quickActionsOpen ? "is-open" : ""}`}
+            data-state={quickActionsOpen ? "open" : "closed"}
             style={{ "--policy-progress": `${scrollProgress}%` } as CSSProperties}
           >
-            <div className="privacy-policy-action-panel" aria-hidden={!quickActionsOpen}>
+            <div
+              id="policy-action-panel"
+              aria-hidden={!quickActionsOpen}
+              className="privacy-policy-action-panel"
+              data-state={quickActionsOpen ? "open" : "closed"}
+              inert={!quickActionsOpen}
+            >
               <div className="privacy-policy-action-header">
                 <div>
                   <span>Current section</span>
@@ -446,7 +440,7 @@ export default function TermsAndConditions() {
                 <button
                   aria-label="Close section navigator"
                   className="privacy-policy-icon-button"
-                  onClick={() => setQuickActionsOpen(false)}
+                  onClick={closeQuickActions}
                   title="Close"
                   type="button"
                 >
@@ -499,10 +493,18 @@ export default function TermsAndConditions() {
             </div>
 
             <button
+              ref={actionTriggerRef}
+              aria-controls="policy-action-panel"
               aria-expanded={quickActionsOpen}
-              aria-label="Open section navigator"
+              aria-label={quickActionsOpen ? "Close section navigator" : "Open section navigator"}
               className="privacy-policy-action-trigger"
-              onClick={() => setQuickActionsOpen((open) => !open)}
+              onClick={() => {
+                if (quickActionsOpen) {
+                  closeQuickActions();
+                } else {
+                  setQuickActionsOpen(true);
+                }
+              }}
               title="Sections"
               type="button"
             >
