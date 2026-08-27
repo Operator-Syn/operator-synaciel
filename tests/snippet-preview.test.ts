@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  countMarkdownWords,
+  estimateMarkdownReadingTime,
+  MARKDOWN_WORDS_PER_MINUTE,
+} from "../src/components/pages/snippetsPage/readingTime.ts";
+import {
   getSnippetDocumentRoute,
   slugifySnippetName,
 } from "../src/components/pages/snippetsPage/snippetRoutes.ts";
@@ -68,4 +73,26 @@ test("creates readable stable document routes without a schema slug", () => {
     getSnippetDocumentRoute(22, "Database Migrations.md"),
     "/snippets/document/22/database-migrations.md/",
   );
+});
+
+test("estimates Markdown reading time from reader-facing words", () => {
+  const content = [
+    "# A readable heading",
+    "",
+    "Read [this short note](https://example.com) before continuing.",
+    "",
+    "```ts",
+    "const implementationDetail = 'not reader-facing prose';",
+    "```",
+  ].join("\n");
+
+  assert.equal(countMarkdownWords(content), 9);
+  assert.equal(estimateMarkdownReadingTime(content), 1);
+  assert.equal(MARKDOWN_WORDS_PER_MINUTE, 200);
+});
+
+test("rounds longer Markdown documents up to the next minute", () => {
+  assert.equal(estimateMarkdownReadingTime("word ".repeat(200)), 1);
+  assert.equal(estimateMarkdownReadingTime("word ".repeat(201)), 2);
+  assert.equal(estimateMarkdownReadingTime("```\ncode\n```"), null);
 });
