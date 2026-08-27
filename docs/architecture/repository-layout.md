@@ -17,6 +17,8 @@ This note describes the current layout, not a generic starter template.
 - `src/Api.ts` - Hono Worker entrypoint, CORS, auth boundary, and API routes.
 - `src/components/` - reusable UI components, page components, styles, and
   loading placeholders.
+- `functions/` - Cloudflare Pages Functions for generated social images and
+  crawler-facing metadata rewriting.
 - `src/components/pages/` - route-level page components.
 - `src/controller/` - Worker request handlers and media controllers.
 - `src/model/` - D1 and R2-facing data access models.
