@@ -119,7 +119,7 @@ Structural and readable roles accept opaque `#RRGGBB` values. Rule, overlay, and
 
 The loader parses JSON as data only. It rejects unknown fields, unknown roles, prototype-pollution keys, control characters in names, oversized documents, malformed JSON, and non-hex values. Any valid hexadecimal color combination may be applied; contrast is not a blocking rule, so experimentation is not limited to a predefined palette. When a resolved palette falls below the suggested readability ratios, the editor reports those findings as optional suggestions. Invalid input never changes the active theme.
 
-Only the allowlisted semantic variables are applied to the document root. Fonts, spacing, type scale, motion, shadows, layout, cursor SVGs, media content, and browser-owned PDF/video controls are outside this contract.
+Only the allowlisted semantic variables are applied to the document root. The Markdown renderer maps its syntax-token colors to the same semantic roles, so custom palettes also reach highlighted code. Fonts, spacing, type scale, motion, shadows, layout, cursor SVGs, media content, and browser-owned PDF/video controls are outside this contract.
 
 Custom documents are normalized before browser-local storage. They remain local to the current origin and can be exported as JSON for manual sharing; no custom theme data is sent to the Worker or stored in D1/R2.
 
