@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, FileCode2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import CookingArea from "../../cookingArea/CookingArea";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
 import { LoadingBlock, LoadingRegion } from "../../loadingState/LoadingState";
+import TransitionLink from "../../pageTransition/TransitionLink";
 import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
 import { extractMarkdownHeadings, normalizeMarkdownHeadingText } from "./markdownHeadings";
 import SnippetDocumentToc from "./SnippetDocumentToc";
@@ -258,10 +259,10 @@ export default function SnippetDocument() {
                 <FileCode2 aria-hidden="true" size={38} />
                 <h1 id="snippet-document-title">Snippet not found</h1>
                 <p>This document is no longer available at this address.</p>
-                <Link className="snippet-document-link" to={`${SNIPPETS_ROOT_PATH}/`}>
+                <TransitionLink className="snippet-document-link" to={`${SNIPPETS_ROOT_PATH}/`}>
                   <ArrowLeft aria-hidden="true" size={17} />
                   Back to snippets
-                </Link>
+                </TransitionLink>
               </div>
             ) : metadata ? (
               <>
@@ -274,10 +275,13 @@ export default function SnippetDocument() {
                     <p className="snippet-document-path">{displayPath}</p>
                   </div>
                   <div className="snippet-document-actions">
-                    <Link className="snippet-document-link secondary" to={`${SNIPPETS_ROOT_PATH}/`}>
+                    <TransitionLink
+                      className="snippet-document-link secondary"
+                      to={`${SNIPPETS_ROOT_PATH}/`}
+                    >
                       <ArrowLeft aria-hidden="true" size={17} />
                       Back to index
-                    </Link>
+                    </TransitionLink>
                     <button
                       className="snippet-document-link"
                       onClick={handleDownload}
