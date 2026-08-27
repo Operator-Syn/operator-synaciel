@@ -1,8 +1,10 @@
 import {
   applyCustomThemeColors,
+  applyCustomThemeShadows,
   CUSTOM_THEME_STORAGE_KEY as CUSTOM_THEME_KEY,
   type CustomThemeDocument,
   clearCustomThemeColors,
+  clearCustomThemeShadows,
   parseCustomThemeDocument,
   serializeCustomTheme,
 } from "./customTheme";
@@ -100,10 +102,12 @@ export function applySitePreferences(
   if (!root) return;
 
   clearCustomThemeColors(root);
+  clearCustomThemeShadows(root);
 
   if (preferences.theme === "custom" && preferences.customTheme) {
     root.dataset.theme = "custom";
     applyCustomThemeColors(root, preferences.customTheme);
+    applyCustomThemeShadows(root, preferences.customTheme);
   } else {
     root.dataset.theme = preferences.theme === "custom" ? DEFAULT_SITE_THEME : preferences.theme;
   }
