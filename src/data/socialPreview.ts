@@ -3,9 +3,8 @@ export const SOCIAL_PREVIEW_IMAGE_SUFFIX = "/social-image.png";
 export const SOCIAL_PREVIEW_WIDTH = 1200;
 export const SOCIAL_PREVIEW_HEIGHT = 630;
 export const SOCIAL_PREVIEW_CONTENT_TYPE = "image/png";
-export const SOCIAL_PREVIEW_CACHE_CONTROL =
-  "public, max-age=0, s-maxage=300, stale-while-revalidate=86400";
-
+export const SOCIAL_PREVIEW_AVATAR_URL =
+  "https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/nice.webp";
 export const SOCIAL_PREVIEW_COLORS = {
   canvas: "#101111",
   surface: "#171918",
