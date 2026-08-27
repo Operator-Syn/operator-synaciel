@@ -87,6 +87,11 @@ Visitors may author a browser-local custom palette with the versioned JSON docum
   "colors": {
     "canvas": "#101111",
     "signal": "#f0a42a"
+  },
+  "shadows": {
+    "panel": "#00000040",
+    "media": "#0000004d",
+    "viewerTools": "#0000003d"
   }
 }
 ~~~
@@ -117,9 +122,19 @@ The public keys are semantic names rather than arbitrary CSS custom properties:
 
 Structural and readable roles accept opaque `#RRGGBB` values. Rule, overlay, and soft-signal roles also accept `#RRGGBBAA` values when transparency is needed.
 
+Shadow keys are optional and inherit Dalan when omitted. Their values are
+hexadecimal tints with optional alpha; the shadow geometry remains fixed so a
+custom document changes only depth and opacity, not layout:
+
+| JSON key | CSS variable | Use |
+| --- | --- | --- |
+| `panel` | `--shadow-panel` | Settings, navigation, document, and policy panels |
+| `media` | `--shadow-media` | Media modal shell |
+| `viewerTools` | `--shadow-viewer-tools` | Media viewer controls |
+
 The loader parses JSON as data only. It rejects unknown fields, unknown roles, prototype-pollution keys, control characters in names, oversized documents, malformed JSON, and non-hex values. Any valid hexadecimal color combination may be applied; contrast is not a blocking rule, so experimentation is not limited to a predefined palette. When a resolved palette falls below the suggested readability ratios, the editor reports those findings as optional suggestions. Invalid input never changes the active theme.
 
-Only the allowlisted semantic variables are applied to the document root. The Markdown renderer maps its syntax-token colors to the same semantic roles, so custom palettes also reach highlighted code. Fonts, spacing, type scale, motion, shadows, layout, cursor SVGs, media content, and browser-owned PDF/video controls are outside this contract.
+Only the allowlisted semantic variables are applied to the document root. The Markdown renderer maps its syntax-token colors to the same semantic roles, so custom palettes also reach highlighted code. Fonts, spacing, type scale, motion, layout, cursor SVGs, media content, and browser-owned PDF/video controls are outside this contract. Shadow geometry remains fixed; only the allowlisted shadow tint and opacity can change.
 
 Custom documents are normalized before browser-local storage. They remain local to the current origin and can be exported as JSON for manual sharing; no custom theme data is sent to the Worker or stored in D1/R2.
 
@@ -133,7 +148,9 @@ remain recognizable without decorative texture or diagram marks.
 - `--font-mono` is used for indexes, paths, dates, media types, and code.
 - `--radius-control` is `2px`; `--radius-panel` is `4px`.
 - `--focus-ring` uses `--color-signal-strong` with a visible offset.
-- Shadows are reserved for dialogs and selected media, not every section.
+- Shadows are reserved for dialogs, selected media, and their viewer controls;
+  custom documents can tune their black tint and opacity without changing
+  their fixed geometry.
 
 ## Motion roles
 
