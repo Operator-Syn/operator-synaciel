@@ -23,14 +23,19 @@ export const CUSTOM_THEME_COLOR_ROLES = [
   "signalSoft",
 ] as const;
 
+export const CUSTOM_THEME_SHADOW_ROLES = ["panel", "media", "viewerTools"] as const;
+
 export type CustomThemeColorRole = (typeof CUSTOM_THEME_COLOR_ROLES)[number];
+export type CustomThemeShadowRole = (typeof CUSTOM_THEME_SHADOW_ROLES)[number];
 export type HexColor = `#${string}`;
 export type CustomThemeColors = Partial<Record<CustomThemeColorRole, HexColor>>;
+export type CustomThemeShadows = Partial<Record<CustomThemeShadowRole, HexColor>>;
 
 export interface CustomThemeDocument {
   version: typeof CUSTOM_THEME_VERSION;
   name: string;
   colors: CustomThemeColors;
+  shadows: CustomThemeShadows;
 }
 
 export interface CustomThemeParseIssue {
@@ -67,6 +72,12 @@ export const CUSTOM_THEME_CSS_VARIABLES: Record<CustomThemeColorRole, string> = 
   signalSoft: "--color-signal-soft",
 };
 
+export const CUSTOM_THEME_SHADOW_CSS_VARIABLES: Record<CustomThemeShadowRole, string> = {
+  panel: "--shadow-panel",
+  media: "--shadow-media",
+  viewerTools: "--shadow-viewer-tools",
+};
+
 export const DEFAULT_CUSTOM_THEME_COLORS: Record<CustomThemeColorRole, HexColor> = {
   canvas: "#101111",
   surface: "#171918",
@@ -87,7 +98,14 @@ export const DEFAULT_CUSTOM_THEME_COLORS: Record<CustomThemeColorRole, HexColor>
   signalSoft: "#f0a42a1f",
 };
 
+export const DEFAULT_CUSTOM_THEME_SHADOWS: Record<CustomThemeShadowRole, HexColor> = {
+  panel: "#00000040",
+  media: "#0000004d",
+  viewerTools: "#0000003d",
+};
+
 const COLOR_ROLE_SET = new Set<string>(CUSTOM_THEME_COLOR_ROLES);
+const SHADOW_ROLE_SET = new Set<string>(CUSTOM_THEME_SHADOW_ROLES);
 const OPAQUE_COLOR_ROLE_SET = new Set<CustomThemeColorRole>([
   "canvas",
   "surface",
@@ -100,7 +118,7 @@ const OPAQUE_COLOR_ROLE_SET = new Set<CustomThemeColorRole>([
   "danger",
   "success",
 ]);
-const TOP_LEVEL_KEYS = new Set(["version", "name", "colors"]);
+const TOP_LEVEL_KEYS = new Set(["version", "name", "colors", "shadows"]);
 const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/;
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
@@ -155,6 +173,24 @@ export function resolveCustomThemeColors(
 
   for (const role of CUSTOM_THEME_COLOR_ROLES) {
     resolved[role] = theme.colors[role] ?? DEFAULT_CUSTOM_THEME_COLORS[role];
+  }
+
+  return resolved;
+}
+
+const CUSTOM_THEME_SHADOW_GEOMETRY: Record<CustomThemeShadowRole, string> = {
+  panel: "0 1.25rem 3rem",
+  media: "0 0.5rem 1.5rem",
+  viewerTools: "0 0.5rem 1.5rem",
+};
+
+export function resolveCustomThemeShadows(
+  theme: CustomThemeDocument,
+): Record<CustomThemeShadowRole, HexColor> {
+  const resolved = {} as Record<CustomThemeShadowRole, HexColor>;
+
+  for (const role of CUSTOM_THEME_SHADOW_ROLES) {
+    resolved[role] = theme.shadows[role] ?? DEFAULT_CUSTOM_THEME_SHADOWS[role];
   }
 
   return resolved;
@@ -271,6 +307,8 @@ function normalizeCustomTheme(value: unknown): CustomThemeParseResult {
   }
 
   const rawColors = value.colors;
+  let normalizedShadows: CustomThemeShadows = {};
+
   if (!isPlainRecord(rawColors)) {
     issues.push({ path: "colors", message: "Must be a non-empty object." });
   } else {
@@ -316,11 +354,50 @@ function normalizeCustomTheme(value: unknown): CustomThemeParseResult {
       issues.push({ path: "colors", message: "Add at least one supported color role." });
     }
 
+    const rawShadows = value.shadows;
+    if (rawShadows !== undefined) {
+      if (!isPlainRecord(rawShadows)) {
+        issues.push({ path: "shadows", message: "Must be an object when provided." });
+      } else {
+        normalizedShadows = {};
+
+        for (const key of Object.keys(rawShadows)) {
+          if (!SHADOW_ROLE_SET.has(key) || UNSAFE_KEYS.has(key)) {
+            issues.push({ path: `shadows.${key}`, message: "Unknown shadow role." });
+            continue;
+          }
+
+          const role = key as CustomThemeShadowRole;
+          const rawValue = rawShadows[key];
+
+          if (typeof rawValue !== "string") {
+            issues.push({
+              path: `shadows.${role}`,
+              message: "Must be a hexadecimal shadow color.",
+            });
+            continue;
+          }
+
+          const color = rawValue.trim();
+          if (!HEX_COLOR_PATTERN.test(color)) {
+            issues.push({
+              path: `shadows.${role}`,
+              message: "Use #RRGGBB or #RRGGBBAA.",
+            });
+            continue;
+          }
+
+          normalizedShadows[role] = color.toLowerCase() as HexColor;
+        }
+      }
+    }
+
     if (issues.length === 0) {
       const theme: CustomThemeDocument = {
         version: CUSTOM_THEME_VERSION,
         name,
         colors: normalizedColors,
+        shadows: normalizedShadows,
       };
       return { ok: true, theme, suggestions: getCustomThemeSuggestions(theme) };
     }
@@ -357,11 +434,18 @@ export function serializeCustomTheme(theme: CustomThemeDocument) {
     if (value) colors[role] = value;
   }
 
+  const shadows: CustomThemeShadows = {};
+  for (const role of CUSTOM_THEME_SHADOW_ROLES) {
+    const value = theme.shadows[role];
+    if (value) shadows[role] = value;
+  }
+
   return `${JSON.stringify(
     {
       version: CUSTOM_THEME_VERSION,
       name: theme.name,
       colors,
+      shadows,
     },
     null,
     2,
@@ -373,6 +457,7 @@ export function createCustomThemeTemplate() {
     version: CUSTOM_THEME_VERSION,
     name: "My theme",
     colors: DEFAULT_CUSTOM_THEME_COLORS,
+    shadows: DEFAULT_CUSTOM_THEME_SHADOWS,
   });
 }
 
@@ -387,5 +472,22 @@ export function applyCustomThemeColors(root: HTMLElement, theme: CustomThemeDocu
 export function clearCustomThemeColors(root: HTMLElement) {
   for (const role of CUSTOM_THEME_COLOR_ROLES) {
     root.style.removeProperty(CUSTOM_THEME_CSS_VARIABLES[role]);
+  }
+}
+
+export function applyCustomThemeShadows(root: HTMLElement, theme: CustomThemeDocument) {
+  const resolved = resolveCustomThemeShadows(theme);
+
+  for (const role of CUSTOM_THEME_SHADOW_ROLES) {
+    root.style.setProperty(
+      CUSTOM_THEME_SHADOW_CSS_VARIABLES[role],
+      `${CUSTOM_THEME_SHADOW_GEOMETRY[role]} ${resolved[role]}`,
+    );
+  }
+}
+
+export function clearCustomThemeShadows(root: HTMLElement) {
+  for (const role of CUSTOM_THEME_SHADOW_ROLES) {
+    root.style.removeProperty(CUSTOM_THEME_SHADOW_CSS_VARIABLES[role]);
   }
 }
