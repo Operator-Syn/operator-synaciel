@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight, ExternalLink, RotateCcw, X, ZoomIn, ZoomOut } from "lucide-react";
 import {
   type CSSProperties,
+  type AnimationEvent as ReactAnimationEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
@@ -10,6 +11,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { isReducedMotionEnabled } from "../../preferences/sitePreferences";
 import type { MediaItem } from "../../types/MediaCardTypes";
 import MediaRenderer from "../mediaRenderer/MediaRenderer";
 
@@ -17,6 +19,7 @@ interface MediaModalProps {
   item: MediaItem | null;
   show: boolean;
   onClose: () => void;
+  onExitComplete?: () => void;
   detailsLabel?: string;
   ctaLabel?: string;
 }
@@ -78,6 +81,7 @@ export default function MediaModal({
   item,
   show,
   onClose,
+  onExitComplete,
   detailsLabel = "About this Project",
   ctaLabel = "View Project Source",
 }: MediaModalProps) {
@@ -86,6 +90,7 @@ export default function MediaModal({
   const mediaStageRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const previousBodyOverflowRef = useRef("");
+  const hasCompletedExitRef = useRef(false);
   const viewRef = useRef<MediaView>({ zoom: MIN_ZOOM, panX: 0, panY: 0 });
   const pointersRef = useRef(new Map<number, PointerPoint>());
   const gestureRef = useRef<GestureState | null>(null);
@@ -96,6 +101,20 @@ export default function MediaModal({
   const [isViewerActive, setIsViewerActive] = useState(false);
   const [zoomScale, setZoomScale] = useState(MIN_ZOOM);
   const [hasPan, setHasPan] = useState(false);
+
+  const handleModalAnimationEnd = (event: ReactAnimationEvent<HTMLDivElement>) => {
+    if (
+      show ||
+      event.target !== event.currentTarget ||
+      event.animationName !== "media-modal-backdrop-exit" ||
+      hasCompletedExitRef.current
+    ) {
+      return;
+    }
+
+    hasCompletedExitRef.current = true;
+    onExitComplete?.();
+  };
 
   const gallery = useMemo(() => {
     if (!item) return [];
@@ -206,19 +225,50 @@ export default function MediaModal({
   }, []);
 
   useEffect(() => {
+    if (show || !item) {
+      hasCompletedExitRef.current = false;
+      return;
+    }
+
+    if (isReducedMotionEnabled()) {
+      hasCompletedExitRef.current = true;
+      onExitComplete?.();
+      return;
+    }
+
+    hasCompletedExitRef.current = false;
+  }, [item, onExitComplete, show]);
+
+  useEffect(() => {
+    if (!item) return;
+
+    previousBodyOverflowRef.current = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflowRef.current;
+    };
+  }, [item]);
+
+  useEffect(() => {
     if (!show || !item) return;
 
     previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
-    previousBodyOverflowRef.current = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     const focusFrame = window.requestAnimationFrame(() => dialogRef.current?.focus());
 
     return () => {
       window.cancelAnimationFrame(focusFrame);
-      document.body.style.overflow = previousBodyOverflowRef.current;
-      previouslyFocusedRef.current?.focus();
     };
   }, [item, show]);
+
+  useEffect(() => {
+    if (!item) return;
+
+    return () => {
+      previouslyFocusedRef.current?.focus();
+      previouslyFocusedRef.current = null;
+    };
+  }, [item]);
 
   useEffect(() => {
     if (!item) return;
@@ -438,7 +488,7 @@ export default function MediaModal({
   }, [canZoom, handleMediaWheel, show]);
 
   useEffect(() => {
-    if (!show) return;
+    if (!item) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -478,6 +528,8 @@ export default function MediaModal({
         return;
       }
 
+      if (!show) return;
+
       if (!canZoom) return;
 
       if (event.key === "+" || event.key === "=") {
@@ -501,6 +553,7 @@ export default function MediaModal({
     canZoom,
     changeSlide,
     gallery.length,
+    item,
     markViewerActive,
     onClose,
     resetMediaView,
@@ -508,7 +561,7 @@ export default function MediaModal({
     zoomAtPoint,
   ]);
 
-  if (!show || !item || !activeMedia) return null;
+  if (!item || !activeMedia) return null;
 
   const hasMultipleSlides = gallery.length > 1;
   const modalTitleId = `media-modal-title-${item.id}`;
@@ -527,7 +580,9 @@ export default function MediaModal({
       aria-labelledby={modalTitleId}
       aria-modal="true"
       className="media-modal-backdrop fixed inset-0 z-50 grid place-items-center bg-canvas/90 p-4 backdrop-blur-sm"
+      data-state={show ? "open" : "closing"}
       data-cursor="zoom-out"
+      onAnimationEnd={handleModalAnimationEnd}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
