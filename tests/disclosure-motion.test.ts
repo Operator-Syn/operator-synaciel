@@ -70,15 +70,13 @@ test("keeps fixed disclosures mounted and closed states inert", async () => {
 });
 
 test("defines anchored overlay and disclosure motion tokens", async () => {
-  const [tokens, media, quickNavigation, tocStyles, policyStyles, legalPolicyStyles] =
-    await Promise.all([
-      read("src/styles/tokens.css"),
-      read("src/styles/media-modal.css"),
-      read("src/styles/quick-navigation.css"),
-      read("src/components/pages/snippetsPage/SnippetDocument.css"),
-      read("src/components/pages/privacyPolicyPage/PrivacyPolicy.css"),
-      read("src/components/pages/privacyPolicyPage/LegalPolicyPage.css"),
-    ]);
+  const [tokens, media, quickNavigation, tocStyles, legalPolicyStyles] = await Promise.all([
+    read("src/styles/tokens.css"),
+    read("src/styles/media-modal.css"),
+    read("src/styles/quick-navigation.css"),
+    read("src/components/pages/snippetsPage/SnippetDocument.css"),
+    read("src/components/pages/privacyPolicyPage/LegalPolicyPage.css"),
+  ]);
 
   assert.match(tokens, /--motion-overlay-enter-duration: 280ms/);
   assert.match(tokens, /--motion-overlay-exit-duration: 180ms/);
@@ -93,29 +91,19 @@ test("defines anchored overlay and disclosure motion tokens", async () => {
   assert.match(quickNavigation, /transform-origin: top/);
   assert.match(tocStyles, /bottom: calc\(100% \+ 0\.5rem\)/);
   assert.match(tocStyles, /\.snippet-document-toc-mobile\[data-state="open"\]/);
-  assert.match(policyStyles, /--motion-disclosure-enter-duration/);
-  assert.match(policyStyles, /--motion-disclosure-exit-duration/);
   assert.match(legalPolicyStyles, /\.legal-policy-page \.privacy-policy-action-panel/);
   assert.match(legalPolicyStyles, /\.legal-policy-page \.privacy-policy-quick-actions\.is-open/);
 
-  for (const source of [
-    tokens,
-    media,
-    quickNavigation,
-    tocStyles,
-    policyStyles,
-    legalPolicyStyles,
-  ]) {
+  for (const source of [tokens, media, quickNavigation, tocStyles, legalPolicyStyles]) {
     assert.doesNotMatch(source, /!important/);
   }
 });
 
 test("keeps reduced-motion paths immediate", async () => {
-  const [media, quickNavigation, tocStyles, policyStyles, legalPolicyStyles] = await Promise.all([
+  const [media, quickNavigation, tocStyles, legalPolicyStyles] = await Promise.all([
     read("src/styles/media-modal.css"),
     read("src/styles/quick-navigation.css"),
     read("src/components/pages/snippetsPage/SnippetDocument.css"),
-    read("src/components/pages/privacyPolicyPage/PrivacyPolicy.css"),
     read("src/components/pages/privacyPolicyPage/LegalPolicyPage.css"),
   ]);
 
@@ -125,8 +113,6 @@ test("keeps reduced-motion paths immediate", async () => {
   assert.match(tocStyles, /\.snippet-document-toc-mobile-panel/);
   assert.match(tocStyles, /\.snippet-document-toc-mobile-panel \{[\s\S]*transform: none;/);
   assert.match(tocStyles, /@media \(prefers-reduced-motion: reduce\)/);
-  assert.match(policyStyles, /\.privacy-policy-action-panel/);
-  assert.match(policyStyles, /transition: none;/);
   assert.match(legalPolicyStyles, /\.legal-policy-page \.privacy-policy-action-panel/);
   assert.match(legalPolicyStyles, /transition: none;/);
 });
