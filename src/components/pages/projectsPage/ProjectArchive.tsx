@@ -64,6 +64,7 @@ function ProjectArchiveRow({
     <article
       aria-labelledby={titleId}
       className="project-archive-row"
+      data-cursor={isInteractive ? "cell" : undefined}
       onClick={(event) => {
         if (
           !isInteractive ||
@@ -95,7 +96,7 @@ function ProjectArchiveRow({
 
       <ProjectMedia isInteractive={isInteractive} onOpenProject={onOpenProject} project={project} />
 
-      <div className="project-archive-copy" data-cursor="cell">
+      <div className="project-archive-copy">
         <h2 id={titleId}>{project.title}</h2>
         <p>{project.shortDescription}</p>
       </div>
