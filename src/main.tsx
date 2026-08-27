@@ -5,6 +5,10 @@ import { BrowserRouter } from "react-router-dom";
 import "./styles/app.css";
 import App from "./App.tsx";
 import GlobalHeadManager from "./components/globalHeadManager/GlobalHeadManager.tsx";
+import SitePreferencesProvider from "./components/sitePreferences/SitePreferencesProvider";
+import { initializeSitePreferences } from "./preferences/sitePreferences";
+
+initializeSitePreferences();
 
 const queryClient = new QueryClient();
 
@@ -16,12 +20,13 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    {/* 3. Wrap your app with the Provider */}
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <GlobalHeadManager />
-        <App />
-      </BrowserRouter>
-    </QueryClientProvider>
+    <SitePreferencesProvider>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter useTransitions={false}>
+          <GlobalHeadManager />
+          <App />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </SitePreferencesProvider>
   </StrictMode>,
 );
