@@ -4,11 +4,16 @@ import {
   CUSTOM_THEME_COLOR_ROLES,
   CUSTOM_THEME_CSS_VARIABLES,
   CUSTOM_THEME_MAX_BYTES,
+  CUSTOM_THEME_SHADOW_CSS_VARIABLES,
+  CUSTOM_THEME_SHADOW_ROLES,
   type CustomThemeDocument,
   type CustomThemeParseResult,
   createCustomThemeTemplate,
+  DEFAULT_CUSTOM_THEME_SHADOWS,
   parseCustomThemeDocument,
   resolveCustomThemeColors,
+  resolveCustomThemeShadows,
+  serializeCustomTheme,
 } from "../src/preferences/customTheme.ts";
 import {
   applySitePreferences,
@@ -78,6 +83,7 @@ test("accepts partial themes and normalizes names and color casing", () => {
     line: "#f2ede32e",
   });
   assert.equal(resolveCustomThemeColors(theme).surface, "#171918");
+  assert.equal(resolveCustomThemeShadows(theme).panel, DEFAULT_CUSTOM_THEME_SHADOWS.panel);
 });
 
 test("template exposes every documented role and is itself valid", () => {
@@ -85,6 +91,43 @@ test("template exposes every documented role and is itself valid", () => {
 
   assert.equal(Object.keys(theme.colors).length, CUSTOM_THEME_COLOR_ROLES.length);
   assert.deepEqual(Object.keys(theme.colors), [...CUSTOM_THEME_COLOR_ROLES]);
+  assert.deepEqual(Object.keys(theme.shadows), [...CUSTOM_THEME_SHADOW_ROLES]);
+  assert.deepEqual(theme.shadows, DEFAULT_CUSTOM_THEME_SHADOWS);
+});
+
+test("accepts shadow tints while rejecting shadow geometry and unknown roles", () => {
+  const theme = validThemeResult(
+    parseCustomThemeDocument(
+      JSON.stringify({
+        version: 1,
+        colors: { signal: "#f0a42a" },
+        shadows: { panel: " #00000080 ", media: "#123456" },
+      }),
+    ),
+  );
+
+  assert.deepEqual(theme.shadows, {
+    panel: "#00000080",
+    media: "#123456",
+  });
+  assert.deepEqual(
+    validThemeResult(parseCustomThemeDocument(serializeCustomTheme(theme))).shadows,
+    theme.shadows,
+  );
+
+  const invalid = parseCustomThemeDocument(
+    JSON.stringify({
+      version: 1,
+      colors: { signal: "#f0a42a" },
+      shadows: { panel: "0 0 5px red", unknown: "#000000" },
+    }),
+  );
+
+  assert.equal(invalid.ok, false);
+  if (!invalid.ok) {
+    assert.ok(invalid.issues.some((issue) => issue.path === "shadows.panel"));
+    assert.ok(invalid.issues.some((issue) => issue.path === "shadows.unknown"));
+  }
 });
 
 test("reports malformed JSON with a useful syntax message", () => {
@@ -175,6 +218,7 @@ test("applies resolved custom variables and clears them for built-in themes", ()
       JSON.stringify({
         version: 1,
         colors: { canvas: "#202020" },
+        shadows: { panel: "#00000080" },
       }),
     ),
   );
@@ -192,6 +236,18 @@ test("applies resolved custom variables and clears them for built-in themes", ()
   assert.equal(root.dataset.theme, "custom");
   assert.equal(styleValues.get(CUSTOM_THEME_CSS_VARIABLES.canvas), "#202020");
   assert.equal(styleValues.get(CUSTOM_THEME_CSS_VARIABLES.surface), "#171918");
+  assert.equal(
+    styleValues.get(CUSTOM_THEME_SHADOW_CSS_VARIABLES.panel),
+    "0 1.25rem 3rem #00000080",
+  );
+  assert.equal(
+    styleValues.get(CUSTOM_THEME_SHADOW_CSS_VARIABLES.media),
+    "0 0.5rem 1.5rem #0000004d",
+  );
+  assert.equal(
+    styleValues.get(CUSTOM_THEME_SHADOW_CSS_VARIABLES.viewerTools),
+    "0 0.5rem 1.5rem #0000003d",
+  );
 
   applySitePreferences(
     {
@@ -205,6 +261,9 @@ test("applies resolved custom variables and clears them for built-in themes", ()
   assert.equal(root.dataset.theme, "dalan");
   for (const role of CUSTOM_THEME_COLOR_ROLES) {
     assert.equal(styleValues.has(CUSTOM_THEME_CSS_VARIABLES[role]), false);
+  }
+  for (const role of CUSTOM_THEME_SHADOW_ROLES) {
+    assert.equal(styleValues.has(CUSTOM_THEME_SHADOW_CSS_VARIABLES[role]), false);
   }
 });
 
