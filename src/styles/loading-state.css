@@ -62,7 +62,7 @@
         position: absolute;
         inset-block: 0;
         width: 34%;
-        background: linear-gradient(90deg, transparent, rgb(240 164 42 / 12%), transparent);
+        background: linear-gradient(90deg, transparent, var(--color-signal-soft), transparent);
         content: "";
         pointer-events: none;
         animation: loading-signal-glint 2.4s var(--motion-ease) infinite;
