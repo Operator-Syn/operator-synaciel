@@ -1,6 +1,7 @@
 import { Menu, X } from "lucide-react";
 import { type FC, useCallback, useEffect, useRef, useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import TransitionNavLink from "../pageTransition/TransitionNavLink";
 
 export interface NavLinkItem {
   name: string;
@@ -18,19 +19,42 @@ export default function NavBar({ brandName, links }: NavBarProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isNavHidden, setIsNavHidden] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const lastScrollYRef = useRef(0);
   const location = useLocation();
 
-  const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (navRef.current && !navRef.current.contains(event.target as Node)) {
-      setExpanded(false);
-    }
+  const closeNavigation = useCallback(() => {
+    setExpanded(false);
   }, []);
+
+  const handleClickOutside = useCallback(
+    (event: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+        closeNavigation();
+      }
+    },
+    [closeNavigation],
+  );
 
   useEffect(() => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [handleClickOutside]);
+
+  useEffect(() => {
+    if (!expanded) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+
+      event.preventDefault();
+      closeNavigation();
+      menuButtonRef.current?.focus();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [closeNavigation, expanded]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -69,8 +93,8 @@ export default function NavBar({ brandName, links }: NavBarProps) {
   }, [expanded, isNavHidden]);
 
   useEffect(() => {
-    if (location.pathname) setExpanded(false);
-  }, [location.pathname]);
+    if (location.pathname) closeNavigation();
+  }, [closeNavigation, location.pathname]);
 
   return (
     <header
@@ -79,14 +103,16 @@ export default function NavBar({ brandName, links }: NavBarProps) {
       data-navigation-hidden={isNavHidden && !expanded ? "true" : "false"}
     >
       <div className="page-frame-wide flex min-h-[4.5rem] items-center justify-between gap-6 px-0">
-        <NavLink
+        <TransitionNavLink
           className="font-display text-2xl leading-none text-text no-underline transition-colors hover:text-signal"
+          onBeforeNavigate={closeNavigation}
           to="/"
         >
           {brandName}
-        </NavLink>
+        </TransitionNavLink>
 
         <button
+          ref={menuButtonRef}
           aria-controls="main-navigation"
           aria-expanded={expanded}
           aria-label={expanded ? "Close navigation" : "Open navigation"}
@@ -99,20 +125,22 @@ export default function NavBar({ brandName, links }: NavBarProps) {
 
         <nav
           aria-label="Primary navigation"
-          className={`${expanded ? "flex" : "hidden"} absolute left-0 right-0 top-full flex-col border-b border-line bg-canvas px-4 py-3 lg:static lg:flex lg:flex-row lg:items-center lg:gap-8 lg:border-0 lg:bg-transparent lg:p-0`}
+          className="navigation-menu absolute left-0 right-0 top-full flex flex-col border-b border-line bg-canvas px-4 py-3 lg:static lg:flex lg:flex-row lg:items-center lg:gap-8 lg:border-0 lg:bg-transparent lg:p-0"
+          data-navigation-state={expanded ? "open" : "closed"}
           id="main-navigation"
         >
           {links.map((link) => (
-            <NavLink
+            <TransitionNavLink
               key={link.path}
               className={({ isActive }) =>
                 `border-b-2 border-transparent py-3 font-body text-base leading-none no-underline transition-colors lg:py-7 ${isActive ? "border-signal text-signal" : "text-text-muted hover:border-signal hover:text-signal-strong"}`
               }
               end={link.path === "/"}
+              onBeforeNavigate={closeNavigation}
               to={link.path}
             >
               {link.name}
-            </NavLink>
+            </TransitionNavLink>
           ))}
         </nav>
       </div>
