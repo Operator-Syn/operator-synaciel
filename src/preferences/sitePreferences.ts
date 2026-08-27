@@ -15,7 +15,12 @@ export const SITE_THEME_STORAGE_KEY = "operator-syn:theme";
 export const REDUCED_MOTION_STORAGE_KEY = "operator-syn:reduced-motion";
 
 export const DEFAULT_SITE_THEME = "dalan" as const;
-export type SiteTheme = "dalan" | "of-times-old" | "vesper-index" | "custom";
+export type SiteTheme =
+  | "dalan"
+  | "of-times-old"
+  | "vesper-index"
+  | "ancient-blue-ledger"
+  | "custom";
 export type ReducedMotionPreference = "on" | "off";
 
 export interface StoredSitePreferences {
@@ -36,7 +41,11 @@ function getLocalStorage(): Storage | null {
 
 export function isSiteTheme(value: unknown): value is SiteTheme {
   return (
-    value === "dalan" || value === "of-times-old" || value === "vesper-index" || value === "custom"
+    value === "dalan" ||
+    value === "of-times-old" ||
+    value === "vesper-index" ||
+    value === "ancient-blue-ledger" ||
+    value === "custom"
   );
 }
 
