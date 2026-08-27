@@ -7,10 +7,16 @@ import {
   getSocialPreviewImageUrl,
   getSocialPreviewMetadata,
   normalizeSocialPreviewPath,
+  SOCIAL_PREVIEW_AVATAR_URL,
+  SOCIAL_PREVIEW_HEIGHT,
   SOCIAL_PREVIEW_ROUTES,
+  SOCIAL_PREVIEW_WIDTH,
 } from "../src/data/socialPreview.ts";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
+const socialPreviewAssetPaths = SOCIAL_PREVIEW_ROUTES.map((route) =>
+  getSocialPreviewImagePath(route.pathname),
+);
 
 test("normalizes route paths and falls back safely", () => {
   assert.equal(normalizeSocialPreviewPath("projects/?source=share"), "/projects");
@@ -38,6 +44,22 @@ test("creates distinct top-level image URLs", () => {
   );
 });
 
+test("keeps generated assets at native dimensions", async () => {
+  const assets = await Promise.all(
+    socialPreviewAssetPaths.map((assetPath) =>
+      readFile(resolve(repositoryRoot, "public", assetPath.slice(1))),
+    ),
+  );
+  const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+  for (const asset of assets) {
+    assert.deepEqual(asset.subarray(0, 8), pngSignature);
+    assert.equal(asset.readUInt32BE(16), SOCIAL_PREVIEW_WIDTH);
+    assert.equal(asset.readUInt32BE(20), SOCIAL_PREVIEW_HEIGHT);
+    assert.ok(asset.length > 1_000);
+  }
+});
+
 test("keeps route metadata grounded in existing public copy", async () => {
   const sourcePaths = [
     "index.html",
@@ -56,25 +78,35 @@ test("keeps route metadata grounded in existing public copy", async () => {
   );
 
   assert.match(sources[0], /https:\/\/syn-forge\.com\/social-image\.png/);
+  assert.ok(sources[0].includes(SOCIAL_PREVIEW_AVATAR_URL));
   for (const source of sources) {
     assert.doesNotMatch(source, /ProfilePicture\/preview\.png/);
   }
 });
 
-test("keeps Pages image generation and crawler rewriting in the Pages boundary", async () => {
-  const [middleware, routes] = await Promise.all([
+test("keeps Pages head rewriting and static image routing in the Pages boundary", async () => {
+  const [middleware, routes, generator, component] = await Promise.all([
     readFile(resolve(repositoryRoot, "functions/_middleware.ts"), "utf8"),
     readFile(resolve(repositoryRoot, "public/_routes.json"), "utf8"),
+    readFile(resolve(repositoryRoot, "scripts/generate-social-previews.ts"), "utf8"),
+    readFile(resolve(repositoryRoot, "src/components/socialPreview/SocialPreviewCard.tsx"), "utf8"),
   ]);
 
-  assert.match(middleware, /ImageResponse/);
+  assert.doesNotMatch(middleware, /ImageResponse/);
   assert.match(middleware, /HTMLRewriter/);
-  assert.match(middleware, /SOCIAL_PREVIEW_IMAGE_SUFFIX/);
-  assert.match(middleware, /metadata\.routeIndex/);
-  assert.match(middleware, /Working archive/);
+  assert.match(middleware, /getSocialPreviewImageUrl/);
+  assert.match(generator, /renderToStaticMarkup/);
+  assert.match(generator, /page\.screenshot/);
+  assert.match(generator, /naturalWidth/);
+  assert.match(component, /SOCIAL_PREVIEW_AVATAR_URL/);
+  assert.match(component, /<img/);
+  assert.match(component, /Operator Syn/);
+  assert.doesNotMatch(component, /John-Ronan/);
 
   const routesConfig = JSON.parse(routes);
-  assert.ok(routesConfig.include.includes("/social-image.png"));
   assert.ok(routesConfig.include.includes("/projects/*"));
+  for (const assetPath of socialPreviewAssetPaths) {
+    assert.ok(routesConfig.exclude.includes(assetPath));
+  }
   assert.ok(routesConfig.exclude.includes("/assets/*"));
 });
