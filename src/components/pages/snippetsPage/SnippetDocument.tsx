@@ -9,6 +9,7 @@ import { LoadingBlock, LoadingRegion } from "../../loadingState/LoadingState";
 import TransitionLink from "../../pageTransition/TransitionLink";
 import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
 import { extractMarkdownHeadings, normalizeMarkdownHeadingText } from "./markdownHeadings";
+import { estimateMarkdownReadingTime } from "./readingTime";
 import SnippetDocumentToc from "./SnippetDocumentToc";
 import SnippetMarkdown from "./SnippetMarkdown";
 import {
@@ -177,6 +178,12 @@ export default function SnippetDocument() {
     };
   }, [metadata]);
 
+  const readingTimeMinutes = useMemo(
+    () =>
+      metadata?.format === "md" && content !== null ? estimateMarkdownReadingTime(content) : null,
+    [content, metadata?.format],
+  );
+
   const structuredData = useMemo(() => {
     if (!metadata || !canonicalUrl) return undefined;
 
@@ -187,13 +194,14 @@ export default function SnippetDocument() {
       dateModified: metadata.modified,
       encodingFormat: metadata.format === "md" ? "text/markdown" : "application/pdf",
       url: canonicalUrl,
+      ...(readingTimeMinutes === null ? {} : { timeRequired: `PT${readingTimeMinutes}M` }),
       isPartOf: {
         "@type": "CollectionPage",
         name: "Code Snippets",
         url: "https://syn-forge.com/snippets/",
       },
     };
-  }, [canonicalUrl, metadata]);
+  }, [canonicalUrl, metadata, readingTimeMinutes]);
 
   const pageTitle = metadata?.name || "Snippet document";
   const pageDescription = metadata
@@ -302,6 +310,12 @@ export default function SnippetDocument() {
                     <span className="snippet-document-meta-label">Size</span>
                     {formatBytes(metadata.size)}
                   </span>
+                  {readingTimeMinutes !== null && (
+                    <span>
+                      <span className="snippet-document-meta-label">Read time</span>
+                      {readingTimeMinutes} min
+                    </span>
+                  )}
                   <span>
                     <span className="snippet-document-meta-label">Path</span>
                     {metadata.path_segments.join(" / ")}
