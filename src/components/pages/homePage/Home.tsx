@@ -174,7 +174,6 @@ export default function Home() {
     <>
       <GlobalHeadManager
         description="Syn-Forge is the software developer portfolio of John-Ronan Beira."
-        image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "WebSite",
