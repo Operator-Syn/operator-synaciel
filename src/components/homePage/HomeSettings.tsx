@@ -16,6 +16,7 @@ const builtInThemeChoices: Array<{ label: string; value: SiteTheme }> = [
   { label: "Dalan", value: "dalan" },
   { label: "Of Times Old", value: "of-times-old" },
   { label: "Vesper Index", value: "vesper-index" },
+  { label: "The Ancient Blue Ledger", value: "ancient-blue-ledger" },
 ];
 
 function downloadThemeDocument(content: string) {
