@@ -47,7 +47,7 @@ returned instead of silently continuing.
 - `app` covers application source, public assets, `.well-known/` metadata, and Vite entry files.
 - `docs` covers the vault, `README.md`, `AGENTS.md`, `PRODUCT.md`, `DESIGN.md`, and `screenshot.png.md`.
 - `mcp` covers the server, tests, scripts, hooks, MCP registrations, and
-  tooling metadata, including `mcp:check`.
+  tooling metadata, including `mcp:check` and `skills-lock.json`.
 - `database` covers migrations, the Drizzle configuration, the database schema and seed, and Wrangler configuration.
 - `config` covers ordinary project configuration and files under `.well-known/`, `.vscode/`, `docs/`, `mcp/`, `public/`, `scripts/`, `src/`, and `tests/`, plus the root Biome, Drizzle, HTML, and Vite configuration files.
   Database migrations and restricted tool directories retain their dedicated
@@ -81,6 +81,27 @@ The local stdio servers require Git, Node/npm, Bash, and Pipenv on the existing
 repository toolchain. A collaborator must trust or approve project-scoped MCP
 servers in their client; that approval is intentionally not stored as a global
 machine setting.
+
+## Project-local Codex skills
+
+Codex project skills live under `.agents/skills/` and are checked in with the
+repository. Install the complete Matt Pocock bundle from the repository root:
+
+```bash
+npx skills@latest add mattpocock/skills \
+  --agent codex \
+  --copy \
+  --yes
+```
+
+The command also records the upstream file set in `skills-lock.json`.
+Review the resulting `.agents/` paths and lockfile through the repository MCP
+because they are restricted developer tooling. Omit the global `-g` flag for
+repository-only skills.
+
+`npm run skills:check` validates the repository-owned skill bundles with the
+strict Codex schema and the locked upstream bundle with its compatible
+frontmatter and metadata rules.
 
 ## Git boundary
 
