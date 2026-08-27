@@ -13,7 +13,8 @@ role: index
 
 The public portfolio uses a dark editorial system with cream text, amber
 signals, visible rules, and technical metadata. These notes are the canonical
-implementation guidance for the four public routes.
+implementation guidance for the four public routes and the linked
+legal/application surfaces.
 
 ## Focused notes
 
@@ -26,7 +27,7 @@ implementation guidance for the four public routes.
 - [[design-system/migration|Migration]] - Bootstrap removal order, route scope,
   API/database invariants, and verification gates.
 - [[design-system/references|Visual references]] - checked-in generated images
-  for the four route compositions.
+  for the core routes plus documented hidden-application references.
 - [[design-system/homepage-fidelity|Homepage fidelity]] - the implemented Home
   composition contract, data boundary, and verification targets.
 - [[design-system/certificates-fidelity|Certificates fidelity]] - the
@@ -60,9 +61,10 @@ ignore rules.
 
 ## Scope
 
-The first pass covers Home, Projects, Certificates, and Snippets. Legal and
-hidden application pages keep their existing content behavior and are migrated
-after the shared primitives are stable.
+The current pass covers Home, Projects, Certificates, Snippets, legal pages,
+and the hidden NetBird and Atelier application surfaces. Each route keeps its
+existing content behavior and data boundaries while adopting the shared visual
+system.
 
 The visual migration does not add API fields, routes, D1 tables, or database
 migrations. Existing API response shapes remain authoritative.
