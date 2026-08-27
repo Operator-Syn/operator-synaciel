@@ -58,6 +58,7 @@
     --motion-overlay-exit-duration: 180ms;
     --motion-disclosure-enter-duration: 220ms;
     --motion-disclosure-exit-duration: 160ms;
+    --motion-theme-transition-duration: 320ms;
 }
 
 /* A newly composed pastel blue-hour palette, informed by the legacy blue surface. */
