@@ -28,6 +28,8 @@ root. Topic notes live in focused folders.
   and thicker boundary exceptions.
 - [[architecture/models|Models]] - D1, R2, aggregation, and persistence
   responsibilities.
+- [[architecture/portfolio-mcp|Portfolio MCP]] - public agent access, API
+  boundary, and local Worker workflow.
 - [[api/routes|API routes]] - public routes, private routes, and auth order.
 - [[database/schema|Database schema]] - current D1 tables, relationships, and
   storage references.
