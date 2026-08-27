@@ -245,7 +245,6 @@ export default function SnippetDocument() {
       <GlobalHeadManager
         title={pageTitle}
         description={pageDescription}
-        image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
         url={canonicalUrl}
         robots={isNotFound ? "noindex, nofollow" : "index, follow"}
         jsonLd={structuredData}
