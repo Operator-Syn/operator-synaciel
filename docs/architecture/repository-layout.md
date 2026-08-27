@@ -19,6 +19,8 @@ This note describes the current layout, not a generic starter template.
   loading placeholders.
 - `functions/` - Cloudflare Pages Functions for generated social images and
   crawler-facing metadata rewriting.
+- `workers/portfolio-mcp/` - separate stateless public MCP Worker, Wrangler
+  configuration, and read-only portfolio API adapter.
 - `src/components/pages/` - route-level page components.
 - `src/controller/` - Worker request handlers and media controllers.
 - `src/model/` - D1 and R2-facing data access models.
