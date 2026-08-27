@@ -71,6 +71,7 @@ export const REPOSITORY_WRITE_PROFILES = {
       "package.json",
       "package-lock.json",
       ".mcp.json",
+      "skills-lock.json",
       "tsconfig.mcp.json",
       "eslint.config.js",
     ],
