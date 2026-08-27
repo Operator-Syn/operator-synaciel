@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { PUBLIC_DATA_STALE_TIME_MS } from "../../../data/cacheSettings";
+import { isReducedMotionEnabled } from "../../../preferences/sitePreferences";
 import type { MediaItem } from "../../../types/MediaCardTypes";
 import CookingArea from "../../cookingArea/CookingArea";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
@@ -86,7 +87,7 @@ function toMediaItem(certificate: ApiCertification): MediaItem {
 function scrollToArchiveTop() {
   window.scrollTo({
     top: 0,
-    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    behavior: isReducedMotionEnabled() ? "auto" : "smooth",
   });
 }
 
@@ -176,8 +177,11 @@ export default function Certifications() {
 
   const closeModal = () => {
     setShowModal(false);
-    window.setTimeout(() => setSelectedCert(null), 300);
   };
+
+  const handleModalExitComplete = useCallback(() => {
+    setSelectedCert(null);
+  }, []);
 
   const isInitialLoading = certsQuery.isPending && !archive;
   const isInitialError = certsQuery.isError && !archive;
@@ -275,6 +279,7 @@ export default function Certifications() {
               item={selectedCert}
               show={showModal}
               onClose={closeModal}
+              onExitComplete={handleModalExitComplete}
               detailsLabel="Certification Details"
               ctaLabel="View Credential"
             />
