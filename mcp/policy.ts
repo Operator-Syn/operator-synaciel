@@ -48,7 +48,15 @@ export const BINARY_EXTENSIONS: ReadonlySet<string> = new Set([
 
 export const REPOSITORY_WRITE_PROFILES = {
   app: {
-    prefixes: [".well-known/", "src/", "public/", "index.html", "vite/", "vite.config.ts"],
+    prefixes: [
+      ".well-known/",
+      "src/",
+      "public/",
+      "functions/",
+      "index.html",
+      "vite/",
+      "vite.config.ts",
+    ],
     maxFiles: 60,
     maxBytes: 500_000,
   },
@@ -68,6 +76,7 @@ export const REPOSITORY_WRITE_PROFILES = {
       ".impeccable/",
       ".obsidian/",
       "docs/",
+      "README.md",
       "package.json",
       "package-lock.json",
       ".mcp.json",
@@ -111,6 +120,8 @@ export const REPOSITORY_WRITE_PROFILES = {
       "docs/",
       "mcp/",
       "public/",
+      "functions/",
+      "README.md",
       "scripts/",
       "src/",
       "tests/",
