@@ -22,15 +22,18 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-    .project-archive-row:focus-within .project-archive-index,
-    .project-archive-row:focus-within .project-archive-copy h2 {
+    html:not([data-reduced-motion="on"]) .project-archive-row:focus-within .project-archive-index,
+    html:not([data-reduced-motion="on"])
+        .project-archive-row:focus-within
+        .project-archive-copy
+        h2 {
         transform: translateY(-2px);
     }
 }
 
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-    .project-archive-row:hover .project-archive-index,
-    .project-archive-row:hover .project-archive-copy h2 {
+    html:not([data-reduced-motion="on"]) .project-archive-row:hover .project-archive-index,
+    html:not([data-reduced-motion="on"]) .project-archive-row:hover .project-archive-copy h2 {
         transform: translateY(-2px);
     }
 }
