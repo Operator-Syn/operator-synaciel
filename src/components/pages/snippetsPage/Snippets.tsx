@@ -13,12 +13,14 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { SNIPPETS_REFETCH_INTERVAL_MS, SNIPPETS_STALE_TIME_MS } from "../../../data/cacheSettings";
 import CookingArea from "../../cookingArea/CookingArea";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
 import { LoadingBlock, LoadingRegion } from "../../loadingState/LoadingState";
+import TransitionLink from "../../pageTransition/TransitionLink";
+import usePageNavigate from "../../pageTransition/usePageNavigate";
 import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
 import SnippetMarkdown from "./SnippetMarkdown";
 import { getSnippetDocumentRoute, SNIPPETS_ROOT_PATH } from "./snippetRoutes";
@@ -184,6 +186,7 @@ const fetchSnippets = async (): Promise<FileNode[]> => {
 export default function Snippets() {
   const location = useLocation();
   const navigate = useNavigate();
+  const navigateWithTransition = usePageNavigate();
 
   const {
     data: rootFileSystem,
@@ -378,7 +381,7 @@ export default function Snippets() {
 
   const handleFolderClick = (folderName: string) => {
     handleClosePreview();
-    navigate(getRoutePathFromInternalPath(`${currentPathStr}/${folderName}`));
+    navigateWithTransition(getRoutePathFromInternalPath(`${currentPathStr}/${folderName}`));
   };
 
   const handleParentClick = () => {
@@ -386,7 +389,7 @@ export default function Snippets() {
       currentPathStr.substring(0, currentPathStr.lastIndexOf("/")) || INTERNAL_ROOT_PATH;
 
     handleClosePreview();
-    navigate(getRoutePathFromInternalPath(parentPath));
+    navigateWithTransition(getRoutePathFromInternalPath(parentPath));
   };
 
   useEffect(() => {
@@ -455,14 +458,14 @@ export default function Snippets() {
               <section className="snippets-index-panel" aria-labelledby="snippets-page-title">
                 <div className="snippets-index-content">
                   <nav aria-label="Snippet breadcrumbs" className="snippets-breadcrumb">
-                    <Link
+                    <TransitionLink
                       aria-label="Snippets index root"
                       className="snippets-breadcrumb-home"
                       data-cursor="open"
                       to={getRoutePathFromInternalPath(INTERNAL_ROOT_PATH)}
                     >
                       <HomeIcon aria-hidden="true" size={18} />
-                    </Link>
+                    </TransitionLink>
                     <span aria-hidden="true">/</span>
                     <span className="snippets-breadcrumb-current">snippets</span>
                     <span aria-hidden="true">/</span>
@@ -621,7 +624,7 @@ export default function Snippets() {
                   <div className="snippets-preview-actions">
                     {selectedFile?.format === "md" && (
                       <>
-                        <Link
+                        <TransitionLink
                           aria-label={`Read more about ${selectedFile.name}`}
                           className="snippets-preview-read-more"
                           data-cursor="alias"
@@ -629,7 +632,7 @@ export default function Snippets() {
                         >
                           <LinkIcon aria-hidden="true" size={16} />
                           <span>Read more</span>
-                        </Link>
+                        </TransitionLink>
                         <button
                           aria-label="Download file"
                           className="snippets-preview-download"
@@ -724,7 +727,7 @@ export default function Snippets() {
                               ? "Preview ends here. Read the full document for the complete file."
                               : "Open the document in its dedicated reading view."}
                           </span>
-                          <Link
+                          <TransitionLink
                             aria-label={`Read the full document ${selectedFile.name}`}
                             className="snippets-preview-read-more"
                             data-cursor="alias"
@@ -732,7 +735,7 @@ export default function Snippets() {
                           >
                             <LinkIcon aria-hidden="true" size={16} />
                             <span>Read more</span>
-                          </Link>
+                          </TransitionLink>
                         </div>
                       </>
                     )}
