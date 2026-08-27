@@ -18,6 +18,7 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
+  "exclude": ["scripts/generate-social-previews.ts"],
   "include": [
     "mcp",
     "scripts",
