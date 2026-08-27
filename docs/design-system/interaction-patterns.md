@@ -177,7 +177,10 @@ a full document reader.
 The dedicated document route is the shareable/indexable full-content surface.
 It uses the same Markdown renderer, emits canonical metadata, and normalizes a
 stale filename slug back to the current route. The old unversioned snippet
-routes remain compatible; v2 is additive.
+routes remain compatible; v2 is additive. Markdown headers also report a
+content-derived read time at 200 words per minute; fenced code and Markdown
+syntax do not inflate the estimate. PDFs omit the value because their native
+viewer owns the readable content.
 
 See [[design-system/snippets-fidelity|Snippets fidelity]] for the complete
 route-specific composition and verification contract.
@@ -229,6 +232,12 @@ typography, and geometry.
 Preferences are browser-local and apply across routes. The reduced-motion
 control can add an explicit preference, while turning it off still honors the
 operating system's `prefers-reduced-motion` setting.
+Theme changes use a 320ms fixed wipe: the existing theme remains visible while
+the wipe covers the viewport, the new theme is applied only during the
+full-cover 80ms handoff, and the wipe then reveals the updated interface.
+The signal-colored edge is visual-only and does not capture pointer or keyboard
+input. A newer selection cancels stale frames and cleanup timers so the latest
+theme wins. Reduced motion bypasses the wipe and applies the theme immediately.
 
 ### Custom theme documents
 
