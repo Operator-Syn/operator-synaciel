@@ -16,6 +16,11 @@ The implementation boundary is documented in
 [[architecture/controllers|the controller map]] and
 [[architecture/layer-boundaries|the layer assessment]].
 
+The public portfolio MCP is a separate Worker, not an additional `/api/*`
+route in this Hono application. It calls the public GET contracts below
+through a Service Binding to `portfolio-api`; see
+[[architecture/portfolio-mcp|Portfolio MCP]] for its tool/resource contract.
+
 ## Public routes
 
 These GET routes are registered before the private auth middleware:
