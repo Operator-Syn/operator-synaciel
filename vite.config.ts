@@ -18,6 +18,7 @@ const staticRoutes = [
   "/terms-and-conditions",
   "/netbird",
   "/atelier",
+  "/ai",
 ];
 
 function slugifySnippetName(name: string) {
