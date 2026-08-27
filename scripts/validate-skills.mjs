@@ -11,21 +11,39 @@ const codexHome = process.env.CODEX_HOME || resolve(homedir(), ".codex");
 const validator =
   process.env.CODEX_SKILL_VALIDATOR ||
   resolve(codexHome, "skills", ".system", "skill-creator", "scripts", "quick_validate.py");
+const bundleValidator = resolve(repositoryRoot, "scripts", "validate-skill-bundle.py");
+const skillLockfile = resolve(repositoryRoot, "skills-lock.json");
 const skills = [".agents/skills/repository-quality", ".codex/skills/repository-quality"];
+const pythonCommand = process.platform === "win32" ? "pipenv.exe" : "pipenv";
 
-function validateSkill(skill) {
-  const command = process.platform === "win32" ? "pipenv.exe" : "pipenv";
-  const result = spawnSync(command, ["run", "python", validator, skill], {
+function runPython(args) {
+  const result = spawnSync(pythonCommand, ["run", "python", ...args], {
     cwd: repositoryRoot,
     encoding: "utf8",
     shell: false,
     stdio: "inherit",
   });
   if (result.error) {
-    console.error(`Could not run the skill validator for ${skill}: ${result.error.message}`);
+    console.error(`Could not run the Python skill validator: ${result.error.message}`);
     return false;
   }
   return result.status === 0;
+}
+
+function validateSkill(skill) {
+  return runPython([validator, skill]);
+}
+
+function validateInstalledBundle() {
+  if (!existsSync(bundleValidator)) {
+    console.error(`Installed skill validator not found: ${bundleValidator}`);
+    return false;
+  }
+  if (!existsSync(skillLockfile)) {
+    console.error(`Skill lockfile not found: ${skillLockfile}`);
+    return false;
+  }
+  return runPython([bundleValidator, skillLockfile]);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -36,7 +54,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     );
     process.exitCode = 1;
   } else {
-    const valid = skills.every(validateSkill);
+    const valid = skills.every(validateSkill) && validateInstalledBundle();
     if (!valid) process.exitCode = 1;
   }
 }
