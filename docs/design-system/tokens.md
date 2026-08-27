@@ -76,6 +76,28 @@ contrast for active states and controls:
 | Vesper Index danger | `#ffad9e` | Error state |
 | Vesper Index success | `#acd0d3` | Ready and success state |
 
+Built-in depth follows each palette's structural field: Dalan retains neutral
+black shadows, Of Times Old uses its blue canvas tint, Vesper Index uses its
+violet-charcoal canvas tint, and The Ancient Blue Ledger uses its dark ledger
+ink. The shadow geometry stays fixed across all themes; only tint and opacity
+change.
+
+The Ancient Blue Ledger is a permanent built-in light theme promoted from the
+local custom-theme format. It keeps the same layout, typography, motion, routes,
+media, and cursor behavior while shifting the semantic surfaces toward a pale
+ledger blue:
+
+| Role | Value |
+| --- | --- |
+| Canvas / surface / raised | `#c9ddf7` / `#d9e7fa` / `#edf4fd` |
+| Text / muted / faint | `#13263a` / `#304b66` / `#58718a` |
+| Line / strong line | `#304b6640` / `#13263a66` |
+| Signal / strong signal | `#1a4f8a` / `#103b6b` |
+| Danger / success | `#6e3b50` / `#345b4f` |
+| Overlay roles | `#c9ddf7eb`, `#c9ddf7d6`, `#c9ddf7f5`, `#c9ddf7db` |
+| Signal soft | `#1a4f8a1f` |
+| Panel / media / viewer shadow | `#13263a33` / `#13263a47` / `#13263a3d` |
+
 ## Local custom theme document
 
 Visitors may author a browser-local custom palette with the versioned JSON document format below. This is a local document contract, not an HTTP API and not a new `/api/v2` route.
@@ -174,9 +196,9 @@ movement without covering interaction targets.
 1. Use semantic roles such as `bg-canvas`, `text-text`, and `text-signal` in
    Tailwind markup.
 2. Use `var(--color-...)` inside complex CSS such as Markdown and media states.
-3. Keep the theme's signal role for direction, selection, focus, and primary action; Dalan uses amber, Of Times Old uses pastel blue, and Vesper Index uses rose.
-4. Keep Dalan as the default; Of Times Old may override semantic color roles
-   only.
+3. Keep the theme's signal role for direction, selection, focus, and primary action; Dalan uses amber, Of Times Old uses pastel blue, Vesper Index uses rose, and The Ancient Blue Ledger uses ledger blue.
+4. Keep Dalan as the default; built-in alternate themes may override semantic
+   palette roles and, where documented, shadow tint only.
 5. Do not restore the former blue glass layout, badge-wall styling, or large
    rounded cards in redesigned routes.
 6. Keep spacing and type sizes bounded; test long titles and narrow screens.
