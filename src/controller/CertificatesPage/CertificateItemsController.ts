@@ -6,6 +6,7 @@ import {
   type CertificateItemCreate,
   CertificateItemsModel,
 } from "../../model/CertificatesPage/CertificateItemsModel";
+import { logInternalError } from "../../utils/serverErrors";
 
 type CertificateItemUpdatePayload = Partial<CertificateItemCreate> & {
   project_id?: number;
@@ -52,7 +53,7 @@ export const CertificateItemsController = {
 
       return c.json(item ?? { success: true }, item ? 201 : 200);
     } catch (err: unknown) {
-      console.error("Create Controller Error:", err);
+      logInternalError("CertificateItemsController.create", err);
       return c.json({ error: "Internal Server Error" }, 500);
     }
   },
@@ -81,7 +82,7 @@ export const CertificateItemsController = {
       const item = await model.update(id, updateData);
       return c.json(item ?? { success: true });
     } catch (err: unknown) {
-      console.error("Update Controller Error:", err);
+      logInternalError("CertificateItemsController.update", err);
       return c.json({ error: "Update failed" }, 500);
     }
   },
