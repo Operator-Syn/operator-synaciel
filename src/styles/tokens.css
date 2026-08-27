@@ -25,6 +25,7 @@
     --radius-panel: 4px;
     --shadow-panel: 0 1.25rem 3rem rgb(0 0 0 / 25%);
     --shadow-media: 0 0.5rem 1.5rem rgb(0 0 0 / 30%);
+    --shadow-viewer-tools: 0 0.5rem 1.5rem rgb(0 0 0 / 24%);
     --ease-editorial: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
