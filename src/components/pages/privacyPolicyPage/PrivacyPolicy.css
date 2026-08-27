@@ -350,20 +350,26 @@
     box-shadow: 0 1.25rem 3rem rgba(5, 21, 38, 0.34);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    pointer-events: none;
     opacity: 0;
     transform: translateY(0.75rem) scale(0.98);
     transform-origin: bottom right;
     visibility: hidden;
     transition:
-        opacity 180ms ease,
-        transform 180ms ease,
-        visibility 180ms ease;
+        opacity var(--motion-disclosure-exit-duration) var(--motion-ease-exit),
+        transform var(--motion-disclosure-exit-duration) var(--motion-ease-exit),
+        visibility 0s linear var(--motion-disclosure-exit-duration);
 }
 
 .privacy-policy-quick-actions.is-open .privacy-policy-action-panel {
+    pointer-events: auto;
     opacity: 1;
     transform: translateY(0) scale(1);
     visibility: visible;
+    transition:
+        opacity var(--motion-disclosure-enter-duration) var(--motion-ease),
+        transform var(--motion-disclosure-enter-duration) var(--motion-ease),
+        visibility 0s linear 0s;
 }
 
 .privacy-policy-action-header {
