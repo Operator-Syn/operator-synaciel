@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { PUBLIC_DATA_STALE_TIME_MS } from "../../../data/cacheSettings";
+import { isReducedMotionEnabled } from "../../../preferences/sitePreferences";
 import type { MediaItem } from "../../../types/MediaCardTypes";
 import CookingArea from "../../cookingArea/CookingArea";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
@@ -90,7 +91,7 @@ function toMediaItem(project: ApiProject): MediaItem {
 function scrollToArchiveTop() {
   window.scrollTo({
     top: 0,
-    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    behavior: isReducedMotionEnabled() ? "auto" : "smooth",
   });
 }
 
@@ -172,8 +173,11 @@ export default function Projects() {
 
   const closeModal = () => {
     setShowModal(false);
-    window.setTimeout(() => setSelectedProject(null), 300);
   };
+
+  const handleModalExitComplete = useCallback(() => {
+    setSelectedProject(null);
+  }, []);
 
   const isInitialLoading = projectsQuery.isPending && !archive;
   const isInitialError = projectsQuery.isError && !archive;
@@ -271,6 +275,7 @@ export default function Projects() {
               item={selectedProject}
               show={showModal}
               onClose={closeModal}
+              onExitComplete={handleModalExitComplete}
               detailsLabel="About this Project"
               ctaLabel="View Project Source"
             />
