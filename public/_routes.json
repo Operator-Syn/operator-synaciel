@@ -2,7 +2,6 @@
   "version": 1,
   "include": [
     "/",
-    "/social-image.png",
     "/projects",
     "/projects/*",
     "/certificates",
@@ -18,5 +17,18 @@
     "/atelier",
     "/atelier/*"
   ],
-  "exclude": ["/assets/*", "/cursors/*", "/robots.txt", "/sitemap.xml"]
+  "exclude": [
+    "/social-image.png",
+    "/projects/social-image.png",
+    "/certificates/social-image.png",
+    "/snippets/social-image.png",
+    "/privacy-policy/social-image.png",
+    "/terms-and-conditions/social-image.png",
+    "/netbird/social-image.png",
+    "/atelier/social-image.png",
+    "/assets/*",
+    "/cursors/*",
+    "/robots.txt",
+    "/sitemap.xml"
+  ]
 }
