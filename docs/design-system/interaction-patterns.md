@@ -236,7 +236,7 @@ The Home Settings utility also accepts a versioned local JSON theme document. Vi
 
 The custom editor remains fixed and out of document flow. Its file input, textarea, apply, template, export, and reset controls preserve keyboard focus, accessible announcements, bounded mobile sizing, and the existing settings anchor. Switching to Dalan, Of Times Old, or Vesper Index clears the custom inline overrides without deleting the saved document. Reset removes the custom document and returns to Dalan.
 
-The document is data-only: JSON is parsed without evaluation, arbitrary CSS properties and CSS text are rejected, and only the documented semantic color roles can reach `style.setProperty`. Omitted roles inherit Dalan, while valid hexadecimal combinations are not blocked by contrast rules. Low-contrast combinations are surfaced as optional readability suggestions; they never disable Apply. The custom theme applies to the interface palette only; cursor artwork, media assets, and browser-owned viewers retain their existing behavior.
+The document is data-only: JSON is parsed without evaluation, arbitrary CSS properties and CSS text are rejected, and only the documented semantic color and shadow roles can reach `style.setProperty`. Omitted roles inherit Dalan, while valid hexadecimal combinations are not blocked by contrast rules. Shadow geometry stays fixed while custom values control only tint and opacity. Low-contrast combinations are surfaced as optional readability suggestions; they never disable Apply. The custom theme applies to the interface palette only; cursor artwork, media assets, and browser-owned viewers retain their existing behavior.
 
 ## Hidden application surfaces
 
