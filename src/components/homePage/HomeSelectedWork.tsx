@@ -1,7 +1,7 @@
 import { ArrowUpRight } from "lucide-react";
-import { Link } from "react-router-dom";
 import type { HomeProject } from "../../types/HomePageTypes";
 import { LoadingBlock, LoadingRegion } from "../loadingState/LoadingState";
+import TransitionLink from "../pageTransition/TransitionLink";
 
 interface HomeSelectedWorkProps {
   isError: boolean;
@@ -29,10 +29,10 @@ export default function HomeSelectedWork({ isError, isLoading, projects }: HomeS
         <p className="eyebrow" id="homepage-work-title">
           Selected work
         </p>
-        <Link className="homepage-section-link" to="/projects">
+        <TransitionLink className="homepage-section-link" to="/projects">
           View all projects
           <ArrowUpRight aria-hidden="true" size={16} />
-        </Link>
+        </TransitionLink>
       </div>
 
       {isLoading ? (
