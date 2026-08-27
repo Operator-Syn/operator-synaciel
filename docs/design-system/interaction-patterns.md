@@ -232,6 +232,10 @@ typography, and geometry.
 Preferences are browser-local and apply across routes. The reduced-motion
 control can add an explicit preference, while turning it off still honors the
 operating system's `prefers-reduced-motion` setting.
+The built-in themes are Dalan, Of Times Old, Vesper Index, and The Ancient Blue
+Ledger. The latter is a permanent light ledger palette; selecting it changes
+semantic colors and shadow tints only, preserving the established composition
+and interaction contracts.
 Theme changes use a 320ms fixed wipe: the existing theme remains visible while
 the wipe covers the viewport, the new theme is applied only during the
 full-cover 80ms handoff, and the wipe then reveals the updated interface.
@@ -243,7 +247,7 @@ theme wins. Reduced motion bypasses the wipe and applies the theme immediately.
 
 The Home Settings utility also accepts a versioned local JSON theme document. Visitors can edit or upload a file, receive syntax and field-level validation feedback, and apply it only after the complete document passes validation. A valid document is normalized and stored under the browser's local preference storage; invalid edits leave the currently rendered theme untouched.
 
-The custom editor remains fixed and out of document flow. Its file input, textarea, apply, template, export, and reset controls preserve keyboard focus, accessible announcements, bounded mobile sizing, and the existing settings anchor. Switching to Dalan, Of Times Old, or Vesper Index clears the custom inline overrides without deleting the saved document. Reset removes the custom document and returns to Dalan.
+The custom editor remains fixed and out of document flow. Its file input, textarea, apply, template, export, and reset controls preserve keyboard focus, accessible announcements, bounded mobile sizing, and the existing settings anchor. Switching to Dalan, Of Times Old, Vesper Index, or The Ancient Blue Ledger clears the custom inline overrides without deleting the saved document. Reset removes the custom document and returns to Dalan.
 
 The document is data-only: JSON is parsed without evaluation, arbitrary CSS properties and CSS text are rejected, and only the documented semantic color and shadow roles can reach `style.setProperty`. Omitted roles inherit Dalan, while valid hexadecimal combinations are not blocked by contrast rules. Shadow geometry stays fixed while custom values control only tint and opacity. Low-contrast combinations are surfaced as optional readability suggestions; they never disable Apply. The custom theme applies to the interface palette only; cursor artwork, media assets, and browser-owned viewers retain their existing behavior.
 
