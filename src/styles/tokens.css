@@ -80,6 +80,9 @@
     --color-canvas-overlay-strong: rgb(23 50 72 / 96%);
     --color-canvas-overlay-navigation: rgb(23 50 72 / 86%);
     --color-signal-soft: rgb(184 227 230 / 16%);
+    --shadow-panel: 0 1.25rem 3rem #17324833;
+    --shadow-media: 0 0.5rem 1.5rem #17324847;
+    --shadow-viewer-tools: 0 0.5rem 1.5rem #1732483d;
 }
 
 /* A rose-led twilight palette composed from the Twilight-5 sunset balance. */
@@ -101,4 +104,32 @@
     --color-canvas-overlay-strong: rgb(41 40 49 / 96%);
     --color-canvas-overlay-navigation: rgb(41 40 49 / 86%);
     --color-signal-soft: rgb(247 176 181 / 16%);
+    --shadow-panel: 0 1.25rem 3rem #29283133;
+    --shadow-media: 0 0.5rem 1.5rem #29283147;
+    --shadow-viewer-tools: 0 0.5rem 1.5rem #2928313d;
+}
+
+/* A permanent light ledger palette promoted from the custom theme format. */
+:root[data-theme="ancient-blue-ledger"] {
+    color-scheme: light;
+    --color-canvas: #c9ddf7;
+    --color-surface: #d9e7fa;
+    --color-surface-raised: #edf4fd;
+    --color-text: #13263a;
+    --color-text-muted: #304b66;
+    --color-text-faint: #58718a;
+    --color-line: #304b6640;
+    --color-line-strong: #13263a66;
+    --color-signal: #1a4f8a;
+    --color-signal-strong: #103b6b;
+    --color-danger: #6e3b50;
+    --color-success: #345b4f;
+    --color-canvas-overlay: #c9ddf7eb;
+    --color-canvas-overlay-soft: #c9ddf7d6;
+    --color-canvas-overlay-strong: #c9ddf7f5;
+    --color-canvas-overlay-navigation: #c9ddf7db;
+    --color-signal-soft: #1a4f8a1f;
+    --shadow-panel: 0 1.25rem 3rem #13263a33;
+    --shadow-media: 0 0.5rem 1.5rem #13263a47;
+    --shadow-viewer-tools: 0 0.5rem 1.5rem #13263a3d;
 }
