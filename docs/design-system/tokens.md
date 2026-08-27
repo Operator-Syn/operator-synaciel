@@ -158,11 +158,16 @@ remain recognizable without decorative texture or diagram marks.
 | --- | --- | --- |
 | `--motion-feedback-duration` | `160ms` | Hover, focus, active-marker, and pointer-signal feedback |
 | `--motion-entry-duration` | `480ms` | Non-blocking homepage entry choreography |
+| `--motion-theme-transition-duration` | `320ms` | Full-cover theme handoff |
 | `--motion-ease` | `var(--ease-editorial)` | Confident editorial arrivals and bounded state changes |
 
 Motion is progressive enhancement. Keep content visible without the enhancement
 class, use transforms/opacity/clip-path instead of layout-driving properties,
-and provide a `prefers-reduced-motion` path that preserves state feedback.
+and provide a `prefers-reduced-motion` path that preserves state feedback. Theme
+switches use a fixed, out-of-flow wipe: it covers the viewport in 120ms, holds
+for an 80ms handoff, applies the new palette at the midpoint of that hold, and
+reveals it over the remaining 120ms. A signal-colored edge identifies the
+movement without covering interaction targets.
 
 ## Usage rules
 
