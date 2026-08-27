@@ -53,6 +53,7 @@ export const createMediaController = (prefix: string) => ({
 
       const client = new S3Client({
         region: "auto",
+        requestChecksumCalculation: "WHEN_REQUIRED",
         endpoint: `https://${c.env.ACCOUNT_ID}.r2.cloudflarestorage.com`,
         credentials: {
           accessKeyId: c.env.R2_ACCESS_KEY_ID,
@@ -66,7 +67,8 @@ export const createMediaController = (prefix: string) => ({
         ContentType: contentType || "application/octet-stream",
       });
 
-      const uploadUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
+      const uploadUrl = await getSignedUrl(client, command, { expiresIn: 300 });
+      c.header("Cache-Control", "no-store");
       return c.json({ success: true, uploadUrl, publicUrl: `${c.env.VITE_CDN_URL}/${key}`, key });
     } catch (err: unknown) {
       return respondWithInternalError(c, "MediaController.presign", err);
