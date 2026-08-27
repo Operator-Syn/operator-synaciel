@@ -1,6 +1,6 @@
 import { ArrowDownRight } from "lucide-react";
-import { Link } from "react-router-dom";
 import { LoadingBlock, LoadingRegion } from "../loadingState/LoadingState";
+import TransitionLink from "../pageTransition/TransitionLink";
 
 interface HeaderComponentProps {
   headerPhrase?: string;
@@ -33,13 +33,13 @@ export default function HeaderComponent({
           {mobileHeaderPhrase}
         </p>
       )}
-      <Link
+      <TransitionLink
         className="signal-link mt-8 inline-flex items-center gap-2 font-mono text-meta uppercase tracking-[0.06em]"
         to="/projects"
       >
         Explore the archive
         <ArrowDownRight aria-hidden="true" size={16} />
-      </Link>
+      </TransitionLink>
     </div>
   );
 }
