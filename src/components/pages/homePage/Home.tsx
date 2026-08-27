@@ -1,6 +1,7 @@
 import { useQueries } from "@tanstack/react-query";
 import { ArrowRight, Grid2X2 } from "lucide-react";
 import { PUBLIC_DATA_STALE_TIME_MS } from "../../../data/cacheSettings";
+import { HOME_PAGE_DESCRIPTION } from "../../../data/socialPreview";
 import type { HomePageTypes, HomeProject } from "../../../types/HomePageTypes";
 import CookingArea from "../../cookingArea/CookingArea";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
@@ -173,12 +174,12 @@ export default function Home() {
   return (
     <>
       <GlobalHeadManager
-        description="Syn-Forge is the software developer portfolio of John-Ronan Beira."
+        description={HOME_PAGE_DESCRIPTION}
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "WebSite",
           author: { "@type": "Person", name: "John-Ronan Beira", url: "https://syn-forge.com/" },
-          description: "Syn-Forge is the software developer portfolio of John-Ronan Beira.",
+          description: HOME_PAGE_DESCRIPTION,
           name: "Syn-Forge",
           url: "https://syn-forge.com/",
         }}
