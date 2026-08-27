@@ -11,9 +11,10 @@ role: index
 
 # Design System
 
-The public portfolio uses a dark editorial system with cream text, amber
-signals, visible rules, and technical metadata. These notes are the canonical
-implementation guidance for the four public routes and the linked
+The default public portfolio uses a dark editorial system with cream text, amber
+signals, visible rules, and technical metadata. Built-in alternate palettes
+remap the same semantic roles without changing the composition. These notes are
+the canonical implementation guidance for the four public routes and the linked
 legal/application surfaces.
 
 ## Focused notes
