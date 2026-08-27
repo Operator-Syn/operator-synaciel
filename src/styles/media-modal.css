@@ -1,4 +1,67 @@
 /* Media dialog, gallery navigation, zoom, and modal-local responsive rules. */
+@keyframes media-modal-backdrop-enter {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes media-modal-backdrop-exit {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes media-modal-dialog-enter {
+    from {
+        opacity: 0;
+        transform: translateY(0.75rem) scale(0.985);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes media-modal-dialog-exit {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(0.4rem) scale(0.99);
+    }
+}
+
+.media-modal-backdrop[data-state="open"] {
+    animation: media-modal-backdrop-enter var(--motion-overlay-enter-duration) var(--motion-ease)
+        both;
+}
+
+.media-modal-backdrop[data-state="closing"] {
+    animation: media-modal-backdrop-exit var(--motion-overlay-exit-duration) var(--motion-ease-exit)
+        both;
+}
+
+.media-modal-backdrop[data-state="open"] .media-modal {
+    animation: media-modal-dialog-enter var(--motion-overlay-enter-duration) var(--motion-ease) both;
+}
+
+.media-modal-backdrop[data-state="closing"] .media-modal {
+    animation: media-modal-dialog-exit var(--motion-overlay-exit-duration) var(--motion-ease-exit)
+        both;
+}
+
 .media-modal-backdrop {
     padding: max(0.5rem, env(safe-area-inset-top)) max(0.5rem, env(safe-area-inset-right))
         max(0.5rem, env(safe-area-inset-bottom)) max(0.5rem, env(safe-area-inset-left));
@@ -138,7 +201,7 @@
     margin: 0;
     padding: 0;
     border: 1px solid var(--color-line-strong);
-    background: rgb(16 17 17 / 92%);
+    background: var(--color-canvas-overlay);
     box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 24%);
     opacity: 0.58;
     pointer-events: auto;
@@ -197,7 +260,7 @@
     left: 1rem;
     max-width: min(24rem, calc(100% - 12rem));
     border: 1px solid var(--color-line);
-    background: rgb(16 17 17 / 84%);
+    background: var(--color-canvas-overlay-soft);
     color: var(--color-text-muted);
     font-family: var(--font-mono);
     font-size: 0.68rem;
@@ -222,7 +285,7 @@
     min-height: 2.75rem;
     place-items: center;
     border: 1px solid var(--color-line-strong);
-    background: rgb(16 17 17 / 86%);
+    background: var(--color-canvas-overlay-navigation);
     color: var(--color-text);
     transform: translateY(-50%);
     transition:
@@ -440,5 +503,14 @@
     .media-modal-viewer-hint,
     .media-modal-viewer-tool {
         transition: none;
+    }
+
+    .media-modal-backdrop[data-state="open"],
+    .media-modal-backdrop[data-state="closing"],
+    .media-modal-backdrop[data-state="open"] .media-modal,
+    .media-modal-backdrop[data-state="closing"] .media-modal {
+        animation: none;
+        opacity: 1;
+        transform: none;
     }
 }
