@@ -1,5 +1,5 @@
 import { ListTree } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { MarkdownHeading } from "./markdownHeadings";
 
@@ -35,6 +35,13 @@ function TocLinks({ activeId, headings, onNavigate }: TocLinksProps) {
 
 export default function SnippetDocumentToc({ headings }: SnippetDocumentTocProps) {
   const [activeId, setActiveId] = useState(headings[0]?.id ?? "");
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const mobileTriggerRef = useRef<HTMLButtonElement>(null);
+
+  const closeMobileToc = useCallback(() => {
+    setIsMobileOpen(false);
+    window.requestAnimationFrame(() => mobileTriggerRef.current?.focus());
+  }, []);
 
   useEffect(() => {
     setActiveId(headings[0]?.id ?? "");
@@ -88,7 +95,22 @@ export default function SnippetDocumentToc({ headings }: SnippetDocumentTocProps
 
   const handleNavigate = (id: string) => {
     setActiveId(id);
+    if (isMobileOpen) closeMobileToc();
   };
+
+  useEffect(() => {
+    if (!isMobileOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+
+      event.preventDefault();
+      closeMobileToc();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [closeMobileToc, isMobileOpen]);
 
   return (
     <div className="snippet-document-toc-layer">
@@ -107,8 +129,25 @@ export default function SnippetDocumentToc({ headings }: SnippetDocumentTocProps
         </nav>
       </aside>
 
-      <details className="snippet-document-toc-mobile">
-        <summary>
+      <div className="snippet-document-toc-mobile" data-state={isMobileOpen ? "open" : "closed"}>
+        <div
+          id="snippet-document-toc-mobile-panel"
+          aria-hidden={!isMobileOpen}
+          className="snippet-document-toc-mobile-panel"
+          inert={!isMobileOpen}
+        >
+          <nav aria-label="Document sections">
+            <TocLinks activeId={activeId} headings={headings} onNavigate={handleNavigate} />
+          </nav>
+        </div>
+        <button
+          ref={mobileTriggerRef}
+          aria-controls="snippet-document-toc-mobile-panel"
+          aria-expanded={isMobileOpen}
+          className="snippet-document-toc-mobile-trigger"
+          onClick={() => setIsMobileOpen((open) => !open)}
+          type="button"
+        >
           <span>
             <ListTree aria-hidden="true" size={16} />
             Contents
@@ -116,11 +155,8 @@ export default function SnippetDocumentToc({ headings }: SnippetDocumentTocProps
           <span className="snippet-document-toc-count">
             {headings.length.toString().padStart(2, "0")} sections
           </span>
-        </summary>
-        <nav aria-label="Document sections">
-          <TocLinks activeId={activeId} headings={headings} onNavigate={handleNavigate} />
-        </nav>
-      </details>
+        </button>
+      </div>
     </div>
   );
 }
