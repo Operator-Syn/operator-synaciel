@@ -1,6 +1,5 @@
 import { useQueries } from "@tanstack/react-query";
 import { ArrowRight, Grid2X2 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { PUBLIC_DATA_STALE_TIME_MS } from "../../../data/cacheSettings";
 import type { HomePageTypes, HomeProject } from "../../../types/HomePageTypes";
 import CookingArea from "../../cookingArea/CookingArea";
@@ -9,9 +8,11 @@ import HomeCoordinates from "../../homePage/HomeCoordinates";
 import HomeFooter from "../../homePage/HomeFooter";
 import HomeIdentityPanel from "../../homePage/HomeIdentityPanel";
 import HomeSelectedWork from "../../homePage/HomeSelectedWork";
+import HomeSettings from "../../homePage/HomeSettings";
 import HomeToolsTable from "../../homePage/HomeToolsTable";
 import useHomepageMotion from "../../homePage/useHomepageMotion";
 import { LoadingBlock } from "../../loadingState/LoadingState";
+import TransitionLink from "../../pageTransition/TransitionLink";
 
 interface SectionApiItem {
   content?: string;
@@ -242,14 +243,20 @@ export default function Home() {
                   )}
                 </div>
                 <div className="homepage-hero-actions">
-                  <Link className="homepage-action homepage-action-primary" to="/projects">
+                  <TransitionLink
+                    className="homepage-action homepage-action-primary"
+                    to="/projects"
+                  >
                     View projects
                     <ArrowRight aria-hidden="true" size={17} />
-                  </Link>
-                  <Link className="homepage-action homepage-action-secondary" to="/snippets">
+                  </TransitionLink>
+                  <TransitionLink
+                    className="homepage-action homepage-action-secondary"
+                    to="/snippets"
+                  >
                     Browse archive
                     <Grid2X2 aria-hidden="true" size={16} />
-                  </Link>
+                  </TransitionLink>
                 </div>
               </div>
 
@@ -277,6 +284,7 @@ export default function Home() {
           <HomeFooter isLoading={sectionsQuery.isLoading} links={sections.social.items} />
         </div>
       </CookingArea>
+      <HomeSettings />
     </>
   );
 }
