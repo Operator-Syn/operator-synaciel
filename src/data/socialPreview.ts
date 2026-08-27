@@ -37,6 +37,7 @@ export type SocialPreviewRouteDefinition = {
 
 export type SocialPreviewMetadata = SocialPreviewRouteDefinition & {
   readonly imageAlt: string;
+  readonly routeIndex: string;
 };
 
 export const SOCIAL_PREVIEW_ROUTES = [
@@ -124,9 +125,18 @@ export function getSocialPreviewMetadata(pathname: string): SocialPreviewMetadat
         (candidate.pathname !== "/" && normalized.startsWith(`${candidate.pathname}/`)),
     ) ?? fallbackRoute;
 
+  const routePosition = SOCIAL_PREVIEW_ROUTES.findIndex(
+    (candidate) => candidate.route === definition.route,
+  );
+  const routeIndex = [
+    String(routePosition + 1).padStart(2, "0"),
+    String(SOCIAL_PREVIEW_ROUTES.length).padStart(2, "0"),
+  ].join(" / ");
+
   return {
     ...definition,
     imageAlt: `${definition.title} — Syn-Forge social preview`,
+    routeIndex,
   };
 }
 
