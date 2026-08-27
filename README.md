@@ -32,10 +32,12 @@ npm run mcp:typecheck
 npm run test:mcp
 ```
 
-The frontend preview command is `npm run preview`. The frontend deployment
-script is `npm run deploy`; it builds the Vite output and publishes `dist` to
-the configured `gh-pages` branch. Worker deployment is configured separately
-through `wrangler.toml` and is not part of that npm script.
+The frontend preview command is `npm run preview`. The production frontend is
+deployed through Cloudflare Pages Git integration with `npm run build` and
+`dist` as the output directory; root Pages Functions are deployed alongside
+that output. The `npm run deploy` script remains a legacy `gh-pages` publisher
+and does not deploy Pages Functions. Worker deployment is configured separately
+through `wrangler.toml`.
 
 ## Graphify
 
