@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef, CSSProperties } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { themeAwareSyntaxTheme } from "./syntaxTheme";
 
 type SyntaxHighlighterProps = ComponentPropsWithoutRef<typeof SyntaxHighlighter>;
 
@@ -27,7 +27,7 @@ export default function SyntaxRenderer({
   return (
     <SyntaxHighlighter
       className="snippet-code-highlighter"
-      style={vscDarkPlus}
+      style={themeAwareSyntaxTheme}
       language={language}
       PreTag="div"
       wrapLongLines={false}
