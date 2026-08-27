@@ -67,6 +67,9 @@ accepted local origins by the Worker CORS allowlist.
   layout note]].
 - [`src/components/quickNavigation/QuickNavigation.tsx`](../../src/components/quickNavigation/QuickNavigation.tsx)
   remains available on archive routes but does not cover the homepage.
+- [`src/components/homePage/HomeSettings.tsx`](../../src/components/homePage/HomeSettings.tsx) and
+  `src/components/sitePreferences/` own the fixed, browser-local visitor
+  preferences utility; it is rendered outside the homepage flow.
 
 ## Motion and interaction contract
 
