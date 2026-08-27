@@ -193,6 +193,27 @@ describe("repository MCP protocol", () => {
     assert.equal(outOfProfile.status, "rejected");
   });
 
+  test("allows the project skill lockfile through the mcp profile", async () => {
+    const repository = await createRepository();
+    repositories.push(repository);
+    const server = await startServer(repository);
+    servers.push(server);
+
+    const lockfile = payload(
+      await server.call("tools/call", {
+        name: "prepare_repository_change",
+        arguments: {
+          taskType: "mcp",
+          description: "review the project-local skill lockfile",
+          profile: "mcp",
+          operations: [{ path: "skills-lock.json", content: '{"version":1}\n' }],
+        },
+      }),
+    );
+    assert.equal(lockfile.status, "prepared");
+    assert.deepEqual(lockfile.files, ["skills-lock.json"]);
+  });
+
   test("maps database artifacts to the database profile", async () => {
     const repository = await createRepository();
     repositories.push(repository);
