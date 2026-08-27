@@ -29,6 +29,8 @@ legal/application surfaces.
   API/database invariants, and verification gates.
 - [[design-system/references|Visual references]] - checked-in generated images
   for the core routes plus documented hidden-application references.
+- [[design-system/social-previews|Social preview cards]] - the generated
+  1200x630 link-unfurl composition, route metadata boundary, and QA contract.
 - [[design-system/homepage-fidelity|Homepage fidelity]] - the implemented Home
   composition contract, data boundary, and verification targets.
 - [[design-system/certificates-fidelity|Certificates fidelity]] - the
