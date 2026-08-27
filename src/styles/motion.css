@@ -108,3 +108,47 @@
         transform: none;
     }
 }
+
+/* Explicit visitor preference follows the system reduced-motion contract. */
+html[data-reduced-motion="on"] {
+    scroll-behavior: auto;
+}
+
+html[data-reduced-motion="on"] *,
+html[data-reduced-motion="on"] *::before,
+html[data-reduced-motion="on"] *::after {
+    transition-duration: 0.01ms;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+}
+
+html[data-reduced-motion="on"] .homepage-action:hover,
+html[data-reduced-motion="on"] .homepage-action:hover svg,
+html[data-reduced-motion="on"] .homepage-work-card:hover .homepage-work-number,
+html[data-reduced-motion="on"] .homepage-work-card:hover .homepage-work-content h2,
+html[data-reduced-motion="on"] .homepage-work-card:focus-within .homepage-work-number,
+html[data-reduced-motion="on"] .homepage-work-card:focus-within .homepage-work-content h2,
+html[data-reduced-motion="on"] .homepage-work-meta a:hover,
+html[data-reduced-motion="on"] .homepage-work-meta a:focus-visible,
+html[data-reduced-motion="on"] .homepage-social-link:hover,
+html[data-reduced-motion="on"] .homepage-social-link:focus-visible,
+html[data-reduced-motion="on"] .project-archive-media-content,
+html[data-reduced-motion="on"] .project-archive-project-link:hover svg,
+html[data-reduced-motion="on"] .project-archive-project-link:focus-visible svg,
+html[data-reduced-motion="on"] .project-archive-gallery-link:hover svg,
+html[data-reduced-motion="on"] .project-archive-gallery-link:focus-visible svg,
+html[data-reduced-motion="on"] .project-archive-row:hover .project-archive-index,
+html[data-reduced-motion="on"] .project-archive-row:hover .project-archive-copy h2,
+html[data-reduced-motion="on"] .project-archive-row:focus-within .project-archive-index,
+html[data-reduced-motion="on"] .project-archive-row:focus-within .project-archive-copy h2,
+html[data-reduced-motion="on"] .certificate-archive-media-content,
+html[data-reduced-motion="on"] .certificate-archive-credential-link:hover svg:first-of-type,
+html[data-reduced-motion="on"] .certificate-archive-credential-link:focus-visible svg:first-of-type,
+html[data-reduced-motion="on"] .certificate-archive-card:hover .certificate-archive-index,
+html[data-reduced-motion="on"] .certificate-archive-card:hover .certificate-archive-copy h2,
+html[data-reduced-motion="on"] .certificate-archive-card:focus-within .certificate-archive-index,
+html[data-reduced-motion="on"] .certificate-archive-card:focus-within .certificate-archive-copy h2,
+html[data-reduced-motion="on"] .quick-navigation-panel,
+html[data-reduced-motion="on"] .navigation-menu {
+    transform: none;
+}
