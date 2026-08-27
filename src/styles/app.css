@@ -12,5 +12,7 @@
 @import "./media-modal.css";
 @import "./quick-navigation.css";
 @import "./responsive.css";
-@import "./motion.css";
+@import "./page-transition.css";
 @import "./loading-state.css";
+@import "./home-settings.css";
+@import "./motion.css";
