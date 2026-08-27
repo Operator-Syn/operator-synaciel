@@ -81,6 +81,10 @@ uses the opaque `next_cursor`, and the previous action uses the locally
 retained cursor history. The controls do not reconstruct offsets or expose
 cursor values.
 
+Pagination reserves a right-side clearance for fixed Quick Navigation, so
+enabled and disabled controls retain independent hover, cursor, and pointer
+targets.
+
 The Projects archive appends a display-only `Still cooking` row after the final
 cursor page. It is not stored in D1 and does not participate in the API cursor
 or server total; the route adjusts the visible range to include the extra
@@ -100,6 +104,41 @@ Loading is a visual state, not a visible word repeated across the interface. Pub
   `role="status"` content and `aria-busy`; do not expose loading copy in the visual layout.
 - Respect `prefers-reduced-motion`: retain the state distinction while removing continuous movement.
 - Do not change API contracts, route behavior, cursor mappings, or interaction handlers to add loading feedback.
+
+## Route transitions
+
+Top-level navigation uses a signal-curtain transition tied to the four-rail order:
+Home, Projects, Certificates, and Snippets. Forward movement carries the curtain
+from right to left; backward movement reverses it. Utility pages use a centered
+neutral curtain without claiming a rail position.
+
+The curtain is CSS-driven and content-only. It is a fixed surface below the
+persistent 4.5rem header, above route content, and below Quick Navigation. It
+never enters layout flow or captures pointer input. The amber edge is the
+curtain's leading edge, so the accent communicates movement instead of acting as
+decoration.
+
+Page transitions run for 560ms: 250ms to cover the content, an 80ms full-cover
+handoff, and 230ms to reveal the destination. The cover uses the editorial
+easing curve, the handoff holds at full cover, and the reveal uses a symmetric
+curtain easing curve so it departs smoothly. Snippet folder changes use the
+lighter 220ms workspace transition. Its cue is opacity only; it never translates
+the workspace horizontally, changes document width, or adds layout flow.
+Dedicated document routes use the full page transition. Modal, hash, download, canonical-replace, and external-link actions
+stay outside this contract.
+
+Each transition receives a keyed active ID so repeated or interrupted
+navigations restart cleanly. Older cleanup timers cannot clear a newer intent.
+Reduced motion removes the curtain and nested animation while keeping route
+changes immediate and usable. Keep route changes non-blocking and do not use the
+transition to mask API loading.
+
+Internal route anchors use `TransitionLink` or `TransitionNavLink`, which route
+through `usePageNavigate` and mark themselves as managed so the parent capture
+boundary does not navigate twice. Quick Navigation closes synchronously before
+its transition starts. Unmanaged internal anchors remain covered by the parent
+fallback; external, hash, download, modal, and automatic canonicalization links
+stay native.
 
 ## Snippets archive workspace
 
@@ -161,6 +200,58 @@ Image media opens at a complete fit-to-frame view. The integrated viewer then su
 Zoom and pan are contained inside the media region with transform-based movement, so the page does not acquire a second scroll surface or lose the image's fit context. The viewer hint and controls recede to a semi-transparent idle state, then return to full contrast on hover, keyboard focus, or active pointer, wheel, touch, and keyboard input without changing their hit areas. Video media keeps its native controls and does not expose image zoom affordances. Gallery changes reset the image view, and Escape, keyboard focus looping, focus restoration, backdrop close, reduced motion, and 44px-class controls remain part of the shared modal contract.
 
 On mobile, the header and label rail compress deliberately but the image stage remains the primary surface. The media toolbar stays reachable without covering the image's focal area, safe-area padding is honored, and touch gestures are enabled only inside image media so ordinary modal controls retain native activation behavior.
+
+## Overlay and disclosure motion
+
+Overlay motion is anchored to the control that opened it: the media modal enters
+from the center, fixed FAB panels unfold from the bottom-right trigger, the
+mobile navbar descends from the header, and the mobile document contents panel
+unfolds above its trigger. Modal entrance/exit uses 280ms/180ms; disclosures use
+220ms/160ms. These surfaces use opacity and transforms without entering layout
+flow.
+
+Closed persistent panels remain hidden and non-interactive, while the modal stays
+mounted until its exit completes so focus restoration and body-scroll locking
+remain deterministic. Escape and existing close actions return focus to their
+trigger where applicable. Reduced motion removes spatial animation and resolves
+the state immediately. The page curtain and media zoom/pan interactions keep
+their separate contracts.
+
+## Visitor preferences
+
+The Home-only settings utility and Quick Navigation share one safe-area-aware
+viewport edge anchor while remaining fixed and out of page layout. Dalan remains
+the default palette; Of Times Old is a newly
+composed lighter pastel-blue monochrome palette informed by the historical blue
+only as reference. Vesper Index is a newly composed rose-led twilight palette
+informed by Twilight-5. Switching themes preserves the same content, spacing,
+typography, and geometry.
+Preferences are browser-local and apply across routes. The reduced-motion
+control can add an explicit preference, while turning it off still honors the
+operating system's `prefers-reduced-motion` setting.
+
+### Custom theme documents
+
+The Home Settings utility also accepts a versioned local JSON theme document. Visitors can edit or upload a file, receive syntax and field-level validation feedback, and apply it only after the complete document passes validation. A valid document is normalized and stored under the browser's local preference storage; invalid edits leave the currently rendered theme untouched.
+
+The custom editor remains fixed and out of document flow. Its file input, textarea, apply, template, export, and reset controls preserve keyboard focus, accessible announcements, bounded mobile sizing, and the existing settings anchor. Switching to Dalan, Of Times Old, or Vesper Index clears the custom inline overrides without deleting the saved document. Reset removes the custom document and returns to Dalan.
+
+The document is data-only: JSON is parsed without evaluation, arbitrary CSS properties and CSS text are rejected, and only the documented semantic color roles can reach `style.setProperty`. Omitted roles inherit Dalan, while valid hexadecimal combinations are not blocked by contrast rules. Low-contrast combinations are surfaced as optional readability suggestions; they never disable Apply. The custom theme applies to the interface palette only; cursor artwork, media assets, and browser-owned viewers retain their existing behavior.
+
+## Hidden application surfaces
+
+StaticAppPage owns /netbird and /atelier. Both use the same ruled application
+shell: coordinate rail, identity-led hero, factual summary grid, and readable
+verification bands. The route configs remain the source of application-specific
+copy, facts, policy destinations, and metadata.
+
+The 2026-08-26 attachment references are recorded in
+[[design-system/references|Portfolio Visual References]]. The old captures show
+blue-glass cards and pill actions; the current surface translates that evidence
+to the shared cream/amber palette and square ruled controls without changing
+security, route, API, or legal behavior. Keep NetBird's private-access meaning
+and Atelier's dashboard meaning distinct even though their composition is
+shared.
 
 ## Adoption checklist
 
