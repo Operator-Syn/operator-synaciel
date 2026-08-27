@@ -6,6 +6,7 @@ import {
   getSocialPreviewImagePath,
   getSocialPreviewImageUrl,
   getSocialPreviewMetadata,
+  HOME_PAGE_DESCRIPTION,
   normalizeSocialPreviewPath,
   SOCIAL_PREVIEW_AVATAR_URL,
   SOCIAL_PREVIEW_HEIGHT,
@@ -30,6 +31,21 @@ test("normalizes route paths and falls back safely", () => {
     getSocialPreviewMetadata("/snippets/document/22/database-migrations.md").route,
     "snippets",
   );
+});
+
+test("keeps the homepage description aligned with the SERP target", async () => {
+  assert.ok(HOME_PAGE_DESCRIPTION.length >= 120);
+  assert.ok(HOME_PAGE_DESCRIPTION.length <= 160);
+
+  const [index, home] = await Promise.all([
+    readFile(resolve(repositoryRoot, "index.html"), "utf8"),
+    readFile(resolve(repositoryRoot, "src/components/pages/homePage/Home.tsx"), "utf8"),
+  ]);
+
+  assert.equal(index.split(HOME_PAGE_DESCRIPTION).length - 1, 3);
+  assert.match(home, /description=\{HOME_PAGE_DESCRIPTION\}/);
+  assert.match(home, /description: HOME_PAGE_DESCRIPTION/);
+  assert.equal(getSocialPreviewMetadata("/").description, HOME_PAGE_DESCRIPTION);
 });
 
 test("creates distinct top-level image URLs", () => {
