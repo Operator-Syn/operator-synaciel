@@ -58,3 +58,33 @@ test("keeps Vesper Index semantic foregrounds readable on every surface", () => 
   assert.ok(contrastRatio(backgrounds.canvas, foregrounds.signal) >= 4.5);
   assert.ok(contrastRatio(backgrounds.canvas, foregrounds.signalStrong) >= 4.5);
 });
+
+test("keeps The Ancient Blue Ledger semantic foregrounds readable on every surface", () => {
+  const backgrounds = {
+    canvas: "#c9ddf7",
+    surface: "#d9e7fa",
+    raised: "#edf4fd",
+  };
+  const foregrounds = {
+    text: "#13263a",
+    muted: "#304b66",
+    faint: "#58718a",
+    signal: "#1a4f8a",
+    signalStrong: "#103b6b",
+    danger: "#6e3b50",
+    success: "#345b4f",
+  };
+
+  for (const [foregroundName, foreground] of Object.entries(foregrounds)) {
+    for (const [backgroundName, background] of Object.entries(backgrounds)) {
+      const threshold = foregroundName === "faint" ? 3 : 4.5;
+      assert.ok(
+        contrastRatio(foreground, background) >= threshold,
+        `${foregroundName} on ${backgroundName} is below WCAG AA`,
+      );
+    }
+  }
+
+  assert.ok(contrastRatio(backgrounds.canvas, foregrounds.signal) >= 4.5);
+  assert.ok(contrastRatio(backgrounds.canvas, foregrounds.signalStrong) >= 4.5);
+});
