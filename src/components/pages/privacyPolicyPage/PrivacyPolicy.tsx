@@ -361,7 +361,6 @@ export default function PrivacyPolicy() {
       <GlobalHeadManager
         title="Privacy Policy"
         description="Privacy Policy for Syn-Forge, Operator-Syn, and related personal applications hosted under syn-forge.com."
-        image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
         url="https://syn-forge.com/privacy-policy"
         jsonLd={breadcrumbSchema}
       />

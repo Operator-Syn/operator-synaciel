@@ -192,7 +192,6 @@ export default function Certifications() {
       <GlobalHeadManager
         title="Training and Credentials"
         description="Explore certificates and training credentials covering software development and related learning."
-        image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
         url="https://syn-forge.com/certificates"
       />
       <main aria-labelledby="certificates-page-title">

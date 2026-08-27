@@ -5,7 +5,6 @@ const atelierPageConfig: StaticAppPageConfig = {
   title: "Atelier",
   description:
     "Atelier dashboard homepage for Syn-Forge portfolio administration and application verification.",
-  image: "https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png",
   url: "https://syn-forge.com/atelier",
   kicker: "Syn-Forge portfolio dashboard",
   heading: "Atelier",

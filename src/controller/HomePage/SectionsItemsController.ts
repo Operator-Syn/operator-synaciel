@@ -14,7 +14,6 @@ export const SectionItemsController = {
   async create(c: Context<{ Bindings: Bindings }>) {
     try {
       const body = await c.req.json();
-      console.log("[CONTROLLER DEBUG] INCOMING PAYLOAD:", JSON.stringify(body));
 
       const model = new SectionItemsModel(c.env.DB);
 
@@ -43,7 +42,6 @@ export const SectionItemsController = {
   async update(c: Context<{ Bindings: Bindings }>) {
     try {
       const body = await c.req.json();
-      console.log("[CONTROLLER DEBUG] UPDATE PAYLOAD:", JSON.stringify(body));
 
       const model = new SectionItemsModel(c.env.DB);
       const id = body.id;

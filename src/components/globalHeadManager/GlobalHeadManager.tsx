@@ -1,4 +1,11 @@
 import { useEffect } from "react";
+import {
+  getSocialPreviewImageUrl,
+  getSocialPreviewMetadata,
+  SOCIAL_PREVIEW_CONTENT_TYPE,
+  SOCIAL_PREVIEW_HEIGHT,
+  SOCIAL_PREVIEW_WIDTH,
+} from "../../data/socialPreview";
 
 type HeadProps = {
   title?: string;
@@ -19,6 +26,9 @@ export default function GlobalHeadManager({
 }: HeadProps) {
   useEffect(() => {
     const pageUrl = url || window.location.href;
+    const pagePath = new URL(pageUrl, window.location.href).pathname;
+    const routeMetadata = getSocialPreviewMetadata(pagePath);
+    const socialImage = image || getSocialPreviewImageUrl(pagePath);
 
     // Document title
     if (title) document.title = `${title} | Syn-Forge`;
@@ -50,7 +60,12 @@ export default function GlobalHeadManager({
 
     setMetaProperty("og:title", title ? `${title} | Syn-Forge` : undefined);
     setMetaProperty("og:description", description);
-    setMetaProperty("og:image", image);
+    setMetaProperty("og:image", socialImage);
+    setMetaProperty("og:image:secure_url", socialImage);
+    setMetaProperty("og:image:type", SOCIAL_PREVIEW_CONTENT_TYPE);
+    setMetaProperty("og:image:width", String(SOCIAL_PREVIEW_WIDTH));
+    setMetaProperty("og:image:height", String(SOCIAL_PREVIEW_HEIGHT));
+    setMetaProperty("og:image:alt", routeMetadata.imageAlt);
     setMetaProperty("og:url", pageUrl);
 
     let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
@@ -75,7 +90,7 @@ export default function GlobalHeadManager({
 
     setMetaName("twitter:title", title ? `${title} | Syn-Forge` : undefined);
     setMetaName("twitter:description", description);
-    setMetaName("twitter:image", image);
+    setMetaName("twitter:image", socialImage);
     setMetaName("twitter:card", "summary_large_image");
     setMetaName("robots", robots);
 

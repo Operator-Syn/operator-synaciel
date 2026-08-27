@@ -3,7 +3,7 @@
 import type { Context } from "hono";
 import type { Bindings } from "../../Api";
 import { SnippetsPageModel } from "../../model/SnippetsPage/SnippetsPageModel";
-import { respondWithInternalError } from "../../utils/serverErrors";
+import { logInternalError, respondWithInternalError } from "../../utils/serverErrors";
 
 type AppContext = Context<{ Bindings: Bindings }>;
 
@@ -254,7 +254,7 @@ export const createSnippetsPageController = (prefix = "snippets/") => ({
 
       return c.json({ error: "Unsupported Content-Type" }, 415);
     } catch (err: unknown) {
-      console.error("[SnippetsPageController.createSnippet]", err);
+      logInternalError("SnippetsPageController.createSnippet", err);
       return c.json({ error: "Creation failed" }, 500);
     }
   },
@@ -304,7 +304,7 @@ export const createSnippetsPageController = (prefix = "snippets/") => ({
         data: updated,
       });
     } catch (err: unknown) {
-      console.error("[SnippetsPageController.updateSnippet]", err);
+      logInternalError("SnippetsPageController.updateSnippet", err);
       return c.json({ error: "Update failed" }, 500);
     }
   },
