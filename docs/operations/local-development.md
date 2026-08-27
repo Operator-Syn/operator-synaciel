@@ -46,10 +46,14 @@ and keeps the CLI and editor on the same parser configuration. VS Code/Cursor
 can install the recommended `biomejs.biome` extension from
 `.vscode/extensions.json`.
 
-`npm run deploy` builds the frontend through `predeploy` and publishes `dist`
-with `gh-pages`. The Worker is configured in
-[`wrangler.toml`](../../wrangler.toml); no npm Worker deployment wrapper is
-currently defined.
+Cloudflare Pages Git integration builds the frontend with `npm run build` and
+publishes `dist`, including root Pages Functions. To exercise the Pages
+Function locally after a build, run `npm run pages:dev`; this uses Wrangler's
+Pages server rather than the separate API Worker configured in
+[`wrangler.toml`](../../wrangler.toml).
+
+`npm run deploy` remains a legacy `gh-pages` publisher and does not deploy
+Pages Functions. The API Worker has no npm deployment wrapper.
 
 ## Graphify
 
