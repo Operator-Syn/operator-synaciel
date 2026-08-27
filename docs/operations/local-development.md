@@ -55,6 +55,20 @@ Pages server rather than the separate API Worker configured in
 `npm run deploy` remains a legacy `gh-pages` publisher and does not deploy
 Pages Functions. The API Worker has no npm deployment wrapper.
 
+The public portfolio MCP is a separate Worker package with a Service Binding
+to `portfolio-api`. Check and test it with:
+
+```bash
+npm run mcp:portfolio:check
+npm run test:portfolio-mcp
+```
+
+Use `npm run mcp:portfolio:dev` for its local Worker server. Its deployment
+wrapper is `npm run mcp:portfolio:deploy`; do not treat a local check or dry run
+as custom-domain activation. See
+[[architecture/portfolio-mcp|the Portfolio MCP note]] for the client
+configuration, deployment prerequisites, and post-deploy verification.
+
 ## Graphify
 
 Graphify is managed by Pipenv and keeps generated state under
