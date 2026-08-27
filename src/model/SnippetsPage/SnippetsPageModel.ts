@@ -1,13 +1,12 @@
 // src/model/SnippetsPage/SnippetsPageModel.ts
 
-import type {
-  D1Database,
-  R2Bucket,
-  R2ObjectBody,
-} from "@cloudflare/workers-types";
+import type { D1Database, R2Bucket, R2ObjectBody } from "@cloudflare/workers-types";
 
 type SnippetType = "dir" | "file";
 type SnippetFormat = "pdf" | "md";
+
+export const SNIPPET_PREVIEW_MAX_CHARACTERS = 960;
+const SNIPPET_PREVIEW_READ_BYTES = 16_384;
 
 interface SnippetRow {
   id: number;
@@ -27,6 +26,12 @@ interface ParentRow {
   type: SnippetType;
 }
 
+interface PathRow {
+  name: string;
+  type: SnippetType;
+  depth: number;
+}
+
 export interface SnippetNode {
   id: number;
   name: string;
@@ -37,6 +42,97 @@ export interface SnippetNode {
   size?: number;
   format?: SnippetFormat;
   children?: SnippetNode[];
+}
+
+export interface SnippetDocumentMetadata {
+  id: number;
+  name: string;
+  type: "file";
+  modified: string;
+  size: number;
+  format: SnippetFormat;
+  path_segments: string[];
+}
+
+export interface SnippetPreview extends SnippetDocumentMetadata {
+  excerpt: string | null;
+  truncated: boolean;
+}
+
+export function createSnippetExcerpt(
+  content: string,
+  maxCharacters = SNIPPET_PREVIEW_MAX_CHARACTERS,
+): { content: string; truncated: boolean } {
+  const normalized = content.replace(/\r\n?/g, "\n");
+  const limit = Math.max(1, Math.floor(maxCharacters));
+
+  if (normalized.length <= limit) {
+    return { content: normalized, truncated: false };
+  }
+
+  const candidate = normalized.slice(0, limit);
+  const paragraphBoundary = candidate.lastIndexOf("\n\n");
+  const lineBoundary = candidate.lastIndexOf("\n");
+  const minimumBoundary = Math.floor(limit * 0.55);
+  const boundary =
+    paragraphBoundary >= minimumBoundary
+      ? paragraphBoundary
+      : lineBoundary >= minimumBoundary
+        ? lineBoundary
+        : limit;
+
+  let excerpt = normalized.slice(0, boundary).trimEnd();
+  const fenceCount = (
+    excerpt.match(new RegExp(`^${String.fromCharCode(96).repeat(3)}`, "gm")) || []
+  ).length;
+
+  if (fenceCount % 2 === 1) {
+    excerpt += `\n${String.fromCharCode(96).repeat(3)}`;
+  }
+
+  return {
+    content: `${excerpt}\n\n…`,
+    truncated: true,
+  };
+}
+
+async function readTextPrefix(
+  body: R2ObjectBody["body"],
+  maxBytes: number,
+): Promise<{ text: string; hitLimit: boolean }> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let bytesRead = 0;
+  let hitLimit = false;
+  let text = "";
+
+  try {
+    while (bytesRead < maxBytes) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+
+      const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
+      const remaining = maxBytes - bytesRead;
+
+      if (chunk.byteLength > remaining) {
+        text += decoder.decode(chunk.subarray(0, remaining), { stream: false });
+        bytesRead += remaining;
+        hitLimit = true;
+        break;
+      }
+
+      text += decoder.decode(chunk, { stream: true });
+      bytesRead += chunk.byteLength;
+    }
+  } finally {
+    if (hitLimit) {
+      await reader.cancel();
+    }
+  }
+
+  text += decoder.decode();
+  return { text, hitLimit };
 }
 
 export class SnippetsPageModel {
@@ -58,6 +154,49 @@ export class SnippetsPageModel {
     }
 
     return this.toSnippetNode(row);
+  }
+
+  async getSnippetDocumentMetadata(id: number): Promise<SnippetDocumentMetadata | null> {
+    const row = await this.getRawSnippetById(id);
+
+    if (!row || row.type !== "file" || !row.file_format || !row.storage_path) {
+      return null;
+    }
+
+    return this.toSnippetDocumentMetadata(row, await this.getPathSegments(id));
+  }
+
+  async getSnippetPreview(id: number): Promise<SnippetPreview | null> {
+    const row = await this.getRawSnippetById(id);
+
+    if (!row || row.type !== "file" || !row.file_format || !row.storage_path) {
+      return null;
+    }
+
+    const object = await this.bucket.get(row.storage_path);
+    if (!object) {
+      return null;
+    }
+
+    const metadata = this.toSnippetDocumentMetadata(row, await this.getPathSegments(id));
+
+    if (row.file_format === "pdf") {
+      return {
+        ...metadata,
+        excerpt: null,
+        truncated: false,
+      };
+    }
+
+    const prefix = await readTextPrefix(object.body, SNIPPET_PREVIEW_READ_BYTES);
+    const excerpt = createSnippetExcerpt(prefix.text);
+
+    return {
+      ...metadata,
+      excerpt: excerpt.content,
+      truncated:
+        excerpt.truncated || (prefix.hitLimit && row.size_bytes > SNIPPET_PREVIEW_READ_BYTES),
+    };
   }
 
   async getFileTree(): Promise<SnippetNode[]> {
@@ -90,7 +229,10 @@ export class SnippetsPageModel {
     return this.buildTree(results);
   }
 
-  async getFileContent(id: number): Promise<{
+  async getFileContent(
+    id: number,
+    disposition: "attachment" | "inline" = "attachment",
+  ): Promise<{
     stream: R2ObjectBody["body"];
     headers: Record<string, string>;
   } | null> {
@@ -110,18 +252,13 @@ export class SnippetsPageModel {
       stream: object.body,
       headers: {
         "Content-Type": this.getContentType(node.format),
-        "Content-Disposition": `attachment; filename="${this.escapeFilename(
-          node.name,
-        )}"`,
+        "Content-Disposition": `${disposition}; filename="${this.escapeFilename(node.name)}"`,
         "Content-Length": node.size?.toString() ?? "0",
       },
     };
   }
 
-  async createFolder(
-    name: string,
-    parentId: number | null,
-  ): Promise<SnippetNode> {
+  async createFolder(name: string, parentId: number | null): Promise<SnippetNode> {
     await this.validateParent(parentId);
 
     const displayOrder = await this.getNextDisplayOrder(parentId);
@@ -216,9 +353,7 @@ export class SnippetsPageModel {
     } catch (err: unknown) {
       await this.bucket.delete(key);
 
-      throw err instanceof Error
-        ? err
-        : new Error("Database insert failed.");
+      throw err instanceof Error ? err : new Error("Database insert failed.");
     }
   }
 
@@ -287,7 +422,10 @@ export class SnippetsPageModel {
       WHERE id = ?
     `;
 
-    await this.db.prepare(query).bind(...args).run();
+    await this.db
+      .prepare(query)
+      .bind(...args)
+      .run();
 
     return this.getSnippetById(id);
   }
@@ -317,13 +455,10 @@ export class SnippetsPageModel {
       FROM descendants
     `;
 
-    const { results } = await this.db
-      .prepare(findQuery)
-      .bind(id)
-      .all<{
-        type: SnippetType;
-        storage_path: string | null;
-      }>();
+    const { results } = await this.db.prepare(findQuery).bind(id).all<{
+      type: SnippetType;
+      storage_path: string | null;
+    }>();
 
     if (results.length === 0) {
       return false;
@@ -382,6 +517,43 @@ export class SnippetsPageModel {
     return row ?? null;
   }
 
+  private async getPathSegments(id: number): Promise<string[]> {
+    const query = [
+      "WITH RECURSIVE ancestors AS (",
+      "  SELECT id, parent_id, name, type, 0 AS depth",
+      "  FROM Snippets",
+      "  WHERE id = ?",
+      "",
+      "  UNION ALL",
+      "",
+      "  SELECT parent.id, parent.parent_id, parent.name, parent.type, ancestors.depth + 1",
+      "  FROM Snippets parent",
+      "  JOIN ancestors ON parent.id = ancestors.parent_id",
+      ")",
+      "SELECT name, type, depth",
+      "FROM ancestors",
+      "ORDER BY depth DESC",
+    ].join("\n");
+
+    const { results } = await this.db.prepare(query).bind(id).all<PathRow>();
+    return results.map((row) => row.name);
+  }
+
+  private toSnippetDocumentMetadata(
+    row: SnippetRow,
+    pathSegments: string[],
+  ): SnippetDocumentMetadata {
+    return {
+      id: row.id,
+      name: row.name,
+      type: "file",
+      modified: row.modified_at,
+      size: row.size_bytes,
+      format: row.file_format as SnippetFormat,
+      path_segments: pathSegments,
+    };
+  }
+
   private async validateParent(parentId: number | null): Promise<void> {
     if (parentId === null) {
       return;
@@ -409,10 +581,7 @@ export class SnippetsPageModel {
     }
   }
 
-  private async validateNoFolderCycle(
-    folderId: number,
-    newParentId: number,
-  ): Promise<void> {
+  private async validateNoFolderCycle(folderId: number, newParentId: number): Promise<void> {
     const query = `
       WITH RECURSIVE descendants AS (
         SELECT id
@@ -431,10 +600,7 @@ export class SnippetsPageModel {
       LIMIT 1
     `;
 
-    const cycle = await this.db
-      .prepare(query)
-      .bind(folderId, newParentId)
-      .first<{ id: number }>();
+    const cycle = await this.db.prepare(query).bind(folderId, newParentId).first<{ id: number }>();
 
     if (cycle) {
       throw new Error("Cannot move a folder into one of its descendants.");

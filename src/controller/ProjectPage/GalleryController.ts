@@ -3,46 +3,46 @@ import type { Context } from "hono";
 import type { Bindings } from "../../Api";
 import { GalleryModel } from "../../model/ProjectPage/GalleryModel";
 
-export class GalleryController {
+export const GalleryController = {
   // List all gallery items for a specific project
-  static async listByProject(c: Context<{ Bindings: Bindings }>) {
+  async listByProject(c: Context<{ Bindings: Bindings }>) {
     // Match the route param name
-    const projectId = Number(c.req.param("projectId")); 
-    if (isNaN(projectId)) return c.json({ error: "Invalid project ID" }, 400);
+    const projectId = Number(c.req.param("projectId"));
+    if (Number.isNaN(projectId)) return c.json({ error: "Invalid project ID" }, 400);
 
     const model = new GalleryModel(c.env.DB);
     const gallery = await model.listByProject(projectId);
 
     return c.json(gallery);
-  }
+  },
 
   // Create a new gallery item
-  static async create(c: Context<{ Bindings: Bindings }>) {
+  async create(c: Context<{ Bindings: Bindings }>) {
     const body = await c.req.json();
     const model = new GalleryModel(c.env.DB);
     const newId = await model.create(body);
     const item = newId ? await model.getById(newId) : null;
     return c.json(item ?? { success: true }, item ? 201 : 200);
-  }
+  },
 
   // Update a gallery item
-  static async update(c: Context<{ Bindings: Bindings }>) {
+  async update(c: Context<{ Bindings: Bindings }>) {
     const id = Number(c.req.param("id"));
-    if (isNaN(id)) return c.json({ error: "Invalid gallery item ID" }, 400);
+    if (Number.isNaN(id)) return c.json({ error: "Invalid gallery item ID" }, 400);
 
     const body = await c.req.json();
     const model = new GalleryModel(c.env.DB);
     const item = await model.update(id, body);
     return c.json(item ?? { success: true });
-  }
+  },
 
   // Delete a gallery item
-  static async delete(c: Context<{ Bindings: Bindings }>) {
+  async delete(c: Context<{ Bindings: Bindings }>) {
     const id = Number(c.req.param("id"));
-    if (isNaN(id)) return c.json({ error: "Invalid gallery item ID" }, 400);
+    if (Number.isNaN(id)) return c.json({ error: "Invalid gallery item ID" }, 400);
 
     const model = new GalleryModel(c.env.DB);
     await model.delete(id);
     return c.json({ success: true });
-  }
-}
+  },
+};

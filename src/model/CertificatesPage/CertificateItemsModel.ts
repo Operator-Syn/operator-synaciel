@@ -39,10 +39,7 @@ export class CertificateItemsModel {
       ORDER BY display_order ASC, id ASC
     `;
 
-    const { results } = await this.db
-      .prepare(query)
-      .bind(certificate_id)
-      .all<CertificateItemRow>();
+    const { results } = await this.db.prepare(query).bind(certificate_id).all<CertificateItemRow>();
 
     if (!results || results.length === 0) {
       return [];
@@ -88,12 +85,7 @@ export class CertificateItemsModel {
 
     const result = await this.db
       .prepare(query)
-      .bind(
-        item.certificate_id,
-        item.type,
-        item.url,
-        item.display_order ?? 0
-      )
+      .bind(item.certificate_id, item.type, item.url, item.display_order ?? 0)
       .first<{ id: number }>();
 
     return result?.id ? Number(result.id) : 0;
@@ -101,7 +93,7 @@ export class CertificateItemsModel {
 
   async update(
     id: number,
-    item: Partial<Omit<CertificateItemCreate, "certificate_id">>
+    item: Partial<Omit<CertificateItemCreate, "certificate_id">>,
   ): Promise<CertificateItem | null> {
     const fields: string[] = [];
     const values: unknown[] = [];
@@ -128,9 +120,6 @@ export class CertificateItemsModel {
   }
 
   async delete(id: number): Promise<void> {
-    await this.db
-      .prepare(`DELETE FROM CertificateItems WHERE id = ?`)
-      .bind(id)
-      .run();
+    await this.db.prepare(`DELETE FROM CertificateItems WHERE id = ?`).bind(id).run();
   }
 }

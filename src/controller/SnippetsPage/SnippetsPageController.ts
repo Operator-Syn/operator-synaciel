@@ -1,7 +1,7 @@
 // src/controller/SnippetsPage/SnippetsPageController.ts
 
-import { type Context } from "hono";
-import { type Bindings } from "../../Api";
+import type { Context } from "hono";
+import type { Bindings } from "../../Api";
 import { SnippetsPageModel } from "../../model/SnippetsPage/SnippetsPageModel";
 import { respondWithInternalError } from "../../utils/serverErrors";
 
@@ -110,6 +110,72 @@ export const createSnippetsPageController = (prefix = "snippets/") => ({
     }
   },
 
+  // GET /api/v2/snippets/:id
+  getSnippetDocument: async (c: AppContext) => {
+    try {
+      const id = parsePositiveId(c.req.param("id"));
+
+      if (!id) {
+        return c.json({ error: "Invalid ID" }, 400);
+      }
+
+      const model = new SnippetsPageModel(c.env.DB, c.env.BUCKET, prefix);
+      const data = await model.getSnippetDocumentMetadata(id);
+
+      if (!data) {
+        return c.json({ error: "Snippet document not found" }, 404);
+      }
+
+      return c.json({ success: true, data });
+    } catch (err: unknown) {
+      return respondWithInternalError(c, "SnippetsPageController.getSnippetDocument", err);
+    }
+  },
+
+  // GET /api/v2/snippets/:id/preview
+  getSnippetPreview: async (c: AppContext) => {
+    try {
+      const id = parsePositiveId(c.req.param("id"));
+
+      if (!id) {
+        return c.json({ error: "Invalid ID" }, 400);
+      }
+
+      const model = new SnippetsPageModel(c.env.DB, c.env.BUCKET, prefix);
+      const data = await model.getSnippetPreview(id);
+
+      if (!data) {
+        return c.json({ error: "Snippet preview not found" }, 404);
+      }
+
+      return c.json({ success: true, data });
+    } catch (err: unknown) {
+      return respondWithInternalError(c, "SnippetsPageController.getSnippetPreview", err);
+    }
+  },
+
+  // GET /api/v2/snippets/:id/content
+  streamSnippetDocument: async (c: AppContext) => {
+    try {
+      const id = parsePositiveId(c.req.param("id"));
+
+      if (!id) {
+        return c.json({ error: "Invalid ID" }, 400);
+      }
+
+      const model = new SnippetsPageModel(c.env.DB, c.env.BUCKET, prefix);
+      const result = await model.getFileContent(id, "inline");
+
+      if (!result) {
+        return c.json({ error: "File not found" }, 404);
+      }
+
+      return c.body(result.stream as unknown as ReadableStream, 200, result.headers);
+    } catch (err: unknown) {
+      return respondWithInternalError(c, "SnippetsPageController.streamSnippetDocument", err);
+    }
+  },
+
   // GET /api/snippets/:id/content
   downloadSnippet: async (c: AppContext) => {
     try {
@@ -126,11 +192,7 @@ export const createSnippetsPageController = (prefix = "snippets/") => ({
         return c.json({ error: "File not found" }, 404);
       }
 
-      return c.body(
-        result.stream as unknown as ReadableStream,
-        200,
-        result.headers,
-      );
+      return c.body(result.stream as unknown as ReadableStream, 200, result.headers);
     } catch (err: unknown) {
       return respondWithInternalError(c, "SnippetsPageController.downloadSnippet", err);
     }
@@ -214,16 +276,10 @@ export const createSnippetsPageController = (prefix = "snippets/") => ({
 
       const name = body.name === undefined ? undefined : body.name.trim();
       const parentId =
-        body.parent_id === undefined
-          ? undefined
-          : parseOptionalJsonParentId(body.parent_id);
+        body.parent_id === undefined ? undefined : parseOptionalJsonParentId(body.parent_id);
       const displayOrder = parseOptionalDisplayOrder(body.display_order);
 
-      if (
-        name === undefined &&
-        parentId === undefined &&
-        displayOrder === undefined
-      ) {
+      if (name === undefined && parentId === undefined && displayOrder === undefined) {
         return c.json({ error: "No changes provided" }, 400);
       }
 

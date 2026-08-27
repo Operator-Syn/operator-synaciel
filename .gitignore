@@ -15,6 +15,9 @@ dist-ssr
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/tailwind-at-rules.json
 .idea
 .DS_Store
 *.suo
@@ -24,3 +27,13 @@ dist-ssr
 *.sw?
 .env
 bundle-analysis.html
+
+# Local Python and Graphify output
+.venv
+graphify-out
+.wrangler
+
+# Impeccable per-developer state; shared config remains reviewable
+.impeccable/config.local.json
+.impeccable/hook.cache.json
+.impeccable/live/

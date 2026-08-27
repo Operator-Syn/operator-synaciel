@@ -1,5 +1,5 @@
 // src/model/HomePage/SectionItemsModel.ts
-import { D1Database } from "@cloudflare/workers-types";
+import type { D1Database } from "@cloudflare/workers-types";
 
 export interface SectionItemRow {
   id: number;
@@ -13,50 +13,75 @@ export interface SectionItemRow {
 
 export class SectionItemsModel {
   private db: D1Database;
-  constructor(db: D1Database) { this.db = db; }
+  constructor(db: D1Database) {
+    this.db = db;
+  }
 
   async list(sectionId: number) {
-    const res = await this.db.prepare(`
+    const res = await this.db
+      .prepare(`
       SELECT id, section_id, label, content, image_url, target_url, display_order
       FROM section_items
       WHERE section_id=?
       ORDER BY display_order ASC, id ASC
-    `).bind(sectionId).all<SectionItemRow>();
+    `)
+      .bind(sectionId)
+      .all<SectionItemRow>();
     return res.results;
   }
 
-  async create(sectionId: number, label: string | null, content: string | null, image_url: string | null, target_url: string | null, order: number) {
+  async create(
+    sectionId: number,
+    label: string | null,
+    content: string | null,
+    image_url: string | null,
+    target_url: string | null,
+    order: number,
+  ) {
     console.log(`[MODEL DEBUG] Inserting item into section: ${sectionId}`);
-    return this.db.prepare(`
+    return this.db
+      .prepare(`
       INSERT INTO section_items (section_id, label, content, image_url, target_url, display_order)
       VALUES (?, ?, ?, ?, ?, ?)
       RETURNING id, section_id, label, content, image_url, target_url, display_order
-    `).bind(
-      sectionId, 
-      label ?? null, 
-      content ?? null, 
-      image_url ?? null, 
-      target_url ?? null, 
-      order ?? 0
-    ).first<SectionItemRow>();
+    `)
+      .bind(
+        sectionId,
+        label ?? null,
+        content ?? null,
+        image_url ?? null,
+        target_url ?? null,
+        order ?? 0,
+      )
+      .first<SectionItemRow>();
   }
 
   // ADDED: display_order parameter here
-  async update(id: number, label: string | null, content: string | null, image_url: string | null, target_url: string | null, display_order: number) {
+  async update(
+    id: number,
+    label: string | null,
+    content: string | null,
+    image_url: string | null,
+    target_url: string | null,
+    display_order: number,
+  ) {
     console.log(`[MODEL DEBUG] Updating item ID: ${id} with order: ${display_order}`);
-    return this.db.prepare(`
+    return this.db
+      .prepare(`
       UPDATE section_items
       SET label=?, content=?, image_url=?, target_url=?, display_order=?
       WHERE id=?
       RETURNING id, section_id, label, content, image_url, target_url, display_order
-    `).bind(
-      label ?? null, 
-      content ?? null, 
-      image_url ?? null, 
-      target_url ?? null, 
-      display_order, 
-      id
-    ).first<SectionItemRow>();
+    `)
+      .bind(
+        label ?? null,
+        content ?? null,
+        image_url ?? null,
+        target_url ?? null,
+        display_order,
+        id,
+      )
+      .first<SectionItemRow>();
   }
 
   async delete(id: number) {

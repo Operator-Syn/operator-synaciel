@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repository Quality"
+  short_description: "Source-grounded, reviewable repository work"
+  default_prompt: "Use $repository-quality to keep this repository change factual, focused, and verified."

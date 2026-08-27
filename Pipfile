@@ -1,0 +1,13 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+graphifyy = {version = "==0.9.48", extras = ["mcp", "sql"]}
+
+[dev-packages]
+pyyaml = "==6.0.3"
+
+[requires]
+python_version = "3.13"

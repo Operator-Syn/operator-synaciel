@@ -1,69 +1,61 @@
-# React + TypeScript + Vite
+# Operator-Syn
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Operator-Syn is a React and TypeScript portfolio frontend built with Vite. Its
+API is a Hono Cloudflare Worker backed by D1, R2, and a separate auth Worker.
 
-Currently, two official plugins are available:
+## Start here
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+The repository documentation is also an Obsidian vault:
 
-## Expanding the ESLint configuration
+- [Documentation map](docs/README.md)
+- [Architecture overview](docs/architecture/overview.md)
+- [Local development](docs/operations/local-development.md)
+- [Repository MCP and commit pipeline](docs/operations/repository-mcp.md)
+- [Database migrations](docs/database/migrations.md)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Development
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Run the checks used before a change is considered ready:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run lint
+npm run build
+npm run docs:check
+npm run mcp:check
+npm run skills:check
+npm run mcp:typecheck
+npm run test:mcp
 ```
+
+The frontend preview command is `npm run preview`. The frontend deployment
+script is `npm run deploy`; it builds the Vite output and publishes `dist` to
+the configured `gh-pages` branch. Worker deployment is configured separately
+through `wrangler.toml` and is not part of that npm script.
+
+## Graphify
+
+The repository has a local Graphify code graph managed by Pipenv. It indexes
+TypeScript, TSX, and SQL source; Markdown documentation is intentionally kept
+out of that graph and is indexed through the Obsidian documentation map.
+
+```bash
+pipenv install --dev --deploy
+pipenv run graphify query "How does the frontend connect to the Hono API?"
+pipenv run graphify update . --no-cluster
+```
+
+Compatible clients discover the project-local MCP servers through
+[`.mcp.json`](.mcp.json); Codex also reads the project-scoped
+[`.codex/config.toml`](.codex/config.toml) for approval policy. The generated
+graph remains local under `graphify-out/`.
+
+## Database changes
+
+Future D1 schema changes use the readable SQL workflow documented in
+[`docs/database/migrations.md`](docs/database/migrations.md). Existing schema
+and bootstrap seed files are reference inputs, not migration history.

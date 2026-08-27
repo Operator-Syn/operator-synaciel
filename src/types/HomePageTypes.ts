@@ -1,8 +1,23 @@
+export interface HomeTool {
+  label: string;
+  imageUrl: string;
+}
+
+export interface HomeProject {
+  id: number;
+  title: string;
+  type: "video" | "image";
+  short_description: string;
+  project_link: string;
+  display_order: number;
+}
+
 export interface HomePageTypes {
   site: {
-    headerPhrase: string;
-    mobileHeaderPhrase: string;
-    profileImage: string;
+    headerPhrase?: string;
+    mobileHeaderPhrase?: string;
+    profileImage?: string;
+    status?: string;
   };
   profile: Array<{
     label: string;
@@ -24,7 +39,8 @@ export interface HomePageTypes {
     };
     loadouts: Array<{
       category: string;
-      badges: string[];
+      tools: HomeTool[];
     }>;
   };
+  projects: HomeProject[];
 }

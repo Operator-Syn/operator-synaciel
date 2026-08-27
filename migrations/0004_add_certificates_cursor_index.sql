@@ -1,0 +1,1 @@
+CREATE INDEX `idx_certificates_display_order_id` ON `Certificates` (`display_order`,`id`);

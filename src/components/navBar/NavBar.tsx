@@ -1,75 +1,149 @@
-import { useState, useRef, useEffect, useCallback, type FC } from "react";
-import { NavLink } from "react-router-dom";
-import Navbar from 'react-bootstrap/Navbar';
-import Nav from 'react-bootstrap/Nav';
-import Container from 'react-bootstrap/Container';
-import "./NavBar.css";
+import { Menu, X } from "lucide-react";
+import { type FC, useCallback, useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
+import TransitionNavLink from "../pageTransition/TransitionNavLink";
 
 export interface NavLinkItem {
-    name: string;
-    path: string;
-    component?: FC | null;
+  name: string;
+  path: string;
+  component?: FC | null;
 }
 
 interface NavBarProps {
-    brandName: string;
-    links: NavLinkItem[];
+  brandName: string;
+  links: NavLinkItem[];
 }
 
 export default function NavBar({ brandName, links }: NavBarProps) {
-    const [expanded, setExpanded] = useState(false);
-    const [isScrolled, setIsScrolled] = useState(false);
-    const navRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isNavHidden, setIsNavHidden] = useState(false);
+  const navRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const lastScrollYRef = useRef(0);
+  const location = useLocation();
 
-    const handleClickOutside = useCallback((event: MouseEvent) => {
-        if (navRef.current && !navRef.current.contains(event.target as Node)) {
-            setExpanded(false);
-        }
-    }, []);
+  const closeNavigation = useCallback(() => {
+    setExpanded(false);
+  }, []);
 
-    useEffect(() => {
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [handleClickOutside]);
+  const handleClickOutside = useCallback(
+    (event: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+        closeNavigation();
+      }
+    },
+    [closeNavigation],
+  );
 
-    useEffect(() => {
-        const handleScroll = () => setIsScrolled(window.scrollY > 12);
-        handleScroll();
-        window.addEventListener("scroll", handleScroll, { passive: true });
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, []);
+  useEffect(() => {
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [handleClickOutside]);
 
-    return (
-        <Navbar
-            ref={navRef}
-            expand="lg"
-            expanded={expanded}
-            className={`fixed-top glass custom-nav ${isScrolled ? "custom-nav-scrolled" : ""} ${expanded ? "custom-nav-expanded" : ""}`}
+  useEffect(() => {
+    if (!expanded) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+
+      event.preventDefault();
+      closeNavigation();
+      menuButtonRef.current?.focus();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [closeNavigation, expanded]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const scrollDelta = currentScrollY - lastScrollYRef.current;
+
+      setIsScrolled(currentScrollY > 12);
+
+      if (currentScrollY <= 12 || scrollDelta < -4 || expanded) {
+        setIsNavHidden(false);
+      } else if (scrollDelta > 4) {
+        setIsNavHidden(true);
+      }
+
+      lastScrollYRef.current = currentScrollY;
+    };
+
+    lastScrollYRef.current = window.scrollY;
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [expanded]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+
+    if (isNavHidden && !expanded) {
+      root.dataset.navigationHidden = "true";
+    } else {
+      delete root.dataset.navigationHidden;
+    }
+
+    return () => {
+      delete root.dataset.navigationHidden;
+    };
+  }, [expanded, isNavHidden]);
+
+  useEffect(() => {
+    if (location.pathname) closeNavigation();
+  }, [closeNavigation, location.pathname]);
+
+  return (
+    <header
+      ref={navRef}
+      className={`navigation-shell fixed inset-x-0 top-0 z-40 border-b border-line bg-canvas/95 backdrop-blur-md transition-shadow ${isScrolled || expanded ? "shadow-panel" : ""}`}
+      data-navigation-hidden={isNavHidden && !expanded ? "true" : "false"}
+    >
+      <div className="page-frame-wide flex min-h-[4.5rem] items-center justify-between gap-6 px-0">
+        <TransitionNavLink
+          className="font-display text-2xl leading-none text-text no-underline transition-colors hover:text-signal"
+          onBeforeNavigate={closeNavigation}
+          to="/"
         >
-            <Container fluid>
-                <Navbar.Brand as={NavLink} to="/">
-                    {brandName}
-                </Navbar.Brand>
-                <Navbar.Toggle
-                    aria-controls="navbar-nav"
-                    aria-label="Toggle navigation"
-                    onClick={() => setExpanded((prev) => !prev)}
-                />
-                <Navbar.Collapse id="navbar-nav">
-                    <Nav className="ms-auto">
-                        {links.map((link) => (
-                            <Nav.Link
-                                key={link.path}
-                                as={NavLink}
-                                to={link.path}
-                                onClick={() => setExpanded(false)}
-                            >
-                                <span className="nav-link-label">{link.name}</span>
-                            </Nav.Link>
-                        ))}
-                    </Nav>
-                </Navbar.Collapse>
-            </Container>
-        </Navbar>
-    );
+          {brandName}
+        </TransitionNavLink>
+
+        <button
+          ref={menuButtonRef}
+          aria-controls="main-navigation"
+          aria-expanded={expanded}
+          aria-label={expanded ? "Close navigation" : "Open navigation"}
+          className="inline-grid min-h-11 min-w-11 place-items-center border border-line-strong bg-transparent text-text transition-colors hover:border-signal hover:text-signal lg:hidden"
+          onClick={() => setExpanded((prev) => !prev)}
+          type="button"
+        >
+          {expanded ? <X aria-hidden="true" size={20} /> : <Menu aria-hidden="true" size={20} />}
+        </button>
+
+        <nav
+          aria-label="Primary navigation"
+          className="navigation-menu absolute left-0 right-0 top-full flex flex-col border-b border-line bg-canvas px-4 py-3 lg:static lg:flex lg:flex-row lg:items-center lg:gap-8 lg:border-0 lg:bg-transparent lg:p-0"
+          data-navigation-state={expanded ? "open" : "closed"}
+          id="main-navigation"
+        >
+          {links.map((link) => (
+            <TransitionNavLink
+              key={link.path}
+              className={({ isActive }) =>
+                `border-b-2 border-transparent py-3 font-body text-base leading-none no-underline transition-colors lg:py-7 ${isActive ? "border-signal text-signal" : "text-text-muted hover:border-signal hover:text-signal-strong"}`
+              }
+              end={link.path === "/"}
+              onBeforeNavigate={closeNavigation}
+              to={link.path}
+            >
+              {link.name}
+            </TransitionNavLink>
+          ))}
+        </nav>
+      </div>
+    </header>
+  );
 }

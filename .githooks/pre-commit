@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+hook_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+tsx="$hook_directory/../node_modules/.bin/tsx"
+if [[ ! -x "$tsx" ]]; then
+  echo "Commit blocked: install npm dependencies before using the repository hooks." >&2
+  exit 1
+fi
+exec "$tsx" "$hook_directory/../scripts/validate-commit.ts"

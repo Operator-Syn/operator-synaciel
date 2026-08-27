@@ -1,0 +1,135 @@
+/* Shared design tokens and semantic theme variables. */
+@theme {
+    --color-canvas: #101111;
+    --color-surface: #171918;
+    --color-surface-raised: #202321;
+    --color-text: #f2ede3;
+    --color-text-muted: #b7b1a7;
+    --color-text-faint: #7e7b74;
+    --color-line: rgb(242 237 227 / 18%);
+    --color-line-strong: rgb(242 237 227 / 35%);
+    --color-signal: #f0a42a;
+    --color-signal-strong: #ffbb52;
+    --color-danger: #d96a5c;
+    --color-success: #98bd79;
+    --font-display: "Newsreader", Georgia, serif;
+    --font-body: "IBM Plex Sans", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+    --text-display: clamp(3.4rem, 8vw, 7rem);
+    --text-display--line-height: 0.92;
+    --text-page-title: clamp(2.6rem, 5vw, 5.2rem);
+    --text-page-title--line-height: 0.98;
+    --text-meta: 0.72rem;
+    --text-meta--line-height: 1.3;
+    --radius-control: 2px;
+    --radius-panel: 4px;
+    --shadow-panel: 0 1.25rem 3rem rgb(0 0 0 / 25%);
+    --shadow-media: 0 0.5rem 1.5rem rgb(0 0 0 / 30%);
+    --shadow-viewer-tools: 0 0.5rem 1.5rem rgb(0 0 0 / 24%);
+    --ease-editorial: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+    color-scheme: dark;
+    --color-canvas-overlay: rgb(16 17 17 / 92%);
+    --color-canvas-overlay-soft: rgb(16 17 17 / 84%);
+    --color-canvas-overlay-strong: rgb(16 17 17 / 96%);
+    --color-canvas-overlay-navigation: rgb(16 17 17 / 86%);
+    --color-signal-soft: rgb(240 164 42 / 12%);
+    --focus-ring: var(--color-signal-strong);
+    --content-width: 1440px;
+    --page-gutter: clamp(1rem, 6.25vw, 6.25rem);
+    --floating-navigation-clearance: clamp(5rem, 6vw, 7rem);
+    --floating-control-edge-space: clamp(1rem, 2vw, 2rem);
+    --floating-control-inline-end: max(
+        var(--floating-control-edge-space),
+        calc(env(safe-area-inset-right) + 0.5rem)
+    );
+    --floating-control-block-end: max(
+        var(--floating-control-edge-space),
+        calc(env(safe-area-inset-bottom) + 0.5rem)
+    );
+    --motion-feedback-duration: 160ms;
+    --motion-entry-duration: 480ms;
+    --motion-ease: var(--ease-editorial);
+    --motion-ease-curtain-reveal: cubic-bezier(0.65, 0, 0.35, 1);
+    --motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+    --motion-overlay-enter-duration: 280ms;
+    --motion-overlay-exit-duration: 180ms;
+    --motion-disclosure-enter-duration: 220ms;
+    --motion-disclosure-exit-duration: 160ms;
+    --motion-theme-transition-duration: 320ms;
+}
+
+/* A newly composed pastel blue-hour palette, informed by the legacy blue surface. */
+:root[data-theme="of-times-old"] {
+    --color-canvas: #173248;
+    --color-surface: #244a60;
+    --color-surface-raised: #2f6276;
+    --color-text: #f0f6f4;
+    --color-text-muted: #c9dfe1;
+    --color-text-faint: #a5c4cb;
+    --color-line: rgb(240 246 244 / 22%);
+    --color-line-strong: rgb(240 246 244 / 42%);
+    --color-signal: #b8e3e6;
+    --color-signal-strong: #dbf4f3;
+    --color-danger: #f1b8b5;
+    --color-success: #b9dfce;
+    --color-canvas-overlay: rgb(23 50 72 / 92%);
+    --color-canvas-overlay-soft: rgb(23 50 72 / 84%);
+    --color-canvas-overlay-strong: rgb(23 50 72 / 96%);
+    --color-canvas-overlay-navigation: rgb(23 50 72 / 86%);
+    --color-signal-soft: rgb(184 227 230 / 16%);
+    --shadow-panel: 0 1.25rem 3rem #17324833;
+    --shadow-media: 0 0.5rem 1.5rem #17324847;
+    --shadow-viewer-tools: 0 0.5rem 1.5rem #1732483d;
+}
+
+/* A rose-led twilight palette composed from the Twilight-5 sunset balance. */
+:root[data-theme="vesper-index"] {
+    --color-canvas: #292831;
+    --color-surface: #333f58;
+    --color-surface-raised: #3a5068;
+    --color-text: #fff4ef;
+    --color-text-muted: #fbbbad;
+    --color-text-faint: #e3b6bb;
+    --color-line: rgb(251 187 173 / 22%);
+    --color-line-strong: rgb(251 187 173 / 42%);
+    --color-signal: #f7b0b5;
+    --color-signal-strong: #ffd7ce;
+    --color-danger: #ffad9e;
+    --color-success: #acd0d3;
+    --color-canvas-overlay: rgb(41 40 49 / 92%);
+    --color-canvas-overlay-soft: rgb(41 40 49 / 84%);
+    --color-canvas-overlay-strong: rgb(41 40 49 / 96%);
+    --color-canvas-overlay-navigation: rgb(41 40 49 / 86%);
+    --color-signal-soft: rgb(247 176 181 / 16%);
+    --shadow-panel: 0 1.25rem 3rem #29283133;
+    --shadow-media: 0 0.5rem 1.5rem #29283147;
+    --shadow-viewer-tools: 0 0.5rem 1.5rem #2928313d;
+}
+
+/* A permanent light ledger palette promoted from the custom theme format. */
+:root[data-theme="ancient-blue-ledger"] {
+    color-scheme: light;
+    --color-canvas: #c9ddf7;
+    --color-surface: #d9e7fa;
+    --color-surface-raised: #edf4fd;
+    --color-text: #13263a;
+    --color-text-muted: #304b66;
+    --color-text-faint: #58718a;
+    --color-line: #304b6640;
+    --color-line-strong: #13263a66;
+    --color-signal: #1a4f8a;
+    --color-signal-strong: #103b6b;
+    --color-danger: #6e3b50;
+    --color-success: #345b4f;
+    --color-canvas-overlay: #c9ddf7eb;
+    --color-canvas-overlay-soft: #c9ddf7d6;
+    --color-canvas-overlay-strong: #c9ddf7f5;
+    --color-canvas-overlay-navigation: #c9ddf7db;
+    --color-signal-soft: #1a4f8a1f;
+    --shadow-panel: 0 1.25rem 3rem #13263a33;
+    --shadow-media: 0 0.5rem 1.5rem #13263a47;
+    --shadow-viewer-tools: 0 0.5rem 1.5rem #13263a3d;
+}

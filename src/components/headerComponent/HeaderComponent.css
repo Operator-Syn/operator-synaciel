@@ -1,8 +1,0 @@
-/* HeaderComponent.css */
-
-/* Header Placeholder */
-.header-placeholder-text {
-    height: 3.75rem; /* Increased height to match your large H1 font */
-    display: block;  /* Ensures they stack */
-    opacity: 0.15;
-}

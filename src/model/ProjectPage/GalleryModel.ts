@@ -39,10 +39,7 @@ export class GalleryModel {
       ORDER BY display_order ASC, id ASC
     `;
 
-    const { results } = await this.db
-      .prepare(query)
-      .bind(project_id)
-      .all<GalleryRow>();
+    const { results } = await this.db.prepare(query).bind(project_id).all<GalleryRow>();
 
     if (!results || results.length === 0) {
       return [];
@@ -88,12 +85,7 @@ export class GalleryModel {
 
     const result = await this.db
       .prepare(query)
-      .bind(
-        item.project_id,
-        item.type,
-        item.url,
-        item.display_order ?? 0
-      )
+      .bind(item.project_id, item.type, item.url, item.display_order ?? 0)
       .first<{ id: number }>();
 
     return result?.id ? Number(result.id) : 0;
@@ -101,7 +93,7 @@ export class GalleryModel {
 
   async update(
     id: number,
-    item: Partial<Omit<GalleryCreate, "project_id">>
+    item: Partial<Omit<GalleryCreate, "project_id">>,
   ): Promise<GalleryItem | null> {
     const fields: string[] = [];
     const values: unknown[] = [];
@@ -130,9 +122,6 @@ export class GalleryModel {
   }
 
   async delete(id: number): Promise<void> {
-    await this.db
-      .prepare(`DELETE FROM GalleryItems WHERE id = ?`)
-      .bind(id)
-      .run();
+    await this.db.prepare(`DELETE FROM GalleryItems WHERE id = ?`).bind(id).run();
   }
 }

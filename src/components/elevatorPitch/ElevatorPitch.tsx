@@ -1,37 +1,46 @@
-// src/components/elevatorPitch/ElevatorPitch.tsx
-import ElevatorPitchPlaceholder from "./ElevatorPitchPlaceholder";
-import "./ElevatorPitch.css"; 
+import { LoadingBlock, LoadingRegion } from "../loadingState/LoadingState";
 
 interface ElevatorPitchItem {
-    title: string;
-    content: string;
+  title: string;
+  content: string;
 }
 
 interface ElevatorPitchProps {
-    items?: ElevatorPitchItem[];
-    isLoading?: boolean; 
+  items?: ElevatorPitchItem[];
+  isLoading?: boolean;
 }
 
-export default function ElevatorPitchComponent(props: ElevatorPitchProps) {
-    const { items, isLoading } = props;
-
-    if (isLoading || !items || items.length === 0) {
-        return <ElevatorPitchPlaceholder />;
-    }
-
-    // Since every item in this section currently gets the same title 
-    // from the database, we display it once at the top.
-    const displayTitle = items[0]?.title || "Know 'lil more about me";
-
+export default function ElevatorPitchComponent({ items, isLoading }: ElevatorPitchProps) {
+  if (isLoading) {
     return (
-        <div className="light-glass-blue-hue flex-grow-1 p-3 rounded shadow-sm">
-            <h3 className="m-0">{displayTitle}</h3>
-            <hr />
-            {items.map((item, index) => (
-                <p key={index} className="elevator-pitch-content m-0 mb-3">
-                    {item.content}
-                </p>
-            ))}
-        </div>
+      <LoadingRegion
+        className="surface-panel min-h-72 p-6 legacy-panel-loading"
+        label="Preparing profile note"
+      >
+        <LoadingBlock className="loading-line-title" />
+        <LoadingBlock className="loading-line-copy" />
+        <LoadingBlock className="loading-line-copy-short" />
+      </LoadingRegion>
     );
+  }
+
+  if (!items || items.length === 0) {
+    return (
+      <section className="surface-panel p-6">
+        <p className="eyebrow">Profile note</p>
+        <p className="mt-6 text-text-muted">No profile note is configured.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="surface-panel p-6 sm:p-8">
+      <p className="eyebrow mb-5">{items[0]?.title || "Profile note"}</p>
+      <div className="max-w-3xl space-y-5 text-lg leading-relaxed text-text-muted">
+        {items.map((item, index) => (
+          <p key={`${item.title}-${index}`}>{item.content}</p>
+        ))}
+      </div>
+    </section>
+  );
 }

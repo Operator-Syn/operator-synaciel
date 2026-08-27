@@ -1,0 +1,103 @@
+/* Shared layout frames, metadata, links, and action primitives. */
+@layer components {
+    .app-shell {
+        min-height: 100vh;
+        padding-top: 5.5rem;
+        padding-bottom: 2rem;
+    }
+
+    .page-frame {
+        width: min(calc(100% - (var(--page-gutter) * 2)), var(--content-width));
+        margin-inline: auto;
+    }
+
+    .page-frame-wide {
+        width: min(calc(100% - (var(--page-gutter) * 2)), 1600px);
+        margin-inline: auto;
+    }
+
+    .surface-panel {
+        border: 1px solid var(--color-line);
+        border-radius: var(--radius-panel);
+        background: var(--color-surface);
+    }
+
+    .section-rule {
+        border-top: 1px solid var(--color-line);
+    }
+
+    .eyebrow {
+        color: var(--color-signal);
+        font-family: var(--font-mono);
+        font-size: var(--text-meta);
+        letter-spacing: 0.08em;
+        line-height: var(--text-meta--line-height);
+        text-transform: uppercase;
+    }
+
+    .meta-label {
+        color: var(--color-text-faint);
+        font-family: var(--font-mono);
+        font-size: var(--text-meta);
+        letter-spacing: 0.06em;
+        line-height: var(--text-meta--line-height);
+        text-transform: uppercase;
+    }
+
+    .signal-link {
+        color: var(--color-signal);
+        text-decoration: none;
+        transition:
+            color 160ms ease,
+            opacity 160ms ease;
+    }
+
+    .signal-link:hover {
+        color: var(--color-signal-strong);
+    }
+
+    .action-signal,
+    .action-quiet {
+        display: inline-flex;
+        min-height: 2.65rem;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55rem;
+        border: 1px solid var(--color-signal);
+        border-radius: var(--radius-control);
+        padding: 0.65rem 0.9rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-meta);
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        text-decoration: none;
+        transition:
+            background 160ms ease,
+            color 160ms ease,
+            border-color 160ms ease,
+            transform 160ms ease;
+    }
+
+    .action-signal {
+        background: var(--color-signal);
+        color: var(--color-canvas);
+    }
+
+    .action-signal:hover {
+        background: var(--color-signal-strong);
+        color: var(--color-canvas);
+        transform: translateY(-1px);
+    }
+
+    .action-quiet {
+        border-color: var(--color-line-strong);
+        color: var(--color-text);
+    }
+
+    .action-quiet:hover {
+        border-color: var(--color-signal);
+        color: var(--color-signal-strong);
+        transform: translateY(-1px);
+    }
+}

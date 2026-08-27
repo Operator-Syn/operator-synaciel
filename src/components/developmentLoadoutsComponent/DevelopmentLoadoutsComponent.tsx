@@ -1,52 +1,33 @@
-// src/components/developmentLoadoutsComponent/DevelopmentLoadoutsComponent.tsx
-
-import { useEffect, useState } from "react";
-import DesktopComponent from "./DevelopmentLoadoutsComponentForDesktop";
-import MobileComponent from "./DevelopmentLoadoutsComponentForMobile";
-import DevelopmentLoadoutsPlaceholder from "./DevelopmentLoadoutsPlaceholder";
+import { LoadingBlock, LoadingRegion } from "../loadingState/LoadingState";
+import DevelopmentLoadoutsShowcase from "./DevelopmentLoadoutsShowcase";
 
 interface DevLoadoutSection {
-    category: string;
-    badges: string[];
+  category: string;
+  badges: string[];
 }
 
 interface DevLoadoutsContent {
-    header: string;
-    sections: DevLoadoutSection[];
+  header: string;
+  sections: DevLoadoutSection[];
 }
 
 interface DevLoadoutsProps {
-    content?: DevLoadoutsContent;
-    isLoading?: boolean;
+  content?: DevLoadoutsContent;
+  isLoading?: boolean;
 }
 
-export default function DevelopmentLoadoutsComponent({
-    content,
-    isLoading,
-}: DevLoadoutsProps) {
-    const [isSmall, setIsSmall] = useState<boolean>(() =>
-        typeof window !== "undefined" ? window.innerWidth <= 1400 : false,
+export default function DevelopmentLoadoutsComponent({ content, isLoading }: DevLoadoutsProps) {
+  if (isLoading || !content) {
+    return (
+      <LoadingRegion
+        className="surface-panel min-h-72 p-6 legacy-panel-loading"
+        label="Preparing development loadouts"
+      >
+        <LoadingBlock className="loading-line-title" />
+        <LoadingBlock className="loading-loadout-stage" />
+      </LoadingRegion>
     );
+  }
 
-    useEffect(() => {
-        const handleResize = () => {
-            setIsSmall(window.innerWidth <= 1400);
-        };
-
-        window.addEventListener("resize", handleResize);
-
-        return () => {
-            window.removeEventListener("resize", handleResize);
-        };
-    }, []);
-
-    if (isLoading || !content) {
-        return <DevelopmentLoadoutsPlaceholder isMobile={isSmall} />;
-    }
-
-    return isSmall ? (
-        <MobileComponent content={content} />
-    ) : (
-        <DesktopComponent content={content} />
-    );
+  return <DevelopmentLoadoutsShowcase content={content} />;
 }

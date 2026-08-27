@@ -1,10 +1,10 @@
 // src/model/ProjectPage/ProjectsModel.ts
-import { D1Database } from "@cloudflare/workers-types";
+import type { D1Database } from "@cloudflare/workers-types";
 
 export interface Project {
   id: number;
   title: string;
-  type: 'video' | 'image';
+  type: "video" | "image";
   url: string;
   short_description: string;
   long_description: string;
@@ -15,7 +15,7 @@ export interface Project {
 
 export interface ProjectCreate {
   title: string;
-  type: 'video' | 'image';
+  type: "video" | "image";
   url: string;
   short_description: string;
   long_description: string;
@@ -26,7 +26,7 @@ export interface ProjectCreate {
 type ProjectRow = {
   id: number;
   title: string;
-  type: 'video' | 'image';
+  type: "video" | "image";
   url: string;
   short_description: string;
   long_description: string;
@@ -50,13 +50,13 @@ export class ProjectsModel {
     return results.map((r) => ({
       id: Number(r.id),
       title: String(r.title),
-      type: r.type === 'video' ? 'video' : 'image',
+      type: r.type === "video" ? "video" : "image",
       url: String(r.url),
       short_description: String(r.short_description),
       long_description: String(r.long_description),
       project_link: String(r.project_link),
       display_order: Number(r.display_order),
-      created_at: String(r.created_at)
+      created_at: String(r.created_at),
     }));
   }
 
@@ -70,13 +70,13 @@ export class ProjectsModel {
     return {
       id: Number(r.id),
       title: String(r.title),
-      type: r.type === 'video' ? 'video' : 'image',
+      type: r.type === "video" ? "video" : "image",
       url: String(r.url),
       short_description: String(r.short_description),
       long_description: String(r.long_description),
       project_link: String(r.project_link),
       display_order: Number(r.display_order),
-      created_at: String(r.created_at)
+      created_at: String(r.created_at),
     };
   }
 
@@ -88,15 +88,18 @@ export class ProjectsModel {
       RETURNING id
     `;
 
-    const result = await this.db.prepare(query).bind(
-      project.title,
-      project.type,
-      project.url,
-      project.short_description,
-      project.long_description,
-      project.project_link,
-      project.display_order ?? 0
-    ).first<{ id: number }>();
+    const result = await this.db
+      .prepare(query)
+      .bind(
+        project.title,
+        project.type,
+        project.url,
+        project.short_description,
+        project.long_description,
+        project.project_link,
+        project.display_order ?? 0,
+      )
+      .first<{ id: number }>();
 
     return result?.id ? Number(result.id) : 0;
   }
@@ -107,18 +110,21 @@ export class ProjectsModel {
 
     // Filter out id and created_at if they accidentally get passed in the body
     for (const [key, value] of Object.entries(project)) {
-      if (key !== 'id' && key !== 'created_at') {
+      if (key !== "id" && key !== "created_at") {
         fields.push(`${key}=?`);
         values.push(value);
       }
     }
-    
+
     if (!fields.length) return;
 
-    const query = `UPDATE Projects SET ${fields.join(', ')} WHERE id=?`;
-    
+    const query = `UPDATE Projects SET ${fields.join(", ")} WHERE id=?`;
+
     // FIX: Replaced [...values, id] with ...values, id
-    await this.db.prepare(query).bind(...values, id).run();
+    await this.db
+      .prepare(query)
+      .bind(...values, id)
+      .run();
   }
 
   async delete(id: number): Promise<void> {

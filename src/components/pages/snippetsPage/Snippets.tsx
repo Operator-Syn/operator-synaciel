@@ -1,678 +1,764 @@
 // src/components/pages/snippetsPage/Snippets.tsx
 
-import {
-    Component,
-    lazy,
-    Suspense,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-    type ComponentPropsWithoutRef,
-    type ReactNode,
-} from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation, useNavigate } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Modal } from "react-bootstrap";
-
-import CookingArea from "../../cookingArea/CookingArea";
-import "./Snippets.css";
-import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
 import {
-    SNIPPETS_REFETCH_INTERVAL_MS,
-    SNIPPETS_STALE_TIME_MS,
-} from "../../../data/cacheSettings";
+  Copy,
+  Download,
+  FileCode2,
+  FileText,
+  Folder,
+  Home as HomeIcon,
+  Info,
+  Link as LinkIcon,
+  X,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
-const SyntaxRenderer = lazy(() => import("./SyntaxRenderer"));
+import { SNIPPETS_REFETCH_INTERVAL_MS, SNIPPETS_STALE_TIME_MS } from "../../../data/cacheSettings";
+import CookingArea from "../../cookingArea/CookingArea";
+import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
+import { LoadingBlock, LoadingRegion } from "../../loadingState/LoadingState";
+import TransitionLink from "../../pageTransition/TransitionLink";
+import usePageNavigate from "../../pageTransition/usePageNavigate";
+import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
+import SnippetMarkdown from "./SnippetMarkdown";
+import { getSnippetDocumentRoute, SNIPPETS_ROOT_PATH } from "./snippetRoutes";
+import "./Snippets.css";
 
-const INTERNAL_ROOT_PATH = "/snippets";
-const ROUTE_ROOT_PATH = "/snippets/root";
+const INTERNAL_ROOT_PATH = SNIPPETS_ROOT_PATH;
+const apiUrl = import.meta.env.VITE_API_URL;
 
 type FileNode = {
-    id: number;
-    name: string;
-    type: "dir" | "file";
-    modified: string;
-    size?: number;
-    format?: "pdf" | "md";
-    path?: string | null;
-    children?: FileNode[];
+  id: number;
+  name: string;
+  type: "dir" | "file";
+  modified: string;
+  size?: number;
+  format?: "pdf" | "md";
+  path?: string | null;
+  children?: FileNode[];
 };
-
-type MarkdownErrorBoundaryProps = {
-    resetKey: string;
-    children: ReactNode;
-};
-
-type MarkdownErrorBoundaryState = {
-    hasError: boolean;
-    message: string;
-};
-
-class MarkdownErrorBoundary extends Component<
-    MarkdownErrorBoundaryProps,
-    MarkdownErrorBoundaryState
-> {
-    state: MarkdownErrorBoundaryState = {
-        hasError: false,
-        message: "",
-    };
-
-    static getDerivedStateFromError(error: unknown): MarkdownErrorBoundaryState {
-        return {
-            hasError: true,
-            message: error instanceof Error ? error.message : "Unknown render error",
-        };
-    }
-
-    componentDidUpdate(previousProps: MarkdownErrorBoundaryProps) {
-        if (
-            previousProps.resetKey !== this.props.resetKey &&
-            this.state.hasError
-        ) {
-            this.setState({
-                hasError: false,
-                message: "",
-            });
-        }
-    }
-
-    render() {
-        if (this.state.hasError) {
-            return (
-                <div className="text-warning text-center py-5">
-                    <div className="fw-bold mb-2">This Markdown file could not be rendered.</div>
-                    <div className="small opacity-75">
-                        {this.state.message || "The file may contain unsupported Markdown or code syntax."}
-                    </div>
-                    <div className="small opacity-75 mt-2">
-                        You can still use the Download button to inspect the raw file.
-                    </div>
-                </div>
-            );
-        }
-
-        return this.props.children;
-    }
-}
 
 const formatBytes = (bytes?: number) => {
-    if (!bytes) return "—";
+  if (!bytes) return "—";
 
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  return `${parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`;
 };
 
 const formatDate = (dateString: string) =>
-    new Date(dateString)
-        .toLocaleString("en-US", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-        })
-        .replace(",", "");
+  new Date(dateString)
+    .toLocaleString("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    })
+    .replace(",", "");
 
 const generateFileIndex = (
-    nodes: FileNode[],
-    prefix = INTERNAL_ROOT_PATH,
+  nodes: FileNode[],
+  prefix = INTERNAL_ROOT_PATH,
 ): Record<string, FileNode[]> => {
-    let index: Record<string, FileNode[]> = {
-        [prefix]: nodes,
-    };
+  let index: Record<string, FileNode[]> = {
+    [prefix]: nodes,
+  };
 
-    nodes.forEach((node) => {
-        if (node.type === "dir" && node.children) {
-            index = {
-                ...index,
-                ...generateFileIndex(node.children, `${prefix}/${node.name}`),
-            };
-        }
-    });
+  nodes.forEach((node) => {
+    if (node.type === "dir" && node.children) {
+      index = {
+        ...index,
+        ...generateFileIndex(node.children, `${prefix}/${node.name}`),
+      };
+    }
+  });
 
-    return index;
+  return index;
 };
 
-const slugifyPathSegment = (segment: string) =>
-    segment.trim().replace(/\s+/g, "-").replace(/-+/g, "-");
+const slugifyPathSegment = (segment: string) => segment.trim();
 
-const unslugifyPathSegment = (segment: string) => {
-    try {
-        return decodeURIComponent(segment).replace(/-/g, " ");
-    } catch {
-        return segment.replace(/-/g, " ");
-    }
+const unslugifyPathSegment = (segment: string, legacySlug = false) => {
+  try {
+    const decodedSegment = decodeURIComponent(segment);
+    return legacySlug ? decodedSegment.replace(/-/g, " ") : decodedSegment;
+  } catch {
+    return legacySlug ? segment.replace(/-/g, " ") : segment;
+  }
 };
 
 const getInternalPathFromRoutePath = (pathname: string) => {
-    const normalizedPathname = pathname.replace(/\/+$/, "");
+  const normalizedPathname = pathname.replace(/\/+$/, "") || "/";
+  const usesLegacyRoot =
+    normalizedPathname === "/snippets/root" || normalizedPathname.startsWith("/snippets/root/");
+  const routeRoot = usesLegacyRoot ? "/snippets/root" : "/snippets";
 
-    if (
-        normalizedPathname === "/snippets" ||
-        normalizedPathname === ROUTE_ROOT_PATH
-    ) {
-        return INTERNAL_ROOT_PATH;
-    }
+  if (normalizedPathname === "/snippets" || normalizedPathname === "/snippets/root") {
+    return INTERNAL_ROOT_PATH;
+  }
 
-    if (!normalizedPathname.startsWith(`${ROUTE_ROOT_PATH}/`)) {
-        return INTERNAL_ROOT_PATH;
-    }
+  if (!normalizedPathname.startsWith(`${routeRoot}/`)) {
+    return INTERNAL_ROOT_PATH;
+  }
 
-    const relativePath = normalizedPathname.slice(`${ROUTE_ROOT_PATH}/`.length);
+  const relativePath = normalizedPathname.slice(`${routeRoot}/`.length);
+  const decodedSegments = relativePath
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => unslugifyPathSegment(segment, usesLegacyRoot));
 
-    const decodedSegments = relativePath
-        .split("/")
-        .filter(Boolean)
-        .map(unslugifyPathSegment);
-
-    return [INTERNAL_ROOT_PATH, ...decodedSegments].join("/");
+  return [INTERNAL_ROOT_PATH, ...decodedSegments].join("/");
 };
 
 const getRoutePathFromInternalPath = (internalPath: string) => {
-    const relativePath = internalPath
-        .replace(/^\/snippets\/?/, "")
-        .split("/")
-        .filter(Boolean)
-        .map((segment) => encodeURIComponent(slugifyPathSegment(segment)))
-        .join("/");
+  const relativePath = internalPath
+    .replace(/^\/snippets\/?/, "")
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(slugifyPathSegment(segment)))
+    .join("/");
 
-    return `${ROUTE_ROOT_PATH}/${relativePath ? `${relativePath}/` : ""}`;
+  return `/snippets/${relativePath ? `${relativePath}/` : ""}`;
 };
 
 const getCanonicalRoutePath = (pathname: string) =>
-    getRoutePathFromInternalPath(getInternalPathFromRoutePath(pathname));
+  getRoutePathFromInternalPath(getInternalPathFromRoutePath(pathname));
 
-const createSafeCodeBlockId = (value: string) => {
-    let hash = 0;
+function SnippetIndexLoading() {
+  return (
+    <LoadingRegion className="snippets-index-loading" label="Preparing snippet index">
+      <div className="snippets-index-loading-heading">
+        <LoadingBlock />
+        <LoadingBlock />
+        <LoadingBlock />
+      </div>
+      {["one", "two", "three", "four", "five"].map((key) => (
+        <div className="snippets-index-loading-row" key={key}>
+          <LoadingBlock />
+          <LoadingBlock />
+          <LoadingBlock />
+        </div>
+      ))}
+    </LoadingRegion>
+  );
+}
 
-    for (let i = 0; i < value.length; i += 1) {
-        hash = Math.imul(31, hash) + value.charCodeAt(i);
-        hash |= 0;
-    }
+function SnippetPreviewLoading({ format }: { format?: FileNode["format"] }) {
+  const isPdf = format === "pdf";
 
-    return `code-${Math.abs(hash).toString(36)}-${value.length}`;
-};
+  return (
+    <LoadingRegion
+      className={
+        isPdf
+          ? "snippets-preview-loading snippets-preview-loading-pdf"
+          : "snippets-preview-loading snippets-preview-loading-md"
+      }
+      label={isPdf ? "Preparing PDF preview" : "Preparing Markdown preview"}
+    >
+      <LoadingBlock />
+      <LoadingBlock />
+      <LoadingBlock />
+      <LoadingBlock />
+    </LoadingRegion>
+  );
+}
 
 const fetchSnippets = async (): Promise<FileNode[]> => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/snippets`, {
-        cache: "no-store",
-    });
+  const response = await fetch(`${import.meta.env.VITE_API_URL}/snippets`, {
+    cache: "no-store",
+  });
 
-    if (!response.ok) {
-        throw new Error("Failed to fetch snippets");
-    }
+  if (!response.ok) {
+    throw new Error("Failed to fetch snippets");
+  }
 
-    const payload = await response.json();
+  const payload = await response.json();
 
-    return payload.data;
+  return payload.data;
 };
 
 export default function Snippets() {
-    const location = useLocation();
-    const navigate = useNavigate();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const navigateWithTransition = usePageNavigate();
 
-    const { data: rootFileSystem, isLoading } = useQuery({
-        queryKey: ["snippets"],
-        queryFn: fetchSnippets,
-        refetchInterval: SNIPPETS_REFETCH_INTERVAL_MS,
-        staleTime: SNIPPETS_STALE_TIME_MS,
-        refetchOnMount: "always",
-        refetchOnWindowFocus: true,
-    });
+  const {
+    data: rootFileSystem,
+    isError,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["snippets"],
+    queryFn: fetchSnippets,
+    refetchInterval: SNIPPETS_REFETCH_INTERVAL_MS,
+    staleTime: SNIPPETS_STALE_TIME_MS,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
 
-    const [previewContent, setPreviewContent] = useState<string | null>(null);
-    const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null);
-    const [previewFileName, setPreviewFileName] = useState<string>("");
-    const [previewFileFormat, setPreviewFileFormat] =
-        useState<FileNode["format"]>(undefined);
-    const [isPreviewLoading, setIsPreviewLoading] = useState<boolean>(false);
-    const [previewError, setPreviewError] = useState<string | null>(null);
-    const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [previewContent, setPreviewContent] = useState<string | null>(null);
+  const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<FileNode | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState<boolean>(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewTruncated, setPreviewTruncated] = useState(false);
 
-    const previewRequestIdRef = useRef(0);
-    const previewAbortControllerRef = useRef<AbortController | null>(null);
+  const previewRequestIdRef = useRef(0);
+  const previewAbortControllerRef = useRef<AbortController | null>(null);
 
-    const fileIndex = useMemo(
-        () => (rootFileSystem ? generateFileIndex(rootFileSystem) : {}),
-        [rootFileSystem],
-    );
+  const fileIndex = useMemo(
+    () => (rootFileSystem ? generateFileIndex(rootFileSystem) : {}),
+    [rootFileSystem],
+  );
 
-    const currentPathStr = useMemo(
-        () => getInternalPathFromRoutePath(location.pathname),
-        [location.pathname],
-    );
-    const canonicalUrl = `https://syn-forge.com${getCanonicalRoutePath(location.pathname)}`;
+  const currentPathStr = useMemo(
+    () => getInternalPathFromRoutePath(location.pathname),
+    [location.pathname],
+  );
+  const canonicalUrl = `https://syn-forge.com${getCanonicalRoutePath(location.pathname)}`;
+  const currentItems = fileIndex[currentPathStr] || [];
+  const selectedFilePath = selectedFile ? `${currentPathStr}/${selectedFile.name}` : null;
 
-    const currentItems = fileIndex[currentPathStr] || [];
+  useEffect(() => {
+    const canonicalPath = getCanonicalRoutePath(location.pathname);
 
-    useEffect(() => {
-        const canonicalPath = getCanonicalRoutePath(location.pathname);
+    if (location.pathname !== canonicalPath) {
+      navigate(canonicalPath, { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
-        if (location.pathname !== canonicalPath) {
-            navigate(canonicalPath, { replace: true });
-        }
-    }, [location.pathname, navigate]);
+  useEffect(() => {
+    if (!isLoading && !isError && rootFileSystem && !fileIndex[currentPathStr]) {
+      navigate(getRoutePathFromInternalPath(INTERNAL_ROOT_PATH), {
+        replace: true,
+      });
+    }
+  }, [currentPathStr, fileIndex, isError, isLoading, navigate, rootFileSystem]);
 
-    useEffect(() => {
-        if (!isLoading && rootFileSystem && !fileIndex[currentPathStr]) {
-            navigate(getRoutePathFromInternalPath(INTERNAL_ROOT_PATH), {
-                replace: true,
-            });
-        }
-    }, [currentPathStr, fileIndex, isLoading, navigate, rootFileSystem]);
+  useEffect(() => {
+    return () => {
+      if (previewFileUrl) {
+        URL.revokeObjectURL(previewFileUrl);
+      }
+    };
+  }, [previewFileUrl]);
 
-    useEffect(() => {
-        return () => {
-            if (previewFileUrl) {
-                URL.revokeObjectURL(previewFileUrl);
-            }
+  useEffect(() => {
+    return () => {
+      previewAbortControllerRef.current?.abort();
+    };
+  }, []);
+
+  const handleDownloadFullFile = async () => {
+    if (!selectedFile || isPreviewLoading) return;
+
+    if (selectedFile.format === "pdf" && previewFileUrl) {
+      const element = document.createElement("a");
+      element.href = previewFileUrl;
+      element.download = selectedFile.name;
+      document.body.appendChild(element);
+      element.click();
+      element.remove();
+      return;
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/snippets/${selectedFile.id}/content`, {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to download file");
+      }
+
+      const objectUrl = URL.createObjectURL(await response.blob());
+      const element = document.createElement("a");
+      element.href = objectUrl;
+      element.download = selectedFile.name;
+      document.body.appendChild(element);
+      element.click();
+      element.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch {
+      setPreviewError("Failed to download file. Try again.");
+    }
+  };
+
+  const handleFileSelect = async (file: FileNode) => {
+    if (file.type !== "file" || !file.format) return;
+
+    previewAbortControllerRef.current?.abort();
+
+    const requestId = previewRequestIdRef.current + 1;
+    previewRequestIdRef.current = requestId;
+
+    const controller = new AbortController();
+    previewAbortControllerRef.current = controller;
+
+    setSelectedFile(file);
+    setPreviewContent(null);
+    setPreviewFileUrl(null);
+    setPreviewError(null);
+    setPreviewTruncated(false);
+    setIsPreviewLoading(true);
+
+    try {
+      const previewResponse = await fetch(`${apiUrl}/v2/snippets/${file.id}/preview`, {
+        signal: controller.signal,
+        cache: "no-store",
+      });
+
+      if (!previewResponse.ok) {
+        throw new Error("Failed to fetch file preview");
+      }
+
+      const previewPayload = (await previewResponse.json()) as {
+        data: {
+          excerpt: string | null;
+          truncated: boolean;
         };
-    }, [previewFileUrl]);
+      };
 
-    useEffect(() => {
-        return () => {
-            previewAbortControllerRef.current?.abort();
-        };
-    }, []);
+      if (file.format === "pdf") {
+        const contentResponse = await fetch(`${apiUrl}/v2/snippets/${file.id}/content`, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
 
-    const handleCopy = async (code: string, id: string) => {
-        try {
-            await navigator.clipboard.writeText(code);
-            setCopiedId(id);
-            window.setTimeout(() => setCopiedId(null), 2000);
-        } catch {
-            setCopiedId(null);
-        }
-    };
-
-    const handleDownloadFullFile = () => {
-        if (!previewContent && !previewFileUrl) return;
-
-        const element = document.createElement("a");
-
-        if (previewFileFormat === "pdf" && previewFileUrl) {
-            element.href = previewFileUrl;
-            element.download = previewFileName || "snippet.pdf";
-        } else if (previewContent) {
-            const file = new Blob([previewContent], {
-                type: "text/markdown;charset=utf-8",
-            });
-
-            const objectUrl = URL.createObjectURL(file);
-
-            element.href = objectUrl;
-            element.download = previewFileName || "snippet.md";
-
-            window.setTimeout(() => {
-                URL.revokeObjectURL(objectUrl);
-            }, 1000);
+        if (!contentResponse.ok) {
+          throw new Error("Failed to fetch PDF preview");
         }
 
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
-    };
+        const blob = await contentResponse.blob();
+        const fileUrl = URL.createObjectURL(blob);
 
-    const handleFileClick = async (file: FileNode) => {
-        if (!file.format) return;
-
-        previewAbortControllerRef.current?.abort();
-
-        const requestId = previewRequestIdRef.current + 1;
-        previewRequestIdRef.current = requestId;
-
-        const controller = new AbortController();
-        previewAbortControllerRef.current = controller;
-
-        setPreviewFileName(file.name);
-        setPreviewFileFormat(file.format);
-        setPreviewContent(null);
-        setPreviewFileUrl(null);
-        setPreviewError(null);
-        setIsPreviewLoading(true);
-
-        try {
-            const response = await fetch(
-                `${import.meta.env.VITE_API_URL}/snippets/${file.id}/content`,
-                {
-                    signal: controller.signal,
-                    cache: "no-store",
-                },
-            );
-
-            if (!response.ok) {
-                throw new Error("Failed to fetch file");
-            }
-
-            if (file.format === "pdf") {
-                const blob = await response.blob();
-                const fileUrl = URL.createObjectURL(blob);
-
-                if (
-                    previewRequestIdRef.current !== requestId ||
-                    controller.signal.aborted
-                ) {
-                    URL.revokeObjectURL(fileUrl);
-                    return;
-                }
-
-                setPreviewFileUrl(fileUrl);
-            } else {
-                const content = await response.text();
-
-                if (
-                    previewRequestIdRef.current !== requestId ||
-                    controller.signal.aborted
-                ) {
-                    return;
-                }
-
-                setPreviewContent(content);
-            }
-        } catch {
-            if (
-                previewRequestIdRef.current !== requestId ||
-                controller.signal.aborted
-            ) {
-                return;
-            }
-
-            setPreviewError("Failed to load file.");
-        } finally {
-            if (previewRequestIdRef.current === requestId) {
-                previewAbortControllerRef.current = null;
-                setIsPreviewLoading(false);
-            }
+        if (previewRequestIdRef.current !== requestId || controller.signal.aborted) {
+          URL.revokeObjectURL(fileUrl);
+          return;
         }
-    };
 
-    const handleClosePreview = () => {
-        previewRequestIdRef.current += 1;
-        previewAbortControllerRef.current?.abort();
+        setPreviewFileUrl(fileUrl);
+      } else {
+        if (previewRequestIdRef.current !== requestId || controller.signal.aborted) {
+          return;
+        }
+
+        setPreviewContent(previewPayload.data.excerpt);
+        setPreviewTruncated(previewPayload.data.truncated);
+      }
+    } catch {
+      if (previewRequestIdRef.current !== requestId || controller.signal.aborted) {
+        return;
+      }
+
+      setPreviewError("Failed to load file preview. Try again or download the raw file.");
+    } finally {
+      if (previewRequestIdRef.current === requestId) {
         previewAbortControllerRef.current = null;
-
-        setPreviewContent(null);
-        setPreviewFileUrl(null);
-        setPreviewFileName("");
-        setPreviewFileFormat(undefined);
-        setPreviewError(null);
         setIsPreviewLoading(false);
+      }
+    }
+  };
+
+  const handleClosePreview = useCallback(() => {
+    previewRequestIdRef.current += 1;
+    previewAbortControllerRef.current?.abort();
+    previewAbortControllerRef.current = null;
+
+    setSelectedFile(null);
+    setPreviewContent(null);
+    setPreviewFileUrl(null);
+    setPreviewError(null);
+    setPreviewTruncated(false);
+    setIsPreviewLoading(false);
+  }, []);
+
+  const handleFolderClick = (folderName: string) => {
+    handleClosePreview();
+    navigateWithTransition(getRoutePathFromInternalPath(`${currentPathStr}/${folderName}`));
+  };
+
+  const handleParentClick = () => {
+    const parentPath =
+      currentPathStr.substring(0, currentPathStr.lastIndexOf("/")) || INTERNAL_ROOT_PATH;
+
+    handleClosePreview();
+    navigateWithTransition(getRoutePathFromInternalPath(parentPath));
+  };
+
+  useEffect(() => {
+    if (!selectedFile && !isPreviewLoading && !previewError) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        handleClosePreview();
+      }
     };
 
-    const handleFolderClick = (folderName: string) => {
-        navigate(getRoutePathFromInternalPath(`${currentPathStr}/${folderName}`));
-    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleClosePreview, isPreviewLoading, previewError, selectedFile]);
 
-    const handleParentClick = () => {
-        const parentPath =
-            currentPathStr.substring(0, currentPathStr.lastIndexOf("/")) ||
-            INTERNAL_ROOT_PATH;
+  const breadcrumbSegments = currentPathStr.split("/").filter(Boolean).slice(1);
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://syn-forge.com/",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Snippets",
+        item: "https://syn-forge.com/snippets/",
+      },
+      ...breadcrumbSegments.map((segment, index) => ({
+        "@type": "ListItem",
+        position: index + 3,
+        name: segment,
+        item:
+          "https://syn-forge.com" +
+          getRoutePathFromInternalPath(
+            [INTERNAL_ROOT_PATH, ...breadcrumbSegments.slice(0, index + 1)].join("/"),
+          ),
+      })),
+    ],
+  };
 
-        navigate(getRoutePathFromInternalPath(parentPath));
-    };
+  return (
+    <>
+      <GlobalHeadManager
+        title="Code Snippets"
+        description="Browse code snippets, developer notes, and reference files from the Syn-Forge portfolio."
+        image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
+        url={canonicalUrl}
+        jsonLd={breadcrumbSchema}
+      />
 
-    const isModalOpen =
-        isPreviewLoading ||
-        !!previewContent ||
-        !!previewFileUrl ||
-        !!previewError;
-
-    const breadcrumbSchema = {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        itemListElement: [
-            {
-                "@type": "ListItem",
-                position: 1,
-                name: "Home",
-                item: "https://syn-forge.com/",
-            },
-            {
-                "@type": "ListItem",
-                position: 2,
-                name: "Snippets",
-                item: canonicalUrl,
-            },
-        ],
-    };
-
-    return (
-        <>
-            <GlobalHeadManager
-                title="Code Snippets"
-                description="Browse code snippets, developer notes, and reference files from the Syn-Forge portfolio."
-                image="https://personal-portfolio-bucket.syn-forge.com/ProfilePicture/preview.png"
-                url={canonicalUrl}
-                jsonLd={breadcrumbSchema}
+      <main aria-labelledby="snippets-page-title">
+        <CookingArea>
+          <div className="snippets-shell">
+            <PointerCoordinates
+              activeSection={0}
+              className="snippets-coordinates"
+              markerCount={1}
             />
 
-            <CookingArea>
-                <div className="p-3 p-md-5 autoindex-page">
-                    {isLoading && (
-                        <div className="d-flex justify-content-center my-5">
-                            <div className="spinner-border text-primary" role="status" />
-                        </div>
-                    )}
-
-                    {!isLoading && (
-                        <div className="px-4 pb-4 pt-0 rounded snippet-card">
-                            <h5 className="mb-4 mt-4 text-white fw-bold snippet-path-heading">
-                                <span>Index of&nbsp;</span>
-                                <span
-                                    className="snippet-path-text"
-                                    title={`${currentPathStr}/`}
-                                >
-                                    {currentPathStr}/
-                                </span>
-                            </h5>
-
-                            <table className="table align-middle mb-0 table-fixed">
-                                <thead className="text-white-50 small">
-                                    <tr>
-                                        <th className="col-name">NAME</th>
-                                        <th className="d-none d-md-table-cell col-modified">
-                                            MODIFIED
-                                        </th>
-                                        <th className="text-end d-none d-md-table-cell col-size">
-                                            SIZE
-                                        </th>
-                                    </tr>
-                                </thead>
-
-                                <tbody>
-                                    {currentPathStr !== INTERNAL_ROOT_PATH && (
-                                        <tr
-                                            className="cursor-pointer"
-                                            onClick={handleParentClick}
-                                        >
-                                            <td className="text-white fw-bold" colSpan={3}>
-                                                📁 ../
-                                            </td>
-                                        </tr>
-                                    )}
-
-                                    {currentItems.map((item) => (
-                                        <tr
-                                            key={item.id}
-                                            className="cursor-pointer"
-                                            onClick={() =>
-                                                item.type === "dir"
-                                                    ? handleFolderClick(item.name)
-                                                    : handleFileClick(item)
-                                            }
-                                        >
-                                            <td className="text-white text-truncate">
-                                                <span className="me-2">
-                                                    {item.type === "dir" ? "📁" : "📄"}
-                                                </span>
-                                                {item.name}
-                                            </td>
-
-                                            <td className="text-white-50 small d-none d-md-table-cell">
-                                                {formatDate(item.modified)}
-                                            </td>
-
-                                            <td className="text-end text-white-50 small d-none d-md-table-cell">
-                                                {item.type === "dir"
-                                                    ? "—"
-                                                    : formatBytes(item.size)}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-
-                    <Modal
-                        show={isModalOpen}
-                        onHide={handleClosePreview}
-                        size="xl"
-                        fullscreen="sm-down"
-                        centered
-                        contentClassName="markdown-modal-content"
+            <div className="snippets-workspace">
+              <section className="snippets-index-panel" aria-labelledby="snippets-page-title">
+                <div className="snippets-index-content">
+                  <nav aria-label="Snippet breadcrumbs" className="snippets-breadcrumb">
+                    <TransitionLink
+                      aria-label="Snippets index root"
+                      className="snippets-breadcrumb-home"
+                      data-cursor="open"
+                      to={getRoutePathFromInternalPath(INTERNAL_ROOT_PATH)}
                     >
-                        <Modal.Header closeButton className="px-4 py-3 border-bottom-0">
-                            <div className="d-flex justify-content-between align-items-center w-100 me-3">
-                                <Modal.Title
-                                    as="h6"
-                                    className="fw-bold text-dark m-0 text-truncate"
-                                    style={{ maxWidth: "70%" }}
-                                >
-                                    {previewFileName}
-                                </Modal.Title>
+                      <HomeIcon aria-hidden="true" size={18} />
+                    </TransitionLink>
+                    <span aria-hidden="true">/</span>
+                    <span className="snippets-breadcrumb-current">snippets</span>
+                    <span aria-hidden="true">/</span>
+                    {breadcrumbSegments.map((segment) => (
+                      <span className="snippets-breadcrumb-segment" key={segment}>
+                        {segment}
+                      </span>
+                    ))}
+                  </nav>
 
+                  <h1 className="sr-only" id="snippets-page-title">
+                    Code snippets index
+                  </h1>
+
+                  {isLoading && <SnippetIndexLoading />}
+
+                  {!isLoading && isError && (
+                    <div className="snippets-state snippets-error-state">
+                      <p role="alert">The snippet index could not be loaded.</p>
+                      <button className="action-quiet" onClick={() => void refetch()} type="button">
+                        Try again
+                      </button>
+                    </div>
+                  )}
+
+                  {!isLoading && !isError && (
+                    <>
+                      <div className="sr-only">
+                        <span id="snippets-folder-action">Opens this folder.</span>
+                        <span id="snippets-file-action">Previews this file.</span>
+                      </div>
+                      <table className="snippets-file-table">
+                        <caption className="sr-only">Files and folders in {currentPathStr}</caption>
+                        <thead>
+                          <tr>
+                            <th scope="col">Name</th>
+                            <th scope="col">Modified</th>
+                            <th scope="col">Size</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {currentPathStr !== INTERNAL_ROOT_PATH && (
+                            <tr className="snippet-parent-row">
+                              <td colSpan={3}>
                                 <button
-                                    type="button"
-                                    className="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold shadow-sm"
-                                    onClick={handleDownloadFullFile}
-                                    disabled={!previewContent && !previewFileUrl}
+                                  className="snippet-file-action"
+                                  data-cursor="alias"
+                                  onClick={handleParentClick}
+                                  type="button"
                                 >
-                                    Download
+                                  <span className="snippet-file-primary">
+                                    <span className="snippet-parent-mark">../</span>
+                                    <span>Parent folder</span>
+                                  </span>
                                 </button>
-                            </div>
-                        </Modal.Header>
+                              </td>
+                            </tr>
+                          )}
 
-                        <Modal.Body
-                            className={`markdown-body-container px-4 ${
-                                previewFileFormat === "pdf" ? "pdf-modal-body" : ""
-                            }`}
-                        >
-                            {isPreviewLoading && (
-                                <div className="text-center py-5">
-                                    <div
-                                        className="spinner-border text-dark mb-3"
-                                        role="status"
-                                    />
-                                </div>
-                            )}
+                          {currentItems.map((item) => {
+                            const isSelected = item.type === "file" && selectedFile?.id === item.id;
+                            const itemSize = item.type === "dir" ? "—" : formatBytes(item.size);
 
-                            {!isPreviewLoading && previewError && (
-                                <div className="text-danger text-center py-5">
-                                    {previewError}
-                                </div>
-                            )}
+                            return (
+                              <tr className={isSelected ? "is-selected" : undefined} key={item.id}>
+                                <td colSpan={3}>
+                                  <button
+                                    aria-describedby={
+                                      item.type === "dir"
+                                        ? "snippets-folder-action"
+                                        : "snippets-file-action"
+                                    }
+                                    aria-pressed={item.type === "file" ? isSelected : undefined}
+                                    className="snippet-file-action"
+                                    data-cursor={item.type === "dir" ? "context-menu" : "open"}
+                                    onClick={() => {
+                                      if (item.type === "dir") {
+                                        handleFolderClick(item.name);
+                                      } else {
+                                        void handleFileSelect(item);
+                                      }
+                                    }}
+                                    type="button"
+                                  >
+                                    <span className="snippet-file-primary">
+                                      {item.type === "dir" ? (
+                                        <Folder
+                                          aria-hidden="true"
+                                          className="snippet-file-icon"
+                                          size={18}
+                                        />
+                                      ) : (
+                                        <FileText
+                                          aria-hidden="true"
+                                          className="snippet-file-icon snippet-file-icon-muted"
+                                          size={18}
+                                        />
+                                      )}
+                                      <span className="snippet-file-name">{item.name}</span>
+                                      <span className="snippet-file-mobile-meta">
+                                        {formatDate(item.modified)} · {itemSize}
+                                      </span>
+                                    </span>
+                                    <span className="snippet-file-meta">
+                                      {formatDate(item.modified)}
+                                    </span>
+                                    <span className="snippet-file-meta snippet-file-size">
+                                      {itemSize}
+                                    </span>
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
 
-                            {!isPreviewLoading &&
-                                previewFileUrl &&
-                                previewFileFormat === "pdf" && (
-                                    <iframe
-                                        className="pdf-preview-frame"
-                                        src={previewFileUrl}
-                                        title={previewFileName}
-                                    />
-                                )}
-
-                            {!isPreviewLoading && previewContent && (
-                                <MarkdownErrorBoundary
-                                    resetKey={`${previewFileName}-${previewContent.length}`}
-                                >
-                                    <ReactMarkdown
-                                        remarkPlugins={[remarkGfm]}
-                                        components={{
-                                            code({ className, children, ...props }: ComponentPropsWithoutRef<"code">) {
-                                                const rawCode = String(children ?? "");
-                                                const codeString = rawCode.replace(/\n$/, "");
-                                                const match = /language-([\w-]+)/.exec(
-                                                    className || "",
-                                                );
-
-                                                const isBlock =
-                                                    Boolean(match) || rawCode.includes("\n");
-
-                                                if (!isBlock) {
-                                                    return (
-                                                        <code
-                                                            className="inline-code"
-                                                            {...props}
-                                                        >
-                                                            {children}
-                                                        </code>
-                                                    );
-                                                }
-
-                                                const language = match?.[1] || "text";
-                                                const blockId = createSafeCodeBlockId(
-                                                    `${language}:${codeString}`,
-                                                );
-
-                                                return (
-                                                    <div className="code-block-wrapper">
-                                                        <div className="code-header">
-                                                            <span>{language.toUpperCase()}</span>
-
-                                                            <button
-                                                                type="button"
-                                                                className={`copy-btn shadow-sm ${
-                                                                    copiedId === blockId
-                                                                        ? "copied"
-                                                                        : ""
-                                                                }`}
-                                                                onClick={() =>
-                                                                    handleCopy(
-                                                                        codeString,
-                                                                        blockId,
-                                                                    )
-                                                                }
-                                                            >
-                                                                {copiedId === blockId
-                                                                    ? "✓ Copied"
-                                                                    : "Copy"}
-                                                            </button>
-                                                        </div>
-
-                                                        <Suspense
-                                                            fallback={
-                                                                <div className="p-3 text-muted">
-                                                                    Loading Syntax...
-                                                                </div>
-                                                            }
-                                                        >
-                                                            <SyntaxRenderer
-                                                                language={language}
-                                                                codeString={codeString}
-                                                            />
-                                                        </Suspense>
-                                                    </div>
-                                                );
-                                            },
-                                        }}
-                                    >
-                                        {previewContent}
-                                    </ReactMarkdown>
-                                </MarkdownErrorBoundary>
-                            )}
-                        </Modal.Body>
-                    </Modal>
+                          {currentItems.length === 0 && (
+                            <tr>
+                              <td className="snippets-empty-index" colSpan={3}>
+                                No files or folders in this directory.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </>
+                  )}
                 </div>
-            </CookingArea>
-        </>
-    );
+
+                <footer className="snippets-index-note">
+                  <Info aria-hidden="true" size={18} />
+                  <div>
+                    <p>Folders open to /snippets/&lt;name&gt;/. Markdown and PDF previews.</p>
+                  </div>
+                </footer>
+              </section>
+
+              <aside
+                aria-busy={isPreviewLoading}
+                aria-labelledby="snippets-preview-title"
+                className="snippets-preview-panel"
+              >
+                <header className="snippets-preview-header">
+                  <div className="snippets-preview-heading">
+                    <FileCode2 aria-hidden="true" size={21} />
+                    <span id="snippets-preview-title">Preview</span>
+                    {selectedFile?.format && (
+                      <span className="snippets-preview-format">
+                        {selectedFile.format.toUpperCase()}
+                      </span>
+                    )}
+                    <span className="snippets-preview-path">
+                      {selectedFilePath || "No file selected"}
+                    </span>
+                  </div>
+
+                  <div className="snippets-preview-actions">
+                    {selectedFile?.format === "md" && (
+                      <>
+                        <TransitionLink
+                          aria-label={`Read more about ${selectedFile.name}`}
+                          className="snippets-preview-read-more"
+                          data-cursor="alias"
+                          to={getSnippetDocumentRoute(selectedFile.id, selectedFile.name)}
+                        >
+                          <LinkIcon aria-hidden="true" size={16} />
+                          <span>Read more</span>
+                        </TransitionLink>
+                        <button
+                          aria-label="Download file"
+                          className="snippets-preview-download"
+                          disabled={isPreviewLoading}
+                          onClick={() => void handleDownloadFullFile()}
+                          type="button"
+                        >
+                          <Download aria-hidden="true" size={17} />
+                          <span>Download</span>
+                        </button>
+                      </>
+                    )}
+                    <button
+                      aria-label="Close preview"
+                      className="snippets-preview-close"
+                      disabled={!selectedFile && !isPreviewLoading && !previewError}
+                      onClick={handleClosePreview}
+                      type="button"
+                    >
+                      <X aria-hidden="true" size={19} />
+                    </button>
+                  </div>
+                </header>
+
+                <div className="snippets-preview-body" data-cursor="default">
+                  {!selectedFile && !isPreviewLoading && !previewError && (
+                    <div className="snippets-empty-preview">
+                      <div aria-hidden="true" className="snippets-empty-preview-mark">
+                        <FileCode2 size={44} strokeWidth={1.5} />
+                      </div>
+                      <p className="snippets-empty-preview-kicker">Preview / Standby</p>
+                      <h2 id="snippets-empty-preview-title">Select a file to inspect</h2>
+                      <p className="snippets-empty-preview-copy">
+                        Choose a Markdown or PDF file from the index to begin.
+                      </p>
+                      <div className="snippets-supported-actions">
+                        <div className="snippets-supported-actions-heading">
+                          <span>Available in preview</span>
+                          <span>02 actions</span>
+                        </div>
+                        <ul>
+                          <li>
+                            <Copy aria-hidden="true" size={18} />
+                            Copy code blocks
+                          </li>
+                          <li>
+                            <Download aria-hidden="true" size={18} />
+                            Download source file
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+
+                  {isPreviewLoading && <SnippetPreviewLoading format={selectedFile?.format} />}
+
+                  {!isPreviewLoading && previewError && (
+                    <div className="snippets-state snippets-error-state">
+                      <p role="alert">{previewError}</p>
+                      {selectedFile && (
+                        <button
+                          className="action-quiet"
+                          onClick={() => void handleFileSelect(selectedFile)}
+                          type="button"
+                        >
+                          Retry
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {!isPreviewLoading && previewFileUrl && selectedFile?.format === "pdf" && (
+                    <iframe
+                      className="snippets-pdf-frame"
+                      data-pointer-surface="native"
+                      src={previewFileUrl}
+                      title={selectedFile.name}
+                    />
+                  )}
+
+                  {!isPreviewLoading &&
+                    previewContent !== null &&
+                    selectedFile?.format === "md" && (
+                      <>
+                        <SnippetMarkdown
+                          content={previewContent}
+                          resetKey={`${selectedFile.name || ""}-${previewContent.length}`}
+                        />
+                        <div className="snippets-preview-document-cta">
+                          <span>
+                            {previewTruncated
+                              ? "Preview ends here. Read the full document for the complete file."
+                              : "Open the document in its dedicated reading view."}
+                          </span>
+                          <TransitionLink
+                            aria-label={`Read the full document ${selectedFile.name}`}
+                            className="snippets-preview-read-more"
+                            data-cursor="alias"
+                            to={getSnippetDocumentRoute(selectedFile.id, selectedFile.name)}
+                          >
+                            <LinkIcon aria-hidden="true" size={16} />
+                            <span>Read more</span>
+                          </TransitionLink>
+                        </div>
+                      </>
+                    )}
+                </div>
+
+                <footer className="snippets-preview-footer">
+                  <span className={previewError ? "snippets-status is-error" : "snippets-status"}>
+                    {isPreviewLoading && (
+                      <span aria-hidden="true" className="loading-inline-signal" />
+                    )}
+                    {previewError ? "Error" : isPreviewLoading ? "Preview" : "Ready"}
+                  </span>
+                  <span>
+                    {selectedFile?.format === "md" && previewContent !== null
+                      ? "Preview is bounded; read more opens the full document."
+                      : "Files load only when selected."}
+                  </span>
+                </footer>
+              </aside>
+            </div>
+          </div>
+        </CookingArea>
+      </main>
+    </>
+  );
 }

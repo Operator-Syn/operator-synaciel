@@ -1,0 +1,34 @@
+{
+  "biome.enabled": true,
+  "biome.requireConfiguration": true,
+  "biome.configurationPath": "${workspaceFolder}/biome.json",
+  "biome.lsp.bin": "${workspaceFolder}/node_modules/.bin/biome",
+  "biome.suggestInstallingGlobally": false,
+  "typescript.tsdk": "${workspaceFolder}/node_modules/typescript/lib",
+  "css.customData": [
+    "${workspaceFolder}/.vscode/tailwind-at-rules.json"
+  ],
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.biome": "explicit",
+    "source.organizeImports.biome": "explicit"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  }
+}

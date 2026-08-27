@@ -1,53 +1,52 @@
-// src/components/columnPanels/socialLinksComponent/SocialLinksComponent.tsx
-import SocialLinksPlaceholder from "./SocialLinksPlaceholder";
-import AsyncImage from "../../asyncImageLoader/AsyncImage";
-import "./SocialLinks.css";
+import { ArrowUpRight } from "lucide-react";
+import { LoadingBlock, LoadingRegion } from "../../loadingState/LoadingState";
 
 interface SocialLink {
-    href: string;
-    img: string;
-    alt: string;
+  href: string;
+  img: string;
+  alt: string;
 }
 
 interface SocialLinksComponentProps {
-    badges: SocialLink[];
-    isLoading?: boolean;
+  badges: SocialLink[];
+  isLoading?: boolean;
 }
 
-export default function SocialLinksComponent({
-    badges,
-    isLoading,
-}: SocialLinksComponentProps) {
-    if (isLoading) {
-        return <SocialLinksPlaceholder />;
-    }
-
+export default function SocialLinksComponent({ badges, isLoading }: SocialLinksComponentProps) {
+  if (isLoading) {
     return (
-        <div className="light-glass-blue-hue flex-grow-1 p-3 rounded shadow-sm d-flex flex-column justify-content-center social-links-panel">
-            <div className="d-flex flex-wrap gap-2 justify-content-center align-items-center social-links-badge-grid">
-                {badges.map((badge, index) => (
-                    <SocialBadge key={index} badge={badge} />
-                ))}
-            </div>
-        </div>
+      <LoadingRegion
+        className="surface-panel p-5 legacy-panel-loading"
+        label="Preparing social links"
+      >
+        <LoadingBlock className="loading-line-title" />
+        <LoadingBlock className="loading-line-copy-short" />
+      </LoadingRegion>
     );
-}
+  }
 
-function SocialBadge({ badge }: { badge: SocialLink }) {
-    return (
-        <a
-            href={badge.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-decoration-none social-link-anchor"
+  return (
+    <section className="surface-panel p-5">
+      <p className="eyebrow mb-4">Links / 02</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {badges.map((badge) => (
+          <a
             aria-label={badge.alt}
-        >
-            <AsyncImage
-                src={badge.img}
-                alt={badge.alt}
-                wrapperClassName="badge-wrapper d-inline-flex align-items-center justify-content-center rounded overflow-hidden"
-                className="badge-img d-block"
+            className="group flex items-center justify-between border-b border-line py-2 text-sm text-text-muted transition-colors hover:text-signal"
+            href={badge.href}
+            key={`${badge.href}-${badge.alt}`}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            <span>{badge.alt}</span>
+            <ArrowUpRight
+              aria-hidden="true"
+              className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+              size={15}
             />
-        </a>
-    );
+          </a>
+        ))}
+      </div>
+    </section>
+  );
 }

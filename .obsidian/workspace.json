@@ -1,0 +1,222 @@
+{
+  "main": {
+    "id": "40e2ea3d1212b130",
+    "type": "split",
+    "children": [
+      {
+        "id": "a29083309829417a",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b83b3267afc86b43",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "d8d002c72811b805",
+    "type": "split",
+    "children": [
+      {
+        "id": "2e38dd5bcee63c8a",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "1e672e6f18c22e7a",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "b9d43c2db46d1331",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "1aa7e7c090c3d62f",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "1d3b7e81d6864669",
+    "type": "split",
+    "children": [
+      {
+        "id": "05b75706505a7b97",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "d97a3a4b8c8e3ef4",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "98f5a9fcbb61842d",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "a51508e75fa6f6d3",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "34b0c03c3becfe49",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "015127b67039a8cb",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "b83b3267afc86b43",
+  "lastOpenFiles": [
+    "dist/sitemap.xml",
+    "dist/robots.txt",
+    "dist/index.html",
+    "docs/design-system/references/portfolio-home-responsive-wide-reference.png",
+    "docs/design-system/references/portfolio-home-responsive-work-failure.png",
+    "docs/design-system/responsive-layout.md",
+    "docs/design-system/references/portfolio-home-responsive-fixed.png",
+    "docs/design-system/references/portfolio-home-responsive-failure.png",
+    "docs/design-system/homepage-fidelity.md",
+    "src/components/pages/homePage/Home.tsx",
+    "src/components/homePage/HomeToolsTable.tsx",
+    "src/components/homePage/HomeSelectedWork.tsx",
+    "src/components/homePage/HomeIdentityPanel.tsx",
+    "src/components/homePage/HomeFooter.tsx",
+    "src/components/homePage/HomeCoordinates.tsx",
+    "src/components/homePage",
+    "node_modules/@biomejs/cli-linux-x64/CHANGELOG.md",
+    "node_modules/@biomejs/biome/README.zh-TW.md",
+    "node_modules/@biomejs/biome/README.zh-CN.md",
+    "node_modules/@biomejs/biome/README.uk.md",
+    "node_modules/@biomejs/biome/README.ru.md",
+    "node_modules/@biomejs/biome/README.pt-BR.md",
+    "node_modules/@biomejs/biome/README.pl.md",
+    "node_modules/@biomejs/biome/README.md",
+    "node_modules/@biomejs/biome/README.kr.md",
+    "node_modules/@biomejs/biome/README.ja.md",
+    "node_modules/@biomejs/biome/README.hi.md",
+    "node_modules/@biomejs/biome/README.fr.md",
+    "node_modules/@biomejs/biome/README.es.md",
+    "PRODUCT.md",
+    "docs/architecture/models.md",
+    "docs/architecture/controllers.md",
+    "docs/architecture/layer-boundaries.md",
+    "node_modules/markdown-table/readme.md",
+    "screenshot.png.md"
+  ]
+}

@@ -1,8 +1,14 @@
 // src/model/HomePageModel.ts
 import type { D1Database } from "@cloudflare/workers-types";
 
-interface SettingRow { key: string; value: string; }
-interface ProfileRow { label: string; value: string; }
+interface SettingRow {
+  key: string;
+  value: string;
+}
+interface ProfileRow {
+  label: string;
+  value: string;
+}
 interface SectionJoinedRow {
   title: string;
   section_type: string;
@@ -44,19 +50,23 @@ export class HomePageModel {
   async getHomePageData() {
     const [settings, profile, rows] = await Promise.all([
       this.db.prepare("SELECT key, value FROM site_settings").all<SettingRow>(),
-      this.db.prepare("SELECT label, value FROM profile_info ORDER BY display_order, id").all<ProfileRow>(),
-      this.db.prepare(`
+      this.db
+        .prepare("SELECT label, value FROM profile_info ORDER BY display_order, id")
+        .all<ProfileRow>(),
+      this.db
+        .prepare(`
         SELECT s.title, s.section_type, i.label, i.content, i.image_url, i.target_url
         FROM sections s
         LEFT JOIN section_items i ON s.id = i.section_id
         ORDER BY s.display_order ASC, s.id ASC, i.display_order ASC, i.id ASC
-      `).all<SectionJoinedRow>()
+      `)
+        .all<SectionJoinedRow>(),
     ]);
 
     return {
-      site: Object.fromEntries(settings.results.map(r => [r.key, r.value])),
+      site: Object.fromEntries(settings.results.map((r) => [r.key, r.value])),
       profile: profile.results,
-      sections: this.transformSections(rows.results)
+      sections: this.transformSections(rows.results),
     };
   }
 
@@ -64,29 +74,29 @@ export class HomePageModel {
     const data: HomePageSections = {
       pitch: { items: [] },
       social: { items: [] },
-      loadouts: []
+      loadouts: [],
     };
 
-    rows.forEach(row => {
+    rows.forEach((row) => {
       switch (row.section_type) {
-        case 'pitch':
+        case "pitch":
           if (row.content) {
             data.pitch.items.push({
               title: row.title,
-              content: row.content
+              content: row.content,
             });
           }
           break;
 
-        case 'social':
+        case "social":
           data.social.items.push({
             label: row.label,
             image_url: row.image_url,
-            target_url: row.target_url
+            target_url: row.target_url,
           });
           break;
 
-        case 'loadout':
+        case "loadout":
           {
             // Find or create the category (e.g., "Operating Systems")
             let cat = data.loadouts.find((l) => l.category === row.title);
