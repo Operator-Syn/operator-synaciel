@@ -21,9 +21,10 @@ is [`src/Api.ts`](../../src/Api.ts).
 - `src/data/NavLinks.types.ts` defines the brand name, visible navigation, and
   all application routes.
 
-The route list includes the home, projects, certificates, snippets, privacy,
-terms, NetBird, and Atelier pages. The snippets page also supports nested
-paths.
+The route list includes the home, projects, certificates, snippets, AI and MCP,
+privacy, terms, NetBird, and Atelier pages. The snippets page also supports
+nested paths. The [[architecture/portfolio-mcp|portfolio MCP note]] documents
+the separate agent-facing Worker and its deployment boundary.
 
 ## API and storage
 
