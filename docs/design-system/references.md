@@ -67,7 +67,10 @@ The optional Of Times Old theme uses the historical blue palette audited from
 `origin/main` as reference rather than as a source to copy. It is a newly
 composed, lighter, low-chroma pastel-blue monochrome ramp that keeps the Dalan
 geometry and remaps only semantic color roles. Vesper Index is a separate
-rose-led twilight option inspired by the Twilight-5 sunset balance.
+rose-led twilight option inspired by the Twilight-5 sunset balance. The Ancient
+Blue Ledger is a permanent light ledger palette promoted from the local custom
+theme format; it keeps the same composition while using blue-tinted surfaces,
+rules, and depth.
 
 ## Evidence boundary
 
