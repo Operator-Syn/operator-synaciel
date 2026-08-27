@@ -1,4 +1,5 @@
 import type { NavLinkItem } from "../components/navBar/NavBar";
+import Ai from "../components/pages/aiPage/Ai";
 import Atelier from "../components/pages/atelierPage/Atelier";
 import Certifications from "../components/pages/certificatesPage/Certificates";
 import Home from "../components/pages/homePage/Home";
@@ -23,6 +24,7 @@ export const routes: RouteItem[] = [
   { name: "Terms", path: "/terms-and-conditions", component: TermsAndConditions, showInNav: false },
   { name: "NetBird", path: "/netbird", component: Netbird, showInNav: false },
   { name: "Atelier", path: "/atelier", component: Atelier, showInNav: false },
+  { name: "AI and MCP", path: "/ai", component: Ai, showInNav: false },
 ];
 
 export const navLinks: NavLinkItem[] = routes.filter((route) => route.showInNav !== false);
