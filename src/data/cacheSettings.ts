@@ -1,3 +1,0 @@
-export const PUBLIC_DATA_STALE_TIME_MS = 1000 * 5;
-export const SNIPPETS_STALE_TIME_MS = 1000 * 5;
-export const SNIPPETS_REFETCH_INTERVAL_MS = 1000 * 5;
