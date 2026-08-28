@@ -8,16 +8,25 @@ role: guide
 
 # Local Development
 
-## Node application
+Operator-Syn uses npm workspaces. Run commands from the repository root for
+the stable orchestration aliases, or from a workspace when working directly
+on one runtime.
 
-Install dependencies and start the Vite development server:
+## Install and application development
+
+Install all workspace dependencies and start the portfolio frontend:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Useful repository checks are:
+The frontend workspace is `apps/portfolio-web/`. Its Vite entrypoint is
+`apps/portfolio-web/src/main.tsx`, its Pages Functions live in
+`apps/portfolio-web/functions/`, and its local build output is
+`apps/portfolio-web/dist/`.
+
+Useful root checks are:
 
 ```bash
 npm run typecheck
@@ -27,47 +36,82 @@ npm run build
 npm run preview
 ```
 
-The root TypeScript solution includes the application, Vite, MCP, scripts, and
-test projects. `npm run typecheck` reports the complete current TypeScript
-diagnostic set without requiring files to be open. `npm run typecheck:watch`
-keeps that set current as files change.
+Cloudflare Pages should use `apps/portfolio-web` as its project root, `npm run
+build` as its build command, and `dist` as its output directory; Pages
+Functions are discovered from the `functions/` directory at that workspace
+root. Cloudflare Pages' monorepo support and Functions routing require that
+project-root arrangement; this repository does not deploy Pages from the
+legacy root layout.
 
-The workspace starts the TypeScript watch and Biome repository tasks when the
-folder opens. Their problem matchers publish diagnostics to VS Code's Problems
-panel before a source file is opened. Run the one-shot repository-wide Biome
-check when you need the current formatting and lint result:
+The root `npm run deploy` command remains a legacy `gh-pages` publisher for
+`apps/portfolio-web/dist/`. It does not deploy Pages Functions.
+
+## Portfolio API Worker
+
+The Hono API Worker is the `workers/portfolio-api/` workspace. Its entrypoint
+is `workers/portfolio-api/src/entrypoint.ts`; D1/R2 models and controllers
+remain inside that workspace. Run its local Worker directly with:
 
 ```bash
-npm run check:biome
+npm run dev --workspace=@syn-forge/portfolio-api
 ```
 
-The checked-in `biome.json` enables Tailwind v4 directives, including `@theme`,
-and keeps the CLI and editor on the same parser configuration. VS Code/Cursor
-can install the recommended `biomejs.biome` extension from
-`.vscode/extensions.json`.
+The root API aliases delegate to this workspace:
 
-Cloudflare Pages Git integration builds the frontend with `npm run build` and
-publishes `dist`, including root Pages Functions. To exercise the Pages
-Function locally after a build, run `npm run pages:dev`; this uses Wrangler's
-Pages server rather than the separate API Worker configured in
-[`wrangler.toml`](../../wrangler.toml).
+```bash
+npm run db:migration:generate -- --name=add_descriptive_change
+npm run db:migration:check
+npm run db:migrations:list:local
+```
 
-`npm run deploy` remains a legacy `gh-pages` publisher and does not deploy
-Pages Functions. The API Worker has no npm deployment wrapper.
+The checked-in Wrangler configuration is
+`workers/portfolio-api/wrangler.toml`. Database migration application remains
+an explicit operation; do not treat typechecks or Worker builds as migration
+application.
 
-The public portfolio MCP is a separate Worker package with a Service Binding
-to `portfolio-api`. Check and test it with:
+## Public portfolio MCP — remote Streamable HTTP
+
+The public, read-only portfolio MCP is isolated in `workers/portfolio-mcp/`.
+It is a remote stateless Cloudflare Worker using Streamable HTTP at
+`https://mcp.syn-forge.com/mcp`; it is not the local stdio repository MCP.
+Check and test it with:
 
 ```bash
 npm run mcp:portfolio:check
 npm run test:portfolio-mcp
+npm run mcp:portfolio:dev
 ```
 
-Use `npm run mcp:portfolio:dev` for its local Worker server. Its deployment
-wrapper is `npm run mcp:portfolio:deploy`; do not treat a local check or dry run
-as custom-domain activation. See
-[[architecture/portfolio-mcp|the Portfolio MCP note]] for the client
-configuration, deployment prerequisites, and post-deploy verification.
+The production deployment wrapper is `npm run mcp:portfolio:deploy`; it
+delegates to the workspace's `wrangler.toml`. Deployment and custom-domain
+activation are separate from local checks. See
+[[architecture/portfolio-mcp|Public Portfolio MCP (Streamable HTTP)]] for its Service Binding and
+post-deploy verification contract. See
+[[architecture/portfolio-mcp-modules|Public Portfolio MCP module structure]] when changing its
+internal Worker modules.
+
+## Local repository MCP — stdio
+
+The local repository-only MCP is the `tools/repository-mcp/` workspace. It is a
+stdio subprocess with no public URL. Its root-safe client bridge remains
+`scripts/mcp-launcher.mjs` so `.mcp.json` and Codex can resolve a relocated Git
+checkout.
+
+Use [[operations/repository-mcp|Local Repository MCP (stdio) and Commit Pipeline]]
+for the guarded change and commit workflow. The local checks for repository
+tooling are:
+
+```bash
+npm run mcp:check
+npm run skills:check
+npm run mcp:typecheck
+npm run test:mcp
+npm run setup:git-hooks
+```
+
+This MCP is local-only. It does not expose the public portfolio contract, deploy,
+access Cloudflare credentials, or apply D1 migrations. Graphify updates remain
+an explicit separate step.
 
 ## Graphify
 
@@ -80,29 +124,13 @@ pipenv run graphify query "How does the frontend connect to the Hono API?"
 pipenv run graphify update . --no-cluster
 ```
 
-The repository Graphify configuration is code-only. Use this vault's map for
+The repository Graphify configuration is code-only. Use the vault map for
 Markdown documentation rather than expecting the code graph to contain notes.
-
-## Repository MCP and hooks
-
-Use [[operations/repository-mcp|the repository MCP guide]] for the approval-gated change
-and commit workflow. The local checks for its tooling are:
-
-```bash
-npm run mcp:check
-npm run skills:check
-npm run mcp:typecheck
-npm run test:mcp
-npm run setup:git-hooks
-```
-
-The MCP is local-only. It does not deploy, access Cloudflare credentials, or
-apply database migrations. Graphify updates remain an explicit separate step.
 
 ## D1 workflow
 
-Use [[database/drizzle|Drizzle tooling]] and [[database/migrations|the migration
-guide]] for schema changes:
+Use [[database/drizzle|Drizzle tooling]] and [[database/migrations|the migration guide]] for schema changes. The editable schema and migrations are owned by
+`workers/portfolio-api/`:
 
 ```bash
 npm run db:migration:generate -- --name=add_descriptive_change
@@ -113,5 +141,6 @@ npm run db:migrations:apply:local
 Inspect SQL and verify the local schema before considering a remote apply.
 Existing seed content is not migration history.
 
-Do not put secrets in committed environment files. The Worker bindings and
-non-secret variables are declared in [`wrangler.toml`](../../wrangler.toml).
+Do not put secrets in committed environment files. The frontend preserves the
+root `.env` location for local Vite variables through its configured `envDir`;
+workspace-specific deployment settings remain in their Wrangler files.
