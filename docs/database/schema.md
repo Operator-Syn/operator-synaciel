@@ -8,7 +8,8 @@ role: concept
 
 # Database Schema
 
-The canonical editable schema is [`src/db/schema.ts`](../../src/db/schema.ts).
+The canonical editable schema is
+[`workers/portfolio-api/src/db/schema.ts`](../../workers/portfolio-api/src/db/schema.ts).
 It describes the SQLite/D1 tables, indexes, foreign keys, defaults, and check
 constraints used by the Worker. Drizzle generates the SQL migration files;
 Wrangler applies them.
@@ -43,14 +44,14 @@ formats to `pdf` or `md` when the entry is a file.
 
 ## Migration baseline
 
-[`migrations/0000_baseline.sql`](../../migrations/0000_baseline.sql) records the
+[`workers/portfolio-api/migrations/0000_baseline.sql`](../../workers/portfolio-api/migrations/0000_baseline.sql) records the
 schema that already exists in D1. Its DDL is idempotent and is not a data
 reset. Future schema changes must update the Drizzle schema and generate a new
 migration.
 
 ## Data references
 
-[`src/data/Initial-Seed.sql`](../../src/data/Initial-Seed.sql) is bootstrap and
+[`workers/portfolio-api/src/data/Initial-Seed.sql`](../../workers/portfolio-api/src/data/Initial-Seed.sql) is bootstrap and
 mutable portfolio content. It is not a historical migration and must not be
 replayed through the D1 migration table. The full workflow is documented in
 [[database/migrations|D1 migrations]] and [[database/drizzle|Drizzle tooling]].
