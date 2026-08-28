@@ -4,6 +4,7 @@ import { MAX_LIST_LIMIT } from "../../config.ts";
 import type { PortfolioApiClient } from "../../portfolio-api/index.ts";
 import { getPortfolioPageUrl } from "../links.ts";
 import { errorResult, jsonResult } from "../results.ts";
+import { certificateDetailsOutputSchema, listCertificatesOutputSchema } from "../schemas.ts";
 import { safeId, safeLimit } from "../validation.ts";
 
 export function registerCertificateTools(server: McpServer, api: PortfolioApiClient): void {
@@ -12,10 +13,12 @@ export function registerCertificateTools(server: McpServer, api: PortfolioApiCli
     {
       title: "List certificates",
       description: "List public certificates and training records with cursor pagination.",
-      inputSchema: z.object({
-        limit: z.number().int().min(1).max(MAX_LIST_LIMIT).optional(),
-        cursor: z.string().trim().max(512).optional(),
+      inputSchema: z.strictObject({
+        limit: z.number().int().safe().min(1).max(MAX_LIST_LIMIT).optional(),
+        cursor: z.string().trim().min(1).max(512).optional(),
       }),
+      outputSchema: listCertificatesOutputSchema,
+      annotations: { readOnlyHint: true },
     },
     async ({ limit, cursor }) => {
       try {
@@ -32,7 +35,9 @@ export function registerCertificateTools(server: McpServer, api: PortfolioApiCli
       title: "Get certificate",
       description:
         "Return one public certificate record and its media items by numeric certificate ID.",
-      inputSchema: z.object({ id: z.number().int().positive() }),
+      inputSchema: z.strictObject({ id: z.number().int().safe().positive() }),
+      outputSchema: certificateDetailsOutputSchema,
+      annotations: { readOnlyHint: true },
     },
     async ({ id }) => {
       try {
