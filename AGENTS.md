@@ -1,22 +1,30 @@
 # Repository guidance
 
-## Documentation
+## Documentation and routing
 
-- `docs/` is the project documentation and Obsidian vault. Start at
+- `docs/` is the canonical project documentation and Obsidian vault. Start at
   [`docs/README.md`](docs/README.md).
-- Update the existing canonical note before creating another note. Keep notes
-  focused, source-grounded, and linked with meaningful Obsidian wikilinks.
-- The root `README.md` is the short GitHub front door. Do not duplicate the
-  vault's architecture or database explanations here.
+- Update the existing focused canonical note before creating another one. If a
+  rule needs durable detail, add it to the relevant vault note and link it
+  here; keep this file to routing and non-obvious repository rules.
+- Runtime code belongs to `apps/portfolio-web/`, `workers/portfolio-api/`,
+  `workers/portfolio-mcp/`, or `tools/repository-mcp/`; tests are grouped under
+  `tests/`. Load the [repository layout](docs/architecture/repository-layout.md)
+  for ownership and root-file details, or [local development](docs/operations/local-development.md)
+  for commands and runtime boundaries.
+- When changing `workers/portfolio-mcp/`, read the [public MCP module structure](docs/architecture/portfolio-mcp-modules.md)
+  for its seams and split criteria.
+- Keep `README.md` as the short GitHub front door. Put durable architecture,
+  database, and operational detail in the vault.
 
 ## Graphify
 
-- Graphify is managed by Pipenv. Run it as `pipenv run graphify ...`.
+- Graphify is managed by Pipenv: `pipenv run graphify ...`.
 - For codebase questions, query `graphify-out/graph.json` first when it exists.
-  Use `query`, `path`, or `explain` for focused context.
+  Then confirm the cited source directly.
 - After modifying code, run `pipenv run graphify update .`.
-- Graphify is code-only in this repository. Documentation is indexed through
-  the Obsidian map, not the generated graph.
+- Graphify indexes code only; Markdown documentation is navigated through the
+  Obsidian map.
 
 ## Agent tooling
 
@@ -27,38 +35,38 @@
   available. The portable quality skill lives under
   `.agents/skills/repository-quality/`; the Codex adapter is under
   `.codex/skills/repository-quality/`.
-- Keep Graphify, the repository MCP, and visual skills as separate capabilities;
-  load only the one relevant to the current task. Use the project-local
-  Impeccable skill for UI audits and refinement.
+- Use Graphify for code relationships and the local repository MCP for bounded
+  changes, fixed verification, and local commits. Keep those capabilities
+  separate and load visual tooling only for UI work.
 - Impeccable shared context belongs in `PRODUCT.md`, `DESIGN.md`, and
-  `.impeccable/config.json`; do not invent context files or commit
-  `.impeccable/config.local.json`.
+  `.impeccable/config.json`; do not add a second context file.
 
-## Repository MCP and commits
+## Local repository MCP and commits
 
-- Use the local `operator-synaciel-repository` MCP for guarded file changes and
-  one-file local commits. Review paths, hashes, diffs, and verification results.
-- Run `npm run setup:git-hooks` before committing. Direct shell `git commit` is
-  blocked by the Codex hook; do not bypass the versioned Git hooks.
-- The MCP never deploys, accesses Cloudflare credentials, or applies D1
-  migrations. Pushes and remote GitHub actions require separate authorization.
-- Use `.agents/skills/github-commit-pipeline/` for the generic prepare, verify,
-  hook, stale-change, and commit workflow. Graphify remains the discovery MCP.
+- The local `operator-synaciel-repository` MCP is implemented in
+  `tools/repository-mcp/`. Read the [local repository MCP guide](docs/operations/repository-mcp.md)
+  for its guarded change, verification, and commit workflow. The public
+  portfolio MCP is a separate remote Streamable HTTP Worker documented in the
+  [portfolio MCP note](docs/architecture/portfolio-mcp.md).
+- Use `repository_workflow_status` before MCP mutation. Run
+  `npm run setup:git-hooks` before committing; direct shell `git commit` and
+  hook bypasses are unsupported.
+- The repository MCP never deploys, accesses Cloudflare credentials, applies
+  D1 migrations, or performs remote Git operations. Pushes, deployment, and
+  database application remain separately authorized actions.
 
-## Obsidian skills
+## Obsidian
 
-- Install `codex-obsidian` natively from its GitHub marketplace source; do not
-  copy or mirror the skills into this repository.
-- The current verified source is `greg-asher/codex-obsidian` at ref
-  `ed35c3782639f792d0338f0b0da7d8a5484b7b56`.
-- Use the install and verification commands in `docs/obsidian.md` when the
-  native plugin is missing or needs refreshing.
+- Follow [`docs/obsidian.md`](docs/obsidian.md) for native plugin installation,
+  vault registration, and CLI verification. Keep Obsidian skills native and
+  outside this repository; do not mirror them here.
 
 ## Verification
 
-- `npm run docs:check` validates the vault links and documentation layout.
-- `npm run skills:check` runs the official skill validator against both local
-  repository-quality bundles through the Pipenv environment.
-- `npm run mcp:typecheck` and `npm run test:mcp` validate the repository MCP.
+- `npm run docs:check` validates vault links and documentation layout;
+  `npm run mcp:check` validates clone-safe MCP registration.
+- Repository-tooling checks are `npm run skills:check`,
+  `npm run mcp:typecheck`, and `npm run test:mcp`. Use the workspace-specific
+  checks and full verification profiles documented in the operations notes.
 - The documentation hook is read-only and advisory. It must not rewrite notes,
   update Graphify, access Cloudflare, or apply database migrations.
