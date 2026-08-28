@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1787382138076,
+      "tag": "0000_baseline",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787468664272,
+      "tag": "0001_normalize_project_display_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787468675502,
+      "tag": "0002_add_projects_cursor_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1787640606351,
+      "tag": "0003_normalize_certificate_display_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1787640781338,
+      "tag": "0004_add_certificates_cursor_index",
+      "breakpoints": true
+    }
+  ]
+}
