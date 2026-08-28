@@ -5,6 +5,13 @@ export type PortfolioApiEnvironment = {
   PORTFOLIO_API_BASE_URL?: string;
 };
 
+export type PortfolioSite = {
+  headerPhrase?: string;
+  mobileHeaderPhrase?: string;
+  profileImage?: string;
+  status?: string;
+};
+
 export type ProfileRecord = {
   label: string;
   value: string;
@@ -25,7 +32,7 @@ export type SectionRecord = {
 };
 
 export type PortfolioOverview = {
-  site: Record<string, string>;
+  site: PortfolioSite;
   profile: ProfileRecord[];
   sections: SectionRecord[];
 };
@@ -95,7 +102,6 @@ export type SnippetNode = {
   name: string;
   type: "dir" | "file";
   modified: string;
-  path?: string | null;
   size?: number;
   format?: "pdf" | "md";
   children?: SnippetNode[];
