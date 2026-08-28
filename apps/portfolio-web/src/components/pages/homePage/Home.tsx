@@ -178,7 +178,7 @@ export default function Home() {
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "WebSite",
-          author: { "@type": "Person", name: "John-Ronan Beira", url: "https://syn-forge.com/" },
+          author: { "@type": "Person", name: "Operator-Syn", url: "https://syn-forge.com/" },
           description: HOME_PAGE_DESCRIPTION,
           name: "Syn-Forge",
           url: "https://syn-forge.com/",
