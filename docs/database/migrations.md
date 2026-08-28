@@ -9,14 +9,16 @@ role: guide
 
 # D1 Migrations
 
-Drizzle Kit generates the readable SQL files in `migrations/` from
-[`src/db/schema.ts`](../../src/db/schema.ts). Wrangler applies those files to
+Drizzle Kit generates the readable SQL files in
+`workers/portfolio-api/migrations/` from
+[`workers/portfolio-api/src/db/schema.ts`](../../workers/portfolio-api/src/db/schema.ts). Wrangler applies those files to
 the `my-personal-portfolio` D1 database and records them in `d1_migrations`.
 See [[database/drizzle|Drizzle tooling]] for schema ownership and command
 roles.
 
 The existing database predates this workflow. `0000_baseline.sql` is an
-idempotent schema baseline; [`src/data/Initial-Seed.sql`](../../src/data/Initial-Seed.sql)
+idempotent schema baseline;
+[`workers/portfolio-api/src/data/Initial-Seed.sql`](../../workers/portfolio-api/src/data/Initial-Seed.sql)
 remains bootstrap content and must not be replayed through migration history.
 
 The project archive cursor rollout uses two forward migrations: `0001` first
@@ -37,7 +39,7 @@ they do not rewrite certificate content or the baseline file.
 - Keep Drizzle's numeric names, such as `0001_add_project_slug.sql`.
 - Never edit a migration after it has been applied anywhere.
 - Do not manually create a migration with `wrangler d1 migrations create`.
-- Do not edit files under `migrations/meta/` by hand.
+- Do not edit files under `workers/portfolio-api/migrations/meta/` by hand.
 
 Start each migration with a review header:
 
@@ -61,7 +63,7 @@ npm run db:migration:check
 Read the SQL and inspect the exact diff:
 
 ```bash
-git diff -- src/db/schema.ts migrations/ drizzle.config.ts wrangler.toml package.json
+git diff -- workers/portfolio-api/src/db/schema.ts workers/portfolio-api/migrations/ workers/portfolio-api/drizzle.config.ts workers/portfolio-api/wrangler.toml package.json
 ```
 
 List and apply pending migrations locally first:
