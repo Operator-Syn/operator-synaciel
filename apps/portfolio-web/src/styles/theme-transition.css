@@ -1,0 +1,52 @@
+/* The wipe covers the viewport before the new palette is applied. */
+.theme-transition-wipe {
+    position: fixed;
+    z-index: 45;
+    inset: 0;
+    overflow: hidden;
+    background-color: var(--color-canvas);
+    pointer-events: none;
+    contain: paint;
+    animation: theme-transition-wipe var(--motion-theme-transition-duration) var(--motion-ease) both;
+}
+
+.theme-transition-wipe::after {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: 2px;
+    background-color: var(--color-signal);
+    content: "";
+}
+
+@keyframes theme-transition-wipe {
+    0% {
+        transform: translate3d(-100%, 0, 0);
+    }
+
+    37.5% {
+        transform: translate3d(0, 0, 0);
+        animation-timing-function: linear;
+    }
+
+    62.5% {
+        transform: translate3d(0, 0, 0);
+        animation-timing-function: var(--motion-ease);
+    }
+
+    100% {
+        transform: translate3d(100%, 0, 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .theme-transition-wipe {
+        display: none;
+        animation: none;
+    }
+}
+
+html[data-reduced-motion="on"] .theme-transition-wipe {
+    display: none;
+    animation: none;
+}
