@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { access, mkdir, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, describe, test } from "node:test";
 
@@ -102,6 +102,72 @@ describe("approval-gated commit pipeline", () => {
     );
     assert.equal(committed.status, "committed");
     assert.equal(runGit(repository, ["status", "--short"]).stdout.trim(), "");
+  });
+
+  test("rejects incomplete shortened replacements unless explicitly acknowledged", async () => {
+    const repository = await createRepository();
+    repositories.push(repository);
+    const path = "apps/portfolio-web/src/shortened.ts";
+    const original = "one before\ntwo before\n";
+    await writeFile(join(repository, path), original);
+    const server = await startServer(repository);
+    servers.push(server);
+    const expectedSha256 = createHash("sha256").update(original).digest("hex");
+
+    const rejected = payload(
+      await server.call("tools/call", {
+        name: "prepare_repository_change",
+        arguments: {
+          taskType: "patch",
+          description: "reject an incomplete bounded read replacement",
+          profile: "app",
+          operations: [
+            {
+              path,
+              content: "one before\n",
+              expectedSha256,
+            },
+          ],
+        },
+      }),
+    );
+    assert.equal(rejected.status, "rejected");
+    assert.match(String(rejected.message), /allowContentShortening/);
+    assert.equal(await readFile(join(repository, path), "utf8"), original);
+
+    const prepared = payload(
+      await server.call("tools/call", {
+        name: "prepare_repository_change",
+        arguments: {
+          taskType: "patch",
+          description: "explicitly approve an intentional shortening",
+          profile: "app",
+          operations: [
+            {
+              path,
+              content: "one before\n",
+              expectedSha256,
+              allowContentShortening: true,
+            },
+          ],
+        },
+      }),
+    );
+    assert.equal(prepared.status, "prepared");
+
+    const applied = payload(
+      await server.call("tools/call", {
+        name: "apply_repository_change",
+        arguments: {
+          planId: prepared.planId,
+          applyToken: prepared.applyToken,
+          expectedFileHashes: prepared.expectedFileHashes,
+          approve: true,
+        },
+      }),
+    );
+    assert.equal(applied.status, "applied");
+    assert.equal(await readFile(join(repository, path), "utf8"), "one before\n");
   });
 
   test("applies a hashed change and commits the exact applied file", async () => {
