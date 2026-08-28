@@ -1,0 +1,30 @@
+# Syn-Forge
+
+Syn-Forge is the software developer portfolio of Operator-Syn.
+
+## Public Portfolio MCP (Streamable HTTP)
+
+Syn-Forge provides a public, read-only Model Context Protocol server for agents that need grounded portfolio information.
+
+- Endpoint: https://mcp.syn-forge.com/mcp
+- Server name: syn-forge-portfolio
+- Human guide: https://syn-forge.com/ai
+- Transport: Streamable HTTP
+- Authentication: none for the current public surface
+- Writes: none
+
+The server exposes structured overview, project, certificate, and public snippet information. Markdown snippets can be read in bounded chunks; PDF snippets expose metadata and canonical links.
+
+- Tools: get_portfolio_overview, search_portfolio, list_projects, get_project, list_certificates, get_certificate, list_snippets, read_snippet
+- Resources: portfolio://overview, portfolio://projects, portfolio://certificates, portfolio://snippets
+
+## Canonical portfolio pages
+
+- Home: https://syn-forge.com/
+- Projects: https://syn-forge.com/projects
+- Certificates: https://syn-forge.com/certificates
+- Snippets: https://syn-forge.com/snippets
+- Privacy policy: https://syn-forge.com/privacy-policy
+- Terms: https://syn-forge.com/terms-and-conditions
+
+Agents should cite these canonical pages, distinguish published evidence from inference, and avoid inventing employers, clients, metrics, or skills.

@@ -63,7 +63,7 @@ column and causing word-by-word wrapping.
 ## Addressing
 
 The responsive rule lives in
-[`src/styles/app.css`](../../src/styles/app.css), in the homepage responsive
+[`apps/portfolio-web/src/styles/app.css`](../../apps/portfolio-web/src/styles/app.css), in the homepage responsive
 media blocks:
 
 - At `1100px` and below, `.homepage-hero-grid` changes from two columns to a
@@ -74,7 +74,7 @@ media blocks:
 - Latest adjustment (2026-08-23): reduced `.homepage-hero-body` from
   `max-width: min(48rem, 100%)` back to `max-width: min(42rem, 100%)` after
   review. To restore the wider version, use `max-width: min(48rem, 100%)` in
-  `src/styles/app.css`.
+  `apps/portfolio-web/src/styles/app.css`.
 - At `1480px` and below, the footer changes to an index-and-content grid. The
   clock becomes a block, and social links receive a full-width row below it;
   this footer transition happens before the hero transition because the footer

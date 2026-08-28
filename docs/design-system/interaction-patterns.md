@@ -18,7 +18,7 @@ current contract is implemented on Home, Projects, Certificates, and Snippets.
 
 ## Pointer coordinate rail
 
-[`PointerCoordinates`](../../src/components/pointerCoordinates/PointerCoordinates.tsx)
+[`PointerCoordinates`](../../apps/portfolio-web/src/components/pointerCoordinates/PointerCoordinates.tsx)
 is the shared source for the coordinate/status rail. Home uses the
 `HomeCoordinates` wrapper with the first marker active; Projects uses the same
 component with the second marker active; Certificates uses the third marker;
@@ -93,8 +93,8 @@ presentation card without changing real-project pagination.
 ## Loading and pending states
 
 Loading is a visual state, not a visible word repeated across the interface. Public routes and reusable loading-capable components use the shared loading primitives in
-`src/components/loadingState/LoadingState.tsx` and
-`src/styles/loading-state.css`.
+`apps/portfolio-web/src/components/loadingState/LoadingState.tsx` and
+`apps/portfolio-web/src/styles/loading-state.css`.
 
 - Preserve the destination geometry with ruled, raised neutral blocks.
 - Use a restrained amber signal pulse and glint as the only loading motion.

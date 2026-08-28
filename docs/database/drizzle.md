@@ -13,13 +13,15 @@ Drizzle owns the typed schema and SQL generation workflow. Runtime models still
 use parameterized `D1Database.prepare()` calls; this phase does not change API
 queries or response shapes.
 
+The editable schema is described in [[database/schema|Database Schema]], while generation and apply rules are detailed in [[database/migrations|D1 Migrations]]. Workspace command context is in [[operations/local-development|Local Development]].
+
 ## Sources of truth
 
-- [`src/db/schema.ts`](../../src/db/schema.ts) is the editable schema.
-- `migrations/*.sql` contains reviewed SQL generated from that schema.
-- `migrations/meta/` contains Drizzle's schema snapshots and journal.
-- [`wrangler.toml`](../../wrangler.toml) defines the D1 migration directory.
-- `src/data/Initial-Seed.sql` remains bootstrap content, not migration history.
+- [`workers/portfolio-api/src/db/schema.ts`](../../workers/portfolio-api/src/db/schema.ts) is the editable schema.
+- `workers/portfolio-api/migrations/*.sql` contains reviewed SQL generated from that schema.
+- `workers/portfolio-api/migrations/meta/` contains Drizzle's schema snapshots and journal.
+- [`workers/portfolio-api/wrangler.toml`](../../workers/portfolio-api/wrangler.toml) defines the D1 migration directory.
+- `workers/portfolio-api/src/data/Initial-Seed.sql` remains bootstrap content, not migration history.
 
 Drizzle Kit 0.31 emits flat, numbered SQL files. Do not move them into nested
 directories or add a custom Wrangler migration pattern; the default D1
@@ -32,7 +34,7 @@ Change the schema first, then generate a named migration:
 ```bash
 npm run db:migration:generate -- --name=add_descriptive_change
 npm run db:migration:check
-git diff -- src/db/schema.ts migrations/ drizzle.config.ts wrangler.toml package.json
+git diff -- workers/portfolio-api/src/db/schema.ts workers/portfolio-api/migrations/ workers/portfolio-api/drizzle.config.ts workers/portfolio-api/wrangler.toml package.json
 ```
 
 Use a custom migration only for reviewed SQL that cannot be represented in the

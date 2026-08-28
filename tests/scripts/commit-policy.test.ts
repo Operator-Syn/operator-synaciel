@@ -11,11 +11,11 @@ import {
 } from "../../scripts/audit-one-file-history.ts";
 import { setupGitHooks } from "../../scripts/setup-git-hooks.ts";
 import { validateStagedPaths } from "../../scripts/validate-commit.ts";
-import { requireGit, runGit } from "../mcp/support.ts";
+import { requireGit, runGit } from "../repository-mcp/support.ts";
 
 const repositories: string[] = [];
 const zeroSha = "0".repeat(40);
-const sourceRoot = resolve(process.cwd());
+const sourceRoot = resolve(import.meta.dirname, "../..");
 
 afterEach(async () => {
   await Promise.all(

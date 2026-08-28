@@ -12,7 +12,10 @@ role: convention
 
 This repository uses Tailwind CSS v4 through the Vite plugin. There is no
 Sass pipeline and no `tailwind.config.js`; the CSS-first `@theme` block in
-`src/styles/app.css` is the token source.
+`apps/portfolio-web/src/styles/app.css` is the token source.
+
+Tailwind consumes [[design-system/tokens|Design Tokens]] and is indexed with
+the other visual contracts in [[design-system/README|Design System]].
 
 ## Boundaries
 

@@ -1,6 +1,9 @@
 import { spawnSync } from "node:child_process";
 
-import { COMMIT_APPROVAL_ENV, CONSENTABLE_RESTRICTED_DIRS } from "../mcp/policy.ts";
+import {
+  COMMIT_APPROVAL_ENV,
+  CONSENTABLE_RESTRICTED_DIRS,
+} from "../tools/repository-mcp/src/policy.ts";
 
 type GitResult = {
   readonly status: number;

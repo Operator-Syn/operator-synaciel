@@ -6,7 +6,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config([
-  globalIgnores(["dist"]),
+  globalIgnores(["**/dist"]),
   {
     files: ["**/*.{ts,tsx}"],
     extends: [
@@ -21,7 +21,13 @@ export default tseslint.config([
     },
   },
   {
-    files: ["mcp/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts"],
+    files: [
+      "apps/portfolio-web/scripts/**/*.ts",
+      "tools/**/*.ts",
+      "workers/**/*.ts",
+      "scripts/**/*.ts",
+      "tests/**/*.{ts,tsx}",
+    ],
     languageOptions: {
       ecmaVersion: 2023,
       globals: globals.node,

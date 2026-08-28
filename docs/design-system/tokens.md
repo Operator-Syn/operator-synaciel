@@ -11,9 +11,13 @@ role: concept
 
 # Design Tokens
 
-The global token source is `src/styles/tokens.css`, imported by `src/styles/app.css`. Tailwind theme variables
+The global token source is `apps/portfolio-web/src/styles/tokens.css`, imported by `apps/portfolio-web/src/styles/app.css`. Tailwind theme variables
 generate utilities; semantic variables are used by component CSS and inline
 style boundaries.
+
+Typography roles are documented in [[design-system/typography|Typography]], and
+Tailwind's token boundary is in [[design-system/tailwind|Tailwind Conventions]].
+Both are part of the [[design-system/README|Design System]] contract.
 
 ## Color roles
 

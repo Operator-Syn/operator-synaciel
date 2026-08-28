@@ -85,7 +85,7 @@ orientation, and one warm amber signal communicates direction, selection,
 focus, and action.
 
 This document describes the incumbent implementation in
-src/styles/app.css and the current route components. It is a source-grounded
+apps/portfolio-web/src/styles/app.css and the current route components. It is a source-grounded
 design contract, not an invitation to restore the former blue-glass styling or
 to add decorative surfaces that are not part of the system.
 
@@ -320,7 +320,7 @@ content.
 
 ### Do
 
-- Use the semantic tokens from src/styles/app.css.
+- Use the semantic tokens from apps/portfolio-web/src/styles/app.css.
 - Let Newsreader titles breathe while keeping their maximum width bounded.
 - Use IBM Plex Mono for coordinates, indexes, dates, media types, and compact
   controls.

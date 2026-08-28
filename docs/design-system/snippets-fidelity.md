@@ -102,7 +102,7 @@ implementation because `Snippets` already stores the stable ID, name, parent,
 file format, size, and R2 storage path.
 
 The build-time sitemap expands the static route list with document URLs when
-the configured public API is available. `public/robots.txt` points crawlers
+the configured public API is available. `apps/portfolio-web/public/robots.txt` points crawlers
 at the generated sitemap. The document route emits canonical metadata and
 Article/TechArticle JSON-LD for direct indexing and sharing.
 
@@ -134,4 +134,4 @@ The source checks are `npm run typecheck`, `npm run lint`,
 `npm run build`. Keep the GitHub-reporter run clean; it is the repository's
 formatter/lint gate. Documentation is checked with `npm run docs:check`; the
 excerpt rule has focused coverage in
-[`tests/snippet-preview.test.ts`](../../tests/snippet-preview.test.ts).
+[`tests/portfolio-web/snippet-preview.test.ts`](../../tests/portfolio-web/snippet-preview.test.ts).

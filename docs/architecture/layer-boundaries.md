@@ -29,7 +29,7 @@ it immediately.
 
 | Responsibility | Current owner | Notes |
 | --- | --- | --- |
-| Route registration and middleware | `src/Api.ts` | CORS, auth ordering, cache headers, and Hono route registration. |
+| Route registration and middleware | `workers/portfolio-api/src/entrypoint.ts` | CORS, auth ordering, cache headers, and Hono route registration. |
 | Request parsing and HTTP status | Controllers | JSON, multipart forms, path parameters, response bodies, and status codes. |
 | Basic request validation | Mixed | Controllers validate transport input; models validate storage and domain constraints. |
 | D1 SQL and row mapping | Models | Models use `D1Database.prepare()` and return typed or mapped results. |

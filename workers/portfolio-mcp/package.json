@@ -1,0 +1,23 @@
+{
+  "name": "@syn-forge/portfolio-mcp",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "check": "tsc -p tsconfig.json --pretty false --noEmit",
+    "dev": "wrangler dev --config wrangler.toml --env local",
+    "deploy": "wrangler deploy --config wrangler.toml --env=\"\"",
+    "test": "tsx --test ../../tests/portfolio-mcp/*.test.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "agents": "0.22.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260820.1",
+    "tsx": "^4.23.12",
+    "typescript": "~5.8.3",
+    "wrangler": "4.125.0"
+  }
+}

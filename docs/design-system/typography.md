@@ -13,6 +13,9 @@ role: concept
 The selected type system avoids the common generic portfolio pairing while
 keeping the page readable and technical:
 
+Its semantic roles consume [[design-system/tokens|Design Tokens]]; the complete
+visual note index is [[design-system/README|Design System]].
+
 - **Newsreader** - editorial display role for hero and archive titles.
 - **IBM Plex Sans** - body, navigation, controls, and descriptions.
 - **IBM Plex Mono** - paths, indexes, dates, media types, and code metadata.

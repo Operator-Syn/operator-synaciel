@@ -68,6 +68,18 @@
             "statusMessage": "Checking UI changes"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|apply_patch|mcp__operator_synaciel_repository__apply_repository_change",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -lc 'root=\"$(git rev-parse --show-toplevel 2>/dev/null || exit 1)\"; cd \"$root\"; exec node \"$root/scripts/check-biome-hook.mjs\"'",
+            "timeout": 120,
+            "statusMessage": "Checking Biome after repository changes",
+            "additionalContextLimit": 4000
+          }
+        ]
       }
     ],
     "Stop": [

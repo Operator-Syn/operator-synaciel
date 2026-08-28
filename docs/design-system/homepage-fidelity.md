@@ -57,18 +57,18 @@ accepted local origins by the Worker CORS allowlist.
 
 ## Implementation map
 
-- [`src/components/pages/homePage/Home.tsx`](../../src/components/pages/homePage/Home.tsx)
+- [`apps/portfolio-web/src/components/pages/homePage/Home.tsx`](../../apps/portfolio-web/src/components/pages/homePage/Home.tsx)
   owns the public queries and view-model adaptation.
-- `src/components/homePage/` owns the coordinate bar, identity rail, tools
+- `apps/portfolio-web/src/components/homePage/` owns the coordinate bar, identity rail, tools
   table, selected work, and footer regions.
-- [`src/styles/app.css`](../../src/styles/app.css) owns the homepage grid,
+- [`apps/portfolio-web/src/styles/app.css`](../../apps/portfolio-web/src/styles/app.css) owns the homepage grid,
   rules, responsive breakpoints, and shared visual tokens. The tablet
   breakpoint is documented in [[design-system/responsive-layout|the responsive
   layout note]].
-- [`src/components/quickNavigation/QuickNavigation.tsx`](../../src/components/quickNavigation/QuickNavigation.tsx)
+- [`apps/portfolio-web/src/components/quickNavigation/QuickNavigation.tsx`](../../apps/portfolio-web/src/components/quickNavigation/QuickNavigation.tsx)
   remains available on archive routes but does not cover the homepage.
-- [`src/components/homePage/HomeSettings.tsx`](../../src/components/homePage/HomeSettings.tsx) and
-  `src/components/sitePreferences/` own the fixed, browser-local visitor
+- [`apps/portfolio-web/src/components/homePage/HomeSettings.tsx`](../../apps/portfolio-web/src/components/homePage/HomeSettings.tsx) and
+  `apps/portfolio-web/src/components/sitePreferences/` own the fixed, browser-local visitor
   preferences utility; it is rendered outside the homepage flow.
 
 ## Motion and interaction contract
@@ -85,7 +85,7 @@ resting markup is visible before JavaScript adds the
 | Route rail order | `HomeCoordinates` + archive routes | Route mount | Home uses the first marker, Projects the second, and Certificates the third; the rail is a route index rather than a scroll progress indicator. | The active route marker remains visible immediately. |
 | Work feedback | `HomeSelectedWork` + `app.css` | Mouse hover or keyboard focus | The existing card surface, number, title, and external-link arrow shift/color without changing size or order. | Focus and color feedback remain; spatial movement is removed. |
 | Pointer signal | `HomeCoordinates` | Mouse or pen movement | Existing viewport coordinates remain the source of truth; the signal mark converts the pointer's viewport `x` into the coordinate rail's local position per animation frame, keeping it aligned with the actual cursor without positional easing. | The coordinate text remains available without the decorative mark. |
-| Operator cursor | `app.css` + `public/cursors/` | Fine-pointer movement over the site shell | The cursor pack uses a brutalist vector grammar and the shared dark/cream/amber palette: native-feeling silhouettes carry the state first, with hard mitered geometry. Idle states stay cream/ink; amber is reserved for meaningful state signals—the under-finger activation line, the grip engagement point, denial marks, zoom signs, and geometric registration points. It includes the arrow, pointing hand, open grab hand, closed grabbing fist, and utility states. `AsyncImage` keeps ordinary portfolio images non-draggable and opts into the complete grab/grabbing surface only when `draggable` is explicitly requested. No DOM overlay, trail, or cursor-follow animation is used. | Custom cursor is absent; browser defaults and coordinate text remain. |
+| Operator cursor | `app.css` + `apps/portfolio-web/public/cursors/` | Fine-pointer movement over the site shell | The cursor pack uses a brutalist vector grammar and the shared dark/cream/amber palette: native-feeling silhouettes carry the state first, with hard mitered geometry. Idle states stay cream/ink; amber is reserved for meaningful state signals—the under-finger activation line, the grip engagement point, denial marks, zoom signs, and geometric registration points. It includes the arrow, pointing hand, open grab hand, closed grabbing fist, and utility states. `AsyncImage` keeps ordinary portfolio images non-draggable and opts into the complete grab/grabbing surface only when `draggable` is explicitly requested. No DOM overlay, trail, or cursor-follow animation is used. | Custom cursor is absent; browser defaults and coordinate text remain. |
 | Touch contact | `HomeCoordinates` | Touch start/move/end | The coordinate rail reports the active touch briefly, then returns to its system label. | Contact reporting remains immediate. |
 | Signal handshake | `HomeCoordinates` + `app.css` | Coordinate-rail dwell, touch activation, or keyboard activation | The existing rail acknowledges a deliberate visitor pause with a short marker sequence and a temporary `SIGNAL-OK` status; the page grid and content order do not change. | The status changes immediately and the rail remains keyboard- and touch-usable without spatial animation. |
 
