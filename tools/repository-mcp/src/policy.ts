@@ -1,13 +1,19 @@
 export const MCP_SERVER_NAME = "operator-synaciel-repository";
-export const MCP_SERVER_VERSION = "1.2.0";
+export const MCP_SERVER_VERSION = "1.3.0";
 export const COMMIT_APPROVAL_ENV = "OPERATOR_SYNACIEL_COMMIT_PIPELINE_APPROVAL";
 export const MCP_SERVER_INSTRUCTIONS =
-  "Start with repository_workflow_status. Query Graphify narrowly with context_filter, shallow depth, and an explicit budget, then read the cited source directly. For planned changes, prepare complete source content with old hashes, review the bounded diff and read any remaining chunks, apply only with explicit approval, run the matching fixed verification profile, then commit through the guarded one-file pipeline. For dirty-tree commits, use prepare_working_tree_commit directly; use prepare_commits only after an applied-change operation. Never deploy, access Cloudflare credentials, apply D1 migrations, or perform remote Git operations through this server.";
+  "Start with repository_workflow_status and use the cached status when appropriate. Query Graphify narrowly with context_filter, shallow depth, and an explicit budget, then read the cited source directly. For fast MCP iteration, use the fixed mcp-fast verification profile and its cache; run the full matching profile before commit. Use read_repository_files for bounded batches of complete source snapshots. For planned changes, prepare complete source content with old hashes, review every bounded diff chunk, apply only with explicit approval, then commit through the guarded one-file pipeline. Use responseMode structured when a client already consumes structuredContent. For dirty-tree commits, use prepare_working_tree_commit directly; use prepare_commits only after an applied-change operation. The source launcher is default; set OPERATOR_SYNACIEL_MCP_COMPILED=1 only after npm run mcp:build. Never deploy, access Cloudflare credentials, apply D1 migrations, or perform remote Git operations through this server.";
 
 export const MAX_PREPARED_FILES = 20;
 export const MAX_DIFF_PREVIEW_CHARACTERS = 16_000;
 export const MAX_DIFF_CHUNK_CHARACTERS = 64_000;
 export const MAX_DIFF_STORAGE_CHARACTERS = 8_000_000;
+export const DEFAULT_SOURCE_READ_CHUNK_CHARACTERS = 16_000;
+export const MAX_SOURCE_READ_CHUNK_CHARACTERS = 64_000;
+export const MAX_SOURCE_READ_RESPONSE_CHARACTERS = 256_000;
+export const MAX_RETAINED_REVIEW_BYTES = 64 * 1024 * 1024;
+export const STATUS_CACHE_TTL_MS = 2_000;
+export const ROOT_VALIDATION_CACHE_TTL_MS = 5_000;
 
 export const IGNORED_DIRS: ReadonlySet<string> = new Set([
   "node_modules",
@@ -130,6 +136,7 @@ export const REPOSITORY_WRITE_PROFILES = {
 export type RepositoryWriteProfile = keyof typeof REPOSITORY_WRITE_PROFILES;
 
 export const REPOSITORY_VERIFICATION_PROFILES = {
+  "mcp-fast": ["mcp_config_check", "mcp_typecheck"],
   app: ["typecheck", "lint", "build"],
   docs: ["docs_check"],
   mcp: ["mcp_config_check", "mcp_typecheck", "mcp_test", "lint"],
@@ -170,6 +177,7 @@ export const LOCAL_ONLY_MCP_TOOLS = new Set([
   "verify_repository_change",
   "read_repository_change_diff",
   "read_working_tree_diff",
+  "read_repository_files",
   "prepare_working_tree_commit",
   "git_commit_working_tree",
   "prepare_commits",
