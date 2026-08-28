@@ -1,8 +1,38 @@
 import { z } from "zod";
 
+import {
+  MAX_DIFF_CHUNK_CHARACTERS,
+  MAX_DIFF_PREVIEW_CHARACTERS,
+  MAX_PREPARED_FILES,
+} from "./policy.ts";
+
 const nonEmptyString = z.string().min(1);
 const hashSchema = z.string().length(64);
 const pathSchema = z.string().min(1);
+const profileSchema = z.enum(["app", "docs", "mcp", "database", "config", "full"]);
+
+const fileChangeSummarySchema = z.strictObject({
+  path: pathSchema,
+  oldSha256: hashSchema.or(z.null()),
+  newSha256: hashSchema,
+  newBytes: z.number().int().nonnegative(),
+});
+
+const diffPreviewFields = {
+  diffTruncated: z.boolean(),
+  diffTotalCharacters: z.number().int().nonnegative(),
+  diffTotalBytes: z.number().int().nonnegative(),
+  diffNextOffset: z.number().int().nonnegative().nullable(),
+  omittedPaths: z.array(pathSchema),
+};
+
+const optionalDiffPreviewFields = {
+  diffTruncated: z.boolean().optional(),
+  diffTotalCharacters: z.number().int().nonnegative().optional(),
+  diffTotalBytes: z.number().int().nonnegative().optional(),
+  diffNextOffset: z.number().int().nonnegative().nullable().optional(),
+  omittedPaths: z.array(pathSchema).optional(),
+};
 
 const fileReadinessSchema = z.strictObject({
   present: z.boolean(),
@@ -63,8 +93,14 @@ export const prepareRepositoryChangeOutputSchema = z.strictObject({
   message: nonEmptyString,
   planId: nonEmptyString.optional(),
   requestedBy: nonEmptyString.optional(),
+  profile: profileSchema.optional(),
+  verificationProfile: profileSchema.optional(),
+  verificationRequired: z.boolean().optional(),
   files: z.array(pathSchema).optional(),
-  diff: z.string().optional(),
+  fileSummaries: z.array(fileChangeSummarySchema).max(MAX_PREPARED_FILES).optional(),
+  totalBytes: z.number().int().nonnegative().optional(),
+  diff: z.string().max(MAX_DIFF_PREVIEW_CHARACTERS).optional(),
+  ...optionalDiffPreviewFields,
   expectedFileHashes: z.record(z.string(), hashSchema.or(z.null())).optional(),
   applyToken: nonEmptyString.optional(),
 });
@@ -74,8 +110,13 @@ export const applyRepositoryChangeOutputSchema = z.strictObject({
   auditId: nonEmptyString,
   planId: nonEmptyString,
   requestedBy: nonEmptyString,
+  profile: profileSchema.optional(),
+  verificationProfile: profileSchema.optional(),
+  verificationRequired: z.boolean().optional(),
   message: nonEmptyString,
   files: z.array(pathSchema).optional(),
+  fileSummaries: z.array(fileChangeSummarySchema).max(MAX_PREPARED_FILES).optional(),
+  totalBytes: z.number().int().nonnegative().optional(),
   finalFileHashes: z.record(z.string(), hashSchema).optional(),
   operationId: nonEmptyString.optional(),
   approvalHash: hashSchema.optional(),
@@ -105,7 +146,8 @@ const fileSnapshotSchema = z.strictObject({
 
 const workingTreeSnapshotSchema = z.strictObject({
   files: z.array(fileSnapshotSchema),
-  diff: z.string(),
+  diff: z.string().max(MAX_DIFF_PREVIEW_CHARACTERS),
+  ...diffPreviewFields,
   hash: hashSchema,
 });
 
@@ -130,8 +172,8 @@ const commitEntrySchema = z.strictObject({
 const gitResultFields = {
   command: nonEmptyString,
   status: z.number().int(),
-  stdout: z.string(),
-  stderr: z.string(),
+  stdout: z.string().max(12_000),
+  stderr: z.string().max(12_000),
 };
 
 const commitAttemptSchema = z.strictObject({
@@ -171,3 +213,26 @@ export const prepareCommitsOutputSchema = z.strictObject({
 });
 
 export const gitCommitFilesOutputSchema = gitCommitOutputSchema;
+
+const diffChunkFields = {
+  content: z.string().max(MAX_DIFF_CHUNK_CHARACTERS),
+  offset: z.number().int().nonnegative(),
+  nextOffset: z.number().int().nonnegative().nullable(),
+  totalCharacters: z.number().int().nonnegative(),
+  totalBytes: z.number().int().nonnegative(),
+  complete: z.boolean(),
+  diffTruncated: z.boolean(),
+  omittedPaths: z.array(pathSchema),
+};
+
+export const readRepositoryChangeDiffOutputSchema = z.strictObject({
+  kind: z.literal("repository-change"),
+  planId: nonEmptyString,
+  ...diffChunkFields,
+});
+
+export const readWorkingTreeDiffOutputSchema = z.strictObject({
+  kind: z.literal("working-tree"),
+  operationId: nonEmptyString,
+  ...diffChunkFields,
+});
