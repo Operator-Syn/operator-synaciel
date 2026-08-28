@@ -7,7 +7,11 @@ export type JsonRpcMessage = {
   readonly id?: number;
   readonly result?: {
     readonly content?: readonly { readonly text?: string }[];
-    readonly tools?: readonly { readonly name: string }[];
+    readonly structuredContent?: Readonly<Record<string, unknown>>;
+    readonly tools?: readonly {
+      readonly name: string;
+      readonly outputSchema?: Readonly<Record<string, unknown>>;
+    }[];
     readonly instructions?: string;
     readonly isError?: boolean;
   };
