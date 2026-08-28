@@ -11,6 +11,10 @@ export interface SectionItemRow {
   display_order: number;
 }
 
+function normalizeOptionalUrl(value: string | null): string | null {
+  return value === null ? null : value.trim();
+}
+
 export class SectionItemsModel {
   private db: D1Database;
   constructor(db: D1Database) {
@@ -49,8 +53,8 @@ export class SectionItemsModel {
         sectionId,
         label ?? null,
         content ?? null,
-        image_url ?? null,
-        target_url ?? null,
+        normalizeOptionalUrl(image_url),
+        normalizeOptionalUrl(target_url),
         order ?? 0,
       )
       .first<SectionItemRow>();
@@ -76,8 +80,8 @@ export class SectionItemsModel {
       .bind(
         label ?? null,
         content ?? null,
-        image_url ?? null,
-        target_url ?? null,
+        normalizeOptionalUrl(image_url),
+        normalizeOptionalUrl(target_url),
         display_order,
         id,
       )
