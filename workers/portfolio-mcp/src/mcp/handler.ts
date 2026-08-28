@@ -4,12 +4,12 @@ import {
   PORTFOLIO_MCP_ALLOWED_ORIGIN_HOSTNAMES,
   type PortfolioMcpEnvironment,
 } from "../config.ts";
-import type { PortfolioApiTransportOptions } from "../portfolio-api/index.ts";
+import type { PortfolioMcpTransportOptions } from "./server.ts";
 import { createPortfolioMcpServer } from "./server.ts";
 
 export function createPortfolioMcpHandler(
   environment: PortfolioMcpEnvironment,
-  transportOptions?: PortfolioApiTransportOptions,
+  transportOptions?: PortfolioMcpTransportOptions,
 ) {
   return createMcpHandler(() => createPortfolioMcpServer(environment, transportOptions), {
     route: "/mcp",
