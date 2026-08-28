@@ -1,6 +1,7 @@
 export { createPortfolioApiClient } from "./client.ts";
 export { PortfolioApiError } from "./errors.ts";
 export { flattenSnippetTree } from "./snippets.ts";
+export type { PortfolioApiTransportOptions } from "./transport.ts";
 export { createPortfolioApiTransport } from "./transport.ts";
 export type {
   ArchivePage,
