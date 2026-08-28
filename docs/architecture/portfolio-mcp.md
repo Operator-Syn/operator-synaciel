@@ -46,6 +46,13 @@ data: `/api/settings` uses a fixed public setting allowlist, and public snippet
 list/detail responses omit storage paths and ordering metadata. The MCP
 projection remains a second boundary.
 
+Project GitHub inspection is a separate read-only boundary. Each GitHub request
+starts from the matching public project record and its persisted `project_link`;
+the adapter accepts only a strict `https://github.com/owner/repository` URL,
+verifies that the repository is public, and constructs every upstream request
+itself. The only branch reference is the literal `main`; callers cannot supply
+an owner, repository, branch, ref, path, or arbitrary GitHub URL.
+
 Markdown snippets are available through bounded chunks. PDF snippets return
 metadata and canonical links rather than attempting to extract document text.
 Upstream calls have an eight-second timeout and text responses have a one MiB
@@ -72,6 +79,14 @@ are not globally replicated or tiered. A portfolio update can remain visible
 through MCP for up to six hours in a previously warmed location. There is no
 KV binding or explicit purge workflow for this read-only cache.
 
+GitHub responses use a separate synthetic cache-key namespace. Repository
+metadata is cached for six hours, main-branch availability for five minutes,
+README responses for one hour, commit lists and main-reachability checks for
+five minutes, and commit details for 24 hours because a full commit SHA
+identifies immutable details.
+Only successful, bounded JSON responses are cached; cache failures remain
+misses and never change the public result.
+
 ## Output contracts
 
 The installed `@modelcontextprotocol/server` 2.0.0 API supports native `outputSchema` declarations and `structuredContent`. Every successful tool call now advertises a strict Zod 4 output schema, returns the same value in `structuredContent`, and retains a readable JSON text block for clients that have not adopted structured results.
@@ -82,6 +97,7 @@ The schemas are strict and discriminated where a tool has more than one success 
 - Project and certificate collections return `data` plus bounded `pagination`; detail tools return the record, media, and collection `canonical_url`.
 - Search returns the trimmed `query` and discriminated profile, project, certificate, or snippet results without internal ranking scores.
 - Snippet listing returns public metadata only. Markdown reads return a bounded chunk with offsets; PDF reads return metadata and canonical links with `content_available: false`.
+- GitHub project tools return normalized repository metadata, root `README.md` chunks, bounded `main` commit pages, and changed-file summaries without patches or arbitrary repository paths.
 
 The adapter reconstructs settings, profile, section, project, certificate, media, and snippet objects from explicit field allowlists before they reach a tool result. Database identifiers remain only where they are needed to retrieve or relate public records; storage paths, unknown upstream fields, and presentation-only fields from profile or section-item rows are omitted.
 
@@ -107,6 +123,10 @@ The server is intentionally read-only. It exposes no create, update, delete, upl
 | `get_certificate` | Positive safe integer `id` | `{ certificate, items, canonical_url }` |
 | `list_snippets` | None | `{ snippets[] }` with public Markdown/PDF metadata and canonical links |
 | `read_snippet` | Positive safe integer `id`, optional `offset` (0–1,048,576) and `max_chars` (1–32,000) | A strict Markdown chunk shape or a strict PDF metadata/link shape |
+| `get_project_repository` | Positive safe integer `project_id` | Normalized linked public GitHub repository metadata and `main`/README/history availability |
+| `get_project_readme` | Positive safe integer `project_id`, optional `offset` and `max_chars` | Bounded root `README.md` content from `main`, offsets, completion, and canonical GitHub URL |
+| `list_project_commits` | Positive safe integer `project_id`, optional `limit` (1–12) and server cursor | Bounded commit summaries reachable from `main` with pagination |
+| `get_project_commit` | Positive safe integer `project_id` and full 40-character SHA | A `main`-reachable commit summary and bounded changed-file summaries |
 
 The output schemas are advertised in `tools/list` and validated by the MCP SDK before successful results are returned.
 
@@ -117,6 +137,10 @@ The stable resources are `portfolio://overview`, `portfolio://projects`,
 records and canonical links without cursor pagination. Project and certificate
 list tools cap each requested page at 12 records, search returns at most 20
 results, and a Markdown response chunk is capped at 32,000 characters.
+GitHub commit pages are capped at 12 records, README chunks at 32,000
+characters, commit messages at 2,000 characters, and changed-file summaries
+at 100 files. GitHub commit cursors are server-issued `main:<page>` values and
+are bounded to 100 pages.
 
 ## Discovery
 
