@@ -26,6 +26,7 @@ export type RepositoryChangeOperation = {
   readonly path: string;
   readonly content: string;
   readonly expectedSha256?: string;
+  readonly allowContentShortening?: boolean;
 };
 
 export type RepositoryChangeRequest = {
@@ -203,6 +204,14 @@ export async function prepareRepositoryChange(
       }
       const state = await localFileState(path);
       states.set(path, state);
+      if (
+        state.exists &&
+        state.content !== null &&
+        bytes < new TextEncoder().encode(state.content).byteLength &&
+        !operation.allowContentShortening
+      ) {
+        throw new Error(`Content-shortening changes require allowContentShortening: true: ${path}`);
+      }
       if (state.exists) {
         if (!operation.expectedSha256 || operation.expectedSha256 !== state.sha256) {
           throw new Error(`Expected hash does not match the current file: ${path}`);
