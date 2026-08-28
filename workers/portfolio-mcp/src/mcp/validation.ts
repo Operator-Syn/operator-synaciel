@@ -1,7 +1,13 @@
 export function safeLimit(value: number | undefined, fallback: number, maximum: number): number {
-  return Math.min(Math.max(Math.floor(value ?? fallback), 1), maximum);
+  if (value === undefined) return fallback;
+  if (!Number.isSafeInteger(value)) throw new Error("Invalid pagination limit.");
+  return Math.min(Math.max(value, 1), maximum);
 }
 
 export function safeId(value: number): number {
-  return Math.floor(value);
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error("Invalid portfolio identifier.");
+  }
+
+  return value;
 }
