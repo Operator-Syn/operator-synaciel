@@ -1,6 +1,6 @@
 # Syn-Forge
 
-Syn-Forge is the software developer portfolio of John-Ronan Beira.
+Syn-Forge is the software developer portfolio of Operator-Syn.
 
 ## Public Portfolio MCP (Streamable HTTP)
 
