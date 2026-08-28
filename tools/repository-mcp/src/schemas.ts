@@ -4,12 +4,22 @@ import {
   MAX_DIFF_CHUNK_CHARACTERS,
   MAX_DIFF_PREVIEW_CHARACTERS,
   MAX_PREPARED_FILES,
+  MAX_SOURCE_READ_CHUNK_CHARACTERS,
 } from "./policy.ts";
 
 const nonEmptyString = z.string().min(1);
 const hashSchema = z.string().length(64);
 const pathSchema = z.string().min(1);
-const profileSchema = z.enum(["app", "docs", "mcp", "database", "config", "full"]);
+const profileSchema = z.enum(["app", "docs", "mcp", "database", "config"]);
+const verificationProfileSchema = z.enum([
+  "mcp-fast",
+  "app",
+  "docs",
+  "mcp",
+  "database",
+  "config",
+  "full",
+]);
 
 const fileChangeSummarySchema = z.strictObject({
   path: pathSchema,
@@ -62,6 +72,8 @@ export const repositoryWorkflowStatusOutputSchema = z.strictObject({
     verificationProfiles: z.record(z.string(), z.array(z.string())),
   }),
   warnings: z.array(z.string()),
+  checkedAt: nonEmptyString,
+  cacheHit: z.boolean(),
 });
 
 const verificationCheckSchema = z.strictObject({
@@ -82,9 +94,10 @@ const verificationCheckSchema = z.strictObject({
 });
 
 const verificationSummarySchema = z.strictObject({
-  profile: z.enum(["app", "docs", "mcp", "database", "config", "full"]),
+  profile: verificationProfileSchema,
   checks: z.array(verificationCheckSchema),
   passed: z.boolean(),
+  cached: z.boolean(),
 });
 
 export const prepareRepositoryChangeOutputSchema = z.strictObject({
@@ -94,7 +107,8 @@ export const prepareRepositoryChangeOutputSchema = z.strictObject({
   planId: nonEmptyString.optional(),
   requestedBy: nonEmptyString.optional(),
   profile: profileSchema.optional(),
-  verificationProfile: profileSchema.optional(),
+  verificationProfile: verificationProfileSchema.optional(),
+  verificationMode: z.enum(["deferred", "on_apply"]).optional(),
   verificationRequired: z.boolean().optional(),
   files: z.array(pathSchema).optional(),
   fileSummaries: z.array(fileChangeSummarySchema).max(MAX_PREPARED_FILES).optional(),
@@ -111,7 +125,8 @@ export const applyRepositoryChangeOutputSchema = z.strictObject({
   planId: nonEmptyString,
   requestedBy: nonEmptyString,
   profile: profileSchema.optional(),
-  verificationProfile: profileSchema.optional(),
+  verificationProfile: verificationProfileSchema.optional(),
+  verificationMode: z.enum(["deferred", "on_apply"]).optional(),
   verificationRequired: z.boolean().optional(),
   message: nonEmptyString,
   files: z.array(pathSchema).optional(),
@@ -235,4 +250,24 @@ export const readWorkingTreeDiffOutputSchema = z.strictObject({
   kind: z.literal("working-tree"),
   operationId: nonEmptyString,
   ...diffChunkFields,
+});
+
+const repositoryFileReadSchema = z.strictObject({
+  path: pathSchema,
+  exists: z.boolean(),
+  content: z.string().max(MAX_SOURCE_READ_CHUNK_CHARACTERS),
+  sha256: hashSchema.or(z.null()),
+  offset: z.number().int().nonnegative(),
+  nextOffset: z.number().int().nonnegative().nullable(),
+  totalCharacters: z.number().int().nonnegative(),
+  totalBytes: z.number().int().nonnegative(),
+  complete: z.boolean(),
+});
+
+export const readRepositoryFilesOutputSchema = z.strictObject({
+  kind: z.literal("repository-files"),
+  profile: profileSchema,
+  files: z.array(repositoryFileReadSchema).max(MAX_PREPARED_FILES),
+  omittedPaths: z.array(pathSchema),
+  returnedCharacters: z.number().int().nonnegative(),
 });
