@@ -51,13 +51,18 @@ describe("repository MCP protocol", () => {
         "prepare_repository_change",
         "apply_repository_change",
         "verify_repository_change",
+        "read_repository_change_diff",
+        "read_working_tree_diff",
         "prepare_working_tree_commit",
         "git_commit_working_tree",
         "prepare_commits",
         "git_commit_files",
       ]),
     );
-    assert.match(server.initialization.result?.instructions ?? "", /repository_workflow_status/);
+    const instructions = server.initialization.result?.instructions ?? "";
+    assert.match(instructions, /repository_workflow_status/);
+    assert.match(instructions, /context_filter/);
+    assert.match(instructions, /prepare_working_tree_commit directly/);
   });
 
   test("advertises output schemas and structured text-compatible results", async () => {
@@ -68,7 +73,7 @@ describe("repository MCP protocol", () => {
 
     const listed = await server.call("tools/list");
     const tools = listed.result?.tools ?? [];
-    assert.equal(tools.length, 8);
+    assert.equal(tools.length, 10);
     for (const tool of tools) {
       assert.ok(tool.outputSchema);
     }
@@ -94,6 +99,20 @@ describe("repository MCP protocol", () => {
       },
     });
     assert.equal(assertStructuredResponse(prepared).status, "prepared");
+    assert.equal(prepared.result?.content?.[0]?.text?.includes("\n"), false);
+
+    const diff = await server.call("tools/call", {
+      name: "read_repository_change_diff",
+      arguments: {
+        planId: assertStructuredResponse(prepared).planId,
+        applyToken: assertStructuredResponse(prepared).applyToken,
+        maxChars: 8_000,
+      },
+    });
+    const diffPayload = assertStructuredResponse(diff);
+    assert.equal(diffPayload.kind, "repository-change");
+    assert.equal(typeof diffPayload.totalCharacters, "number");
+    assert.ok(diffPayload.nextOffset === null || typeof diffPayload.nextOffset === "number");
 
     const rejected = await server.call("tools/call", {
       name: "prepare_repository_change",
@@ -105,6 +124,20 @@ describe("repository MCP protocol", () => {
       },
     });
     assert.equal(assertStructuredResponse(rejected).status, "rejected");
+
+    const tooMany = await server.call("tools/call", {
+      name: "prepare_repository_change",
+      arguments: {
+        taskType: "app",
+        description: "reject an oversized prepared file set",
+        profile: "app",
+        operations: Array.from({ length: 21 }, (_, index) => ({
+          path: `apps/portfolio-web/src/many-${index}.ts`,
+          content: `${index}\n`,
+        })),
+      },
+    });
+    assert.ok(tooMany.error || tooMany.result?.isError);
   });
 
   test("reports workflow readiness without exposing approval or credential values", async () => {
