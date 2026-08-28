@@ -3,6 +3,7 @@ import { z } from "zod";
 import { MAX_SEARCH_RESULTS } from "../../config.ts";
 import type { PortfolioApiClient } from "../../portfolio-api/index.ts";
 import { errorResult, jsonResult } from "../results.ts";
+import { searchPortfolioOutputSchema } from "../schemas.ts";
 import { buildSearchResults } from "../search.ts";
 import { safeLimit } from "../validation.ts";
 
@@ -13,7 +14,7 @@ export function registerSearchTool(server: McpServer, api: PortfolioApiClient): 
       title: "Search portfolio",
       description:
         "Search public profile, project, certificate, and snippet metadata using a bounded natural-language query.",
-      inputSchema: z.object({
+      inputSchema: z.strictObject({
         query: z
           .string()
           .trim()
@@ -23,11 +24,14 @@ export function registerSearchTool(server: McpServer, api: PortfolioApiClient): 
         limit: z
           .number()
           .int()
+          .safe()
           .min(1)
           .max(MAX_SEARCH_RESULTS)
           .optional()
           .describe("Maximum number of matches to return."),
       }),
+      outputSchema: searchPortfolioOutputSchema,
+      annotations: { readOnlyHint: true },
     },
     async ({ query, limit }) => {
       try {
