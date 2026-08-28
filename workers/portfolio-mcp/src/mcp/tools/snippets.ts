@@ -1,12 +1,13 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { MAX_SNIPPET_CHUNK_CHARACTERS } from "../../config.ts";
+import { MAX_SNIPPET_CHUNK_CHARACTERS, MAX_SNIPPET_OFFSET } from "../../config.ts";
 import {
   getSnippetDownloadUrl,
   getSnippetPageUrl,
   type PortfolioApiClient,
 } from "../../portfolio-api/index.ts";
 import { errorResult, jsonResult } from "../results.ts";
+import { listSnippetsOutputSchema, readSnippetOutputSchema } from "../schemas.ts";
 import { flattenPublicSnippets } from "../snippets.ts";
 import { safeId } from "../validation.ts";
 
@@ -17,7 +18,9 @@ export function registerSnippetTools(server: McpServer, api: PortfolioApiClient)
       title: "List snippets",
       description:
         "List all public Markdown and PDF snippet metadata without reading file contents.",
-      inputSchema: z.object({}),
+      inputSchema: z.strictObject({}),
+      outputSchema: listSnippetsOutputSchema,
+      annotations: { readOnlyHint: true },
     },
     async () => {
       try {
@@ -34,22 +37,27 @@ export function registerSnippetTools(server: McpServer, api: PortfolioApiClient)
       title: "Read public snippet",
       description:
         "Read complete public Markdown content in bounded chunks, or return canonical links for a public PDF.",
-      inputSchema: z.object({
-        id: z.number().int().positive(),
+      inputSchema: z.strictObject({
+        id: z.number().int().safe().positive(),
         offset: z
           .number()
           .int()
+          .safe()
           .min(0)
+          .max(MAX_SNIPPET_OFFSET)
           .optional()
           .describe("UTF-16 character offset for the next text chunk."),
         max_chars: z
           .number()
           .int()
+          .safe()
           .min(1)
           .max(MAX_SNIPPET_CHUNK_CHARACTERS)
           .optional()
           .describe("Maximum text characters in this response."),
       }),
+      outputSchema: readSnippetOutputSchema,
+      annotations: { readOnlyHint: true },
     },
     async ({ id, offset, max_chars }) => {
       try {
