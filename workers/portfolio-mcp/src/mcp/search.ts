@@ -1,13 +1,17 @@
 import type { PortfolioApiClient } from "../portfolio-api/index.ts";
 import { getPortfolioPageUrl } from "./links.ts";
-import { flattenPublicSnippets } from "./snippets.ts";
+import { flattenPublicSnippets, type PublicSnippet } from "./snippets.ts";
 
 function searchTerms(query: string): string[] {
-  return query
-    .toLowerCase()
-    .split(/\s+/)
-    .map((term) => term.trim())
-    .filter(Boolean);
+  return [
+    ...new Set(
+      query
+        .toLowerCase()
+        .split(/\s+/)
+        .map((term) => term.trim())
+        .filter(Boolean),
+    ),
+  ];
 }
 
 function matchesSearch(fields: string[], terms: string[]): number {
@@ -16,14 +20,45 @@ function matchesSearch(fields: string[], terms: string[]): number {
   return matched.length === terms.length ? terms.length + 1 : matched.length;
 }
 
-type ScoredSearchResult = Record<string, unknown> & { score: number };
+export type SearchResult =
+  | {
+      kind: "profile";
+      title: string;
+      summary: string;
+      url: string;
+    }
+  | {
+      kind: "project";
+      id: number;
+      title: string;
+      summary: string;
+      url: string;
+      project_link: string;
+    }
+  | {
+      kind: "certificate";
+      id: number;
+      title: string;
+      summary: string;
+      url: string;
+      certificate_link: string | null;
+    }
+  | (PublicSnippet & {
+      kind: "snippet";
+      title: string;
+      summary: string;
+    });
+
+type ScoredSearchResult = SearchResult & { score: number };
 
 export async function buildSearchResults(
   api: PortfolioApiClient,
   query: string,
   limit: number,
-): Promise<Array<Record<string, unknown>>> {
+): Promise<SearchResult[]> {
   const terms = searchTerms(query);
+  if (terms.length === 0) return [];
+
   const [overview, projects, certificates, snippetTree] = await Promise.all([
     api.getOverview(),
     api.getAllProjects(),
@@ -96,9 +131,16 @@ export async function buildSearchResults(
     if (score > 0) {
       results.push({
         kind: "snippet",
+        id: snippet.id,
+        name: snippet.name,
+        format: snippet.format,
+        modified: snippet.modified,
+        size: snippet.size,
+        path_segments: [...snippet.path_segments],
+        page_url: snippet.page_url,
+        download_url: snippet.download_url,
         title: snippet.name,
         summary: snippet.path_segments.join(" / "),
-        ...snippet,
         score,
       });
     }
@@ -110,7 +152,7 @@ export async function buildSearchResults(
         right.score - left.score || String(left.title).localeCompare(String(right.title)),
     )
     .slice(0, limit)
-    .map((result) => {
+    .map((result): SearchResult => {
       const { score, ...entry } = result;
       void score;
       return entry;
