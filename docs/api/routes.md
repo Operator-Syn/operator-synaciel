@@ -8,7 +8,9 @@ role: catalog
 
 # API Routes
 
-The route source is [`src/Api.ts`](../../src/Api.ts). CORS is applied to all
+The route source is
+[`workers/portfolio-api/src/entrypoint.ts`](../../workers/portfolio-api/src/entrypoint.ts).
+CORS is applied to all
 routes, `OPTIONS /api/*` handles preflight requests, and API responses default
 to `no-store` unless a route overrides the cache headers.
 
@@ -19,7 +21,8 @@ The implementation boundary is documented in
 The public portfolio MCP is a separate Worker, not an additional `/api/*`
 route in this Hono application. It calls the public GET contracts below
 through a Service Binding to `portfolio-api`; see
-[[architecture/portfolio-mcp|Portfolio MCP]] for its tool/resource contract.
+[[architecture/portfolio-mcp|Public Portfolio MCP (Streamable HTTP)]] for its
+tool/resource contract.
 
 ## Public routes
 
@@ -54,7 +57,7 @@ to `AUTH_WORKER` at `https://auth-worker/auth/user`. Missing cookies return
 | Snippets | `POST /api/snippets`, `PATCH /api/snippets/:id`, `DELETE /api/snippets/:id` |
 | Home content | `POST`, `PUT`, `DELETE` routes for settings, profile, sections, and section items |
 
-Keep this note aligned with `src/Api.ts`; route behavior belongs in the source
+Keep this note aligned with `workers/portfolio-api/src/entrypoint.ts`; route behavior belongs in the source
 and tests, not in a duplicated implementation.
 
 ## Project archive pagination
