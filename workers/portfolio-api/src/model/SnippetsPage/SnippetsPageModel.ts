@@ -44,6 +44,16 @@ export interface SnippetNode {
   children?: SnippetNode[];
 }
 
+export interface PublicSnippetNode {
+  id: number;
+  name: string;
+  type: SnippetType;
+  modified: string;
+  size?: number;
+  format?: SnippetFormat;
+  children?: PublicSnippetNode[];
+}
+
 export interface SnippetDocumentMetadata {
   id: number;
   name: string;
@@ -146,14 +156,14 @@ export class SnippetsPageModel {
     this.prefix = prefix;
   }
 
-  async getSnippetById(id: number): Promise<SnippetNode | null> {
+  async getSnippetById(id: number): Promise<PublicSnippetNode | null> {
     const row = await this.getRawSnippetById(id);
 
     if (!row) {
       return null;
     }
 
-    return this.toSnippetNode(row);
+    return this.toPublicSnippetNode(this.toSnippetNode(row));
   }
 
   async getSnippetDocumentMetadata(id: number): Promise<SnippetDocumentMetadata | null> {
@@ -199,7 +209,7 @@ export class SnippetsPageModel {
     };
   }
 
-  async getFileTree(): Promise<SnippetNode[]> {
+  async getFileTree(): Promise<PublicSnippetNode[]> {
     const query = `
       SELECT
         id,
@@ -226,7 +236,7 @@ export class SnippetsPageModel {
 
     const { results } = await this.db.prepare(query).all<SnippetRow>();
 
-    return this.buildTree(results);
+    return this.buildTree(results).map((node) => this.toPublicSnippetNode(node));
   }
 
   async getFileContent(
@@ -236,13 +246,13 @@ export class SnippetsPageModel {
     stream: R2ObjectBody["body"];
     headers: Record<string, string>;
   } | null> {
-    const node = await this.getSnippetById(id);
+    const row = await this.getRawSnippetById(id);
 
-    if (!node || node.type !== "file" || !node.path || !node.format) {
+    if (!row || row.type !== "file" || !row.storage_path || !row.file_format) {
       return null;
     }
 
-    const object = await this.bucket.get(node.path);
+    const object = await this.bucket.get(row.storage_path);
 
     if (!object) {
       return null;
@@ -251,9 +261,9 @@ export class SnippetsPageModel {
     return {
       stream: object.body,
       headers: {
-        "Content-Type": this.getContentType(node.format),
-        "Content-Disposition": `${disposition}; filename="${this.escapeFilename(node.name)}"`,
-        "Content-Length": node.size?.toString() ?? "0",
+        "Content-Type": this.getContentType(row.file_format),
+        "Content-Disposition": `${disposition}; filename="${this.escapeFilename(row.name)}"`,
+        "Content-Length": row.size_bytes.toString(),
       },
     };
   }
@@ -427,7 +437,8 @@ export class SnippetsPageModel {
       .bind(...args)
       .run();
 
-    return this.getSnippetById(id);
+    const updated = await this.getRawSnippetById(id);
+    return updated ? this.toSnippetNode(updated) : null;
   }
 
   async deleteNode(id: number): Promise<boolean> {
@@ -666,6 +677,30 @@ export class SnippetsPageModel {
     }
 
     return tree;
+  }
+
+  private toPublicSnippetNode(node: SnippetNode): PublicSnippetNode {
+    const publicNode: PublicSnippetNode = {
+      id: node.id,
+      name: node.name,
+      type: node.type,
+      modified: node.modified,
+    };
+
+    if (node.type === "dir") {
+      publicNode.children = (node.children ?? []).map((child) => this.toPublicSnippetNode(child));
+      return publicNode;
+    }
+
+    if (node.size !== undefined) {
+      publicNode.size = node.size;
+    }
+
+    if (node.format !== undefined) {
+      publicNode.format = node.format;
+    }
+
+    return publicNode;
   }
 
   private toSnippetNode(row: SnippetRow): SnippetNode {
