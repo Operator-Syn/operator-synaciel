@@ -9,7 +9,10 @@ type WorkerContext = Parameters<WorkerFetchHandler>[2];
 
 const worker = {
   fetch(request: WorkerRequest, environment: WorkerEnvironment, context: WorkerContext) {
-    const handler = createPortfolioMcpHandler(environment);
+    const handler = createPortfolioMcpHandler(environment, {
+      cache: (caches as typeof caches & { default: Cache }).default,
+      waitUntil: (promise) => context.waitUntil(promise),
+    });
     return handler(
       request as unknown as Parameters<typeof handler>[0],
       environment as unknown as Parameters<typeof handler>[1],
