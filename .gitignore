@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+*.tsbuildinfo*
 *.local
 
 # Editor directories and files
@@ -32,6 +33,10 @@ bundle-analysis.html
 .venv
 graphify-out
 .wrangler
+
+# Generated Obsidian graph indexes
+/.obsidian/graph.json
+/docs/.obsidian/graph.json
 
 # Impeccable per-developer state; shared config remains reviewable
 .impeccable/config.local.json
