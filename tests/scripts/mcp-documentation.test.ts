@@ -11,6 +11,11 @@ function readRepositoryFile(relativePath: string) {
 
 const publicSourceFiles = [
   "workers/portfolio-mcp/src/config.ts",
+  "workers/portfolio-mcp/src/github/client.ts",
+  "workers/portfolio-mcp/src/github/index.ts",
+  "workers/portfolio-mcp/src/github/transport.ts",
+  "workers/portfolio-mcp/src/github/types.ts",
+  "workers/portfolio-mcp/src/github/urls.ts",
   "workers/portfolio-mcp/src/mcp/handler.ts",
   "workers/portfolio-mcp/src/mcp/links.ts",
   "workers/portfolio-mcp/src/mcp/resources.ts",
@@ -20,6 +25,7 @@ const publicSourceFiles = [
   "workers/portfolio-mcp/src/mcp/server.ts",
   "workers/portfolio-mcp/src/mcp/snippets.ts",
   "workers/portfolio-mcp/src/mcp/tools/certificates.ts",
+  "workers/portfolio-mcp/src/mcp/tools/github.ts",
   "workers/portfolio-mcp/src/mcp/tools/index.ts",
   "workers/portfolio-mcp/src/mcp/tools/overview.ts",
   "workers/portfolio-mcp/src/mcp/tools/projects.ts",
@@ -48,6 +54,9 @@ test("keeps public and local MCP documentation aligned with their boundaries", a
     localSource,
     localToolSource,
     localDocumentation,
+    localPolicy,
+    localSessionHook,
+    commitGate,
     documentationMap,
     config,
     codexConfig,
@@ -64,6 +73,9 @@ test("keeps public and local MCP documentation aligned with their boundaries", a
     readRepositoryFile("tools/repository-mcp/src/server.ts"),
     readRepositoryFile("tools/repository-mcp/src/tools/repository.ts"),
     readRepositoryFile("docs/operations/repository-mcp.md"),
+    readRepositoryFile("tools/repository-mcp/src/policy.ts"),
+    readRepositoryFile(".codex/hooks/repository-session-start.sh"),
+    readRepositoryFile(".codex/hooks/repository-commit-gate.mjs"),
     readRepositoryFile("docs/README.md"),
     readRepositoryFile(".mcp.json"),
     readRepositoryFile(".codex/config.toml"),
@@ -143,6 +155,17 @@ test("keeps public and local MCP documentation aligned with their boundaries", a
   assert.match(localDocumentation, /outputSchema/);
   assert.match(localDocumentation, /structuredContent/);
   assert.match(localDocumentation, /no public HTTP endpoint/);
+  assert.match(localDocumentation, /read_repository_change_diff/);
+  assert.match(localDocumentation, /read_working_tree_diff/);
+  assert.match(localDocumentation, /repository_workflow_status/);
+  assert.match(localDocumentation, /verificationRequired/);
+  assert.match(localDocumentation, /context-filter/);
+  assert.match(localToolSource, /read_repository_change_diff/);
+  assert.match(localToolSource, /read_working_tree_diff/);
+  assert.match(localPolicy, /MAX_PREPARED_FILES = 20/);
+  assert.match(localSessionHook, /Start with repository_workflow_status/);
+  assert.match(localSessionHook, /context_filter/);
+  assert.match(commitGate, /containsGitCommitInvocation/);
   assert.match(
     localDocumentation,
     /\[\[architecture\/portfolio-mcp\|Public Portfolio MCP \(Streamable HTTP\)/,
