@@ -18,6 +18,7 @@ const links = {
   apps: [
     ["01", "NetBird", "/netbird"],
     ["02", "Atelier", "/atelier"],
+    ["03", "AI and MCP", "/ai"],
   ],
 } as const;
 
