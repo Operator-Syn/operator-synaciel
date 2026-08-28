@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "tsx --test ../../tests/repository-mcp/*.test.ts ../../tests/scripts/*.test.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
