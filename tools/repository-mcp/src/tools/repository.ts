@@ -18,10 +18,21 @@ import {
   prepareRepositoryChange,
   verifyRepositoryChange,
 } from "../repository-changes.ts";
+import {
+  applyRepositoryChangeOutputSchema,
+  gitCommitFilesOutputSchema,
+  gitCommitWorkingTreeOutputSchema,
+  prepareCommitsOutputSchema,
+  prepareRepositoryChangeOutputSchema,
+  prepareWorkingTreeCommitOutputSchema,
+  repositoryWorkflowStatusOutputSchema,
+  verifyRepositoryChangeOutputSchema,
+} from "../schemas.ts";
 import { getRepositoryWorkflowStatus } from "../workflow-status.ts";
 
-const result = (value: unknown) => ({
+const result = <T>(value: T) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
+  structuredContent: value,
 });
 
 const readOnlyAnnotations = { readOnlyHint: true, openWorldHint: false } as const;
@@ -53,6 +64,7 @@ export function registerRepositoryTools(server: McpServer): void {
         "Read-only status for the clone-safe MCP registrations, local dependencies, Graphify output, Obsidian vault index, and versioned Git hooks. It never returns secrets or mutates the checkout.",
       annotations: readOnlyAnnotations,
       inputSchema: {},
+      outputSchema: repositoryWorkflowStatusOutputSchema,
     },
     async () => result(await getRepositoryWorkflowStatus()),
   );
@@ -62,7 +74,7 @@ export function registerRepositoryTools(server: McpServer): void {
     {
       title: "Prepare a guarded repository change",
       description:
-        "Read-only preparation for a bounded text-file change. Returns exact paths, hashes, a reviewable diff, and a one-time apply token without modifying the checkout.",
+        "Read-only preparation for a bounded text-file change. Returns exact paths, hashes, a reviewable diff, and a one-time apply token without modifying the checkout. Full replacement content is required; shortening an existing file requires explicit allowContentShortening approval.",
       annotations: readOnlyAnnotations,
       inputSchema: {
         taskType: z.enum(["patch", "app", "docs", "mcp", "database", "config"]),
@@ -74,6 +86,7 @@ export function registerRepositoryTools(server: McpServer): void {
               path: z.string().min(1),
               content: z.string(),
               expectedSha256: z.string().length(64).optional(),
+              allowContentShortening: z.boolean().optional(),
             }),
           )
           .min(1)
@@ -81,6 +94,7 @@ export function registerRepositoryTools(server: McpServer): void {
         verificationProfile: z.enum(verificationProfiles).optional(),
         requestedBy: z.string().max(120).optional(),
       },
+      outputSchema: prepareRepositoryChangeOutputSchema,
     },
     async (input) => result(await prepareRepositoryChange(input)),
   );
@@ -97,6 +111,7 @@ export function registerRepositoryTools(server: McpServer): void {
         expectedFileHashes: z.record(z.string(), z.string().length(64).or(z.null())),
         approve: z.literal(true),
       },
+      outputSchema: applyRepositoryChangeOutputSchema,
     },
     async (input) => result(await applyRepositoryChange(input)),
   );
@@ -112,6 +127,7 @@ export function registerRepositoryTools(server: McpServer): void {
         profile: z.enum(verificationProfiles),
         checks: z.array(z.enum(verificationChecks)).max(10).optional(),
       },
+      outputSchema: verifyRepositoryChangeOutputSchema,
     },
     async (input) => result(verifyRepositoryChange(input)),
   );
@@ -127,6 +143,7 @@ export function registerRepositoryTools(server: McpServer): void {
         consentToken: z.string().min(1).optional(),
         approveRestrictedPaths: z.literal(true).optional(),
       },
+      outputSchema: prepareWorkingTreeCommitOutputSchema,
     },
     async (input) => result(await prepareWorkingTreeCommit(input)),
   );
@@ -142,6 +159,7 @@ export function registerRepositoryTools(server: McpServer): void {
         approvalHash: z.string().length(64),
         commits: commitEntries,
       },
+      outputSchema: gitCommitWorkingTreeOutputSchema,
     },
     async (input) =>
       result(
@@ -164,6 +182,7 @@ export function registerRepositoryTools(server: McpServer): void {
         operationId: z.string().min(1),
         approvalHash: z.string().length(64),
       },
+      outputSchema: prepareCommitsOutputSchema,
     },
     async (input) => result(await prepareCommits(input.operationId, input.approvalHash)),
   );
@@ -179,6 +198,7 @@ export function registerRepositoryTools(server: McpServer): void {
         approvalHash: z.string().length(64),
         commits: commitEntries,
       },
+      outputSchema: gitCommitFilesOutputSchema,
     },
     async (input) =>
       result(
