@@ -6,14 +6,26 @@ export interface SettingRow {
   value: string;
 }
 
+const PUBLIC_SETTING_KEYS = [
+  "headerPhrase",
+  "mobileHeaderPhrase",
+  "profileImage",
+  "status",
+] as const;
+
 export class SettingsModel {
   private db: D1Database;
   constructor(db: D1Database) {
     this.db = db;
   }
 
-  async list() {
-    const res = await this.db.prepare("SELECT key, value FROM site_settings").all<SettingRow>();
+  async listPublic() {
+    const placeholders = PUBLIC_SETTING_KEYS.map(() => "?").join(", ");
+    const res = await this.db
+      .prepare(`SELECT key, value FROM site_settings WHERE key IN (${placeholders})`)
+      .bind(...PUBLIC_SETTING_KEYS)
+      .all<SettingRow>();
+
     return Object.fromEntries(res.results.map((r) => [r.key, r.value]));
   }
 
