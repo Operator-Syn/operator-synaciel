@@ -3,7 +3,10 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, describe, test } from "node:test";
 
-import { withMutationLock } from "../../tools/repository-mcp/src/mutation-lock.ts";
+import {
+  mutationLockPath,
+  withMutationLock,
+} from "../../tools/repository-mcp/src/mutation-lock.ts";
 import { createRepository, removeRepository } from "./support.ts";
 
 const repositories: string[] = [];
@@ -37,7 +40,7 @@ describe("checkout mutation lock", () => {
   test("reclaims a lock whose recorded owner is no longer alive", async () => {
     const repository = await createRepository();
     repositories.push(repository);
-    const lockPath = join(repository, ".git", "operator-synaciel-mcp-mutation.lock");
+    const lockPath = mutationLockPath(repository);
     await mkdir(lockPath, { recursive: true });
     await writeFile(
       join(lockPath, "owner.json"),
