@@ -1,0 +1,39 @@
+/* Shared hover and focus-within feedback for editorial rows. */
+@media (hover: hover) and (pointer: fine) {
+    .project-archive-row:hover::before {
+        border-color: var(--color-line);
+        background: var(--color-surface-raised);
+    }
+
+    .project-archive-row:hover .project-archive-index,
+    .project-archive-row:hover .project-archive-copy h2 {
+        color: var(--color-signal);
+    }
+
+    .homepage-work-card:not(.is-loading):hover {
+        background: var(--color-surface-raised);
+    }
+
+    .homepage-work-card:not(.is-loading):hover .homepage-work-number,
+    .homepage-work-card:not(.is-loading):hover .homepage-work-content h2 {
+        color: var(--color-signal);
+        transform: translateY(-2px);
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    html:not([data-reduced-motion="on"]) .project-archive-row:focus-within .project-archive-index,
+    html:not([data-reduced-motion="on"])
+        .project-archive-row:focus-within
+        .project-archive-copy
+        h2 {
+        transform: translateY(-2px);
+    }
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    html:not([data-reduced-motion="on"]) .project-archive-row:hover .project-archive-index,
+    html:not([data-reduced-motion="on"]) .project-archive-row:hover .project-archive-copy h2 {
+        transform: translateY(-2px);
+    }
+}
