@@ -6,7 +6,7 @@ import { afterEach, describe, test } from "node:test";
 
 import { checkMcpConfig } from "../../scripts/check-mcp-config.mjs";
 import { buildLaunchSpec, resolveRepositoryRoot } from "../../scripts/mcp-launcher.mjs";
-import { requireGit } from "../mcp/support.ts";
+import { requireGit } from "../repository-mcp/support.ts";
 
 const repositories: string[] = [];
 
@@ -38,7 +38,7 @@ describe("clone-safe MCP configuration", () => {
 
     const spec = buildLaunchSpec(repository, "repository");
     assert.equal(spec.env.OPERATOR_SYNACIEL_MCP_ROOT, repository);
-    assert.equal(spec.args[0], join(repository, "mcp", "server.ts"));
+    assert.equal(spec.args[0], join(repository, "tools", "repository-mcp", "src", "server.ts"));
   });
 
   test("fails closed outside Git", async () => {
