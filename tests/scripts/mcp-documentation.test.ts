@@ -157,12 +157,17 @@ test("keeps public and local MCP documentation aligned with their boundaries", a
   assert.match(localDocumentation, /no public HTTP endpoint/);
   assert.match(localDocumentation, /read_repository_change_diff/);
   assert.match(localDocumentation, /read_working_tree_diff/);
+  assert.match(localDocumentation, /read_repository_files/);
+  assert.match(localDocumentation, /mcp-fast/);
   assert.match(localDocumentation, /repository_workflow_status/);
   assert.match(localDocumentation, /verificationRequired/);
   assert.match(localDocumentation, /context-filter/);
   assert.match(localToolSource, /read_repository_change_diff/);
   assert.match(localToolSource, /read_working_tree_diff/);
+  assert.match(localToolSource, /read_repository_files/);
   assert.match(localPolicy, /MAX_PREPARED_FILES = 20/);
+  assert.match(localPolicy, /MAX_SOURCE_READ_RESPONSE_CHARACTERS/);
+  assert.match(localPolicy, /mcp-fast/);
   assert.match(localSessionHook, /Start with repository_workflow_status/);
   assert.match(localSessionHook, /context_filter/);
   assert.match(commitGate, /containsGitCommitInvocation/);
