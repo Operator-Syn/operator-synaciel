@@ -15,6 +15,7 @@ const publicSourceFiles = [
   "workers/portfolio-mcp/src/mcp/links.ts",
   "workers/portfolio-mcp/src/mcp/resources.ts",
   "workers/portfolio-mcp/src/mcp/results.ts",
+  "workers/portfolio-mcp/src/mcp/schemas.ts",
   "workers/portfolio-mcp/src/mcp/search.ts",
   "workers/portfolio-mcp/src/mcp/server.ts",
   "workers/portfolio-mcp/src/mcp/snippets.ts",
@@ -45,6 +46,7 @@ test("keeps public and local MCP documentation aligned with their boundaries", a
     discoveryFile,
     publicWorkerConfig,
     localSource,
+    localToolSource,
     localDocumentation,
     documentationMap,
     config,
@@ -60,6 +62,7 @@ test("keeps public and local MCP documentation aligned with their boundaries", a
     readRepositoryFile("apps/portfolio-web/public/llms.txt"),
     readRepositoryFile("workers/portfolio-mcp/wrangler.toml"),
     readRepositoryFile("tools/repository-mcp/src/server.ts"),
+    readRepositoryFile("tools/repository-mcp/src/tools/repository.ts"),
     readRepositoryFile("docs/operations/repository-mcp.md"),
     readRepositoryFile("docs/README.md"),
     readRepositoryFile(".mcp.json"),
@@ -89,9 +92,18 @@ test("keeps public and local MCP documentation aligned with their boundaries", a
   assert.match(discoveryFile, /Transport: Streamable HTTP/);
   assert.ok(discoveryFile.includes(endpoint));
   assert.ok(discoveryFile.includes(serverName));
+  assert.match(discoveryFile, /Operator-Syn/);
+  assert.doesNotMatch(discoveryFile, /John-Ronan/);
+  assert.match(publicSource, /Operator-Syn/);
+  assert.doesNotMatch(publicSource, /John-Ronan/);
   assert.match(publicWorkerConfig, /binding = "PORTFOLIO_API"/);
   assert.match(publicWorkerConfig, /service = "portfolio-api"/);
   assert.match(publicWorkerConfig, /pattern = "mcp\.syn-forge\.com"/);
+  assert.match(publicSource, /outputSchema:/);
+  assert.match(publicSource, /structuredContent/);
+  assert.match(publicSource, /readOnlyHint: true/);
+  assert.match(publicDocumentation, /outputSchema/);
+  assert.match(publicDocumentation, /structuredContent/);
   assert.match(
     documentationMap,
     /\[\[architecture\/portfolio-mcp\|Public Portfolio MCP \(Streamable HTTP\)\]\]/,
@@ -125,7 +137,11 @@ test("keeps public and local MCP documentation aligned with their boundaries", a
   }
 
   assert.match(localSource, /new StdioServerTransport\(\)/);
+  assert.match(localToolSource, /outputSchema:/);
+  assert.match(localToolSource, /structuredContent/);
   assert.match(localDocumentation, /^# Local Repository MCP \(stdio\) and Commit Pipeline$/m);
+  assert.match(localDocumentation, /outputSchema/);
+  assert.match(localDocumentation, /structuredContent/);
   assert.match(localDocumentation, /no public HTTP endpoint/);
   assert.match(
     localDocumentation,
