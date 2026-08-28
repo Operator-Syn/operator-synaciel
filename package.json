@@ -47,7 +47,8 @@
     "typecheck:watch": "tsc -b --watch --pretty false",
     "build": "npm run typecheck -- && npm run build --workspace=@syn-forge/portfolio-web --",
     "lint": "eslint .",
-    "preview": "npm run preview --workspace=@syn-forge/portfolio-web --"
+    "preview": "npm run preview --workspace=@syn-forge/portfolio-web --",
+    "mcp:build": "npm run build --workspace=@syn-forge/repository-mcp --"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.11",
