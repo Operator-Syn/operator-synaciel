@@ -4,12 +4,19 @@ import {
   PORTFOLIO_MCP_SERVER_NAME,
   PORTFOLIO_MCP_SERVER_VERSION,
 } from "../config.ts";
-import { createPortfolioApiClient, type PortfolioApiEnvironment } from "../portfolio-api/index.ts";
+import {
+  createPortfolioApiClient,
+  type PortfolioApiEnvironment,
+  type PortfolioApiTransportOptions,
+} from "../portfolio-api/index.ts";
 import { registerPortfolioResources } from "./resources.ts";
 import { registerPortfolioTools } from "./tools/index.ts";
 
-export function createPortfolioMcpServer(environment: PortfolioApiEnvironment): McpServer {
-  const api = createPortfolioApiClient(environment);
+export function createPortfolioMcpServer(
+  environment: PortfolioApiEnvironment,
+  transportOptions?: PortfolioApiTransportOptions,
+): McpServer {
+  const api = createPortfolioApiClient(environment, transportOptions);
   const server = new McpServer(
     {
       name: PORTFOLIO_MCP_SERVER_NAME,
