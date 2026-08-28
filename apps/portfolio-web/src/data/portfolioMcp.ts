@@ -4,6 +4,17 @@ export const PORTFOLIO_MCP_TRANSPORT = "Streamable HTTP";
 export const PORTFOLIO_MCP_DESCRIPTION =
   "Connect AI agents to Syn-Forge's public portfolio MCP for grounded profile, project, certificate, and public snippet information.";
 
+export const PORTFOLIO_MCP_ONBOARDING_PROMPT = `Please add Syn-Forge's public portfolio MCP to this agent.
+
+Use the standard remote MCP registration flow:
+- Server name: ${PORTFOLIO_MCP_SERVER_NAME}
+- Transport: ${PORTFOLIO_MCP_TRANSPORT}
+- URL: ${PORTFOLIO_MCP_ENDPOINT}
+- Authentication: none
+- Access: read-only
+
+After registering it, verify the connection with tools/list and report the available tools. Do not install packages, create credentials, or attempt write operations. If this agent cannot edit its own MCP configuration, explain the exact manual steps instead.`;
+
 export const PORTFOLIO_MCP_CLIENT_CONFIG = {
   mcpServers: {
     [PORTFOLIO_MCP_SERVER_NAME]: {
