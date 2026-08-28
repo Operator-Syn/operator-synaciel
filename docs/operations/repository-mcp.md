@@ -46,6 +46,59 @@ The server rechecks status and content hashes immediately before each commit,
 keeps the Git hooks active, and stops on the first failure. Partial progress
 is returned instead of silently continuing.
 
+For `prepare_repository_change`, each operation must contain the complete
+replacement content for its target text file. Do not use bounded terminal output
+as the replacement payload. To catch accidental truncation before any write, a
+shorter replacement for an existing file is rejected by default with a request
+to set `allowContentShortening: true`. Use that opt-in only after reviewing the
+complete diff for an intentional reduction. The apply step rechecks hashes,
+writes atomically, verifies final hashes, and rolls back earlier writes when a
+later write fails.
+
+## Codex PostToolUse feedback
+
+The repository-local `.codex/hooks.json` runs
+`scripts/check-biome-hook.mjs` synchronously after `apply_patch`, `Edit`, and
+`Write` operations and after the repository MCP's
+`apply_repository_change`. The hook invokes
+`npm run check:biome:github`. A passing check is silent. A failing check emits
+model-visible `hookSpecificOutput.additionalContext` with bounded GitHub-format
+diagnostics and asks the agent to fix them and rerun the check before continuing.
+The operation already completed; this feedback does not roll it back or
+auto-format files.
+
+This is separate from the versioned `.githooks/pre-commit` hook. The Git hook
+enforces commit policy at commit time; the Codex hook provides immediate
+feedback during an agent turn. It does not run for arbitrary shell commands,
+so manual shell writes should be followed by the explicit Biome command.
+
+## Tool output contracts
+
+All eight repository MCP tools advertise a native `outputSchema` in
+`tools/list`. Successful calls return the canonical object in
+`structuredContent` and retain a pretty-printed JSON text block for clients
+that still consume text content. The schemas describe the existing status
+unions rather than changing the guarded workflow behavior.
+
+The output families are:
+
+- `repository_workflow_status` returns readiness, tooling, Git hook, and
+  capability status.
+- `prepare_repository_change` returns either a prepared plan with hashes and
+  an apply token or a rejected result.
+- `apply_repository_change` returns an applied result, verification-failure
+  result, conflict, or failed result.
+- `verify_repository_change` returns a verification summary or rejection.
+- `prepare_working_tree_commit` returns either a restricted-path consent
+  challenge or a prepared snapshot.
+- `git_commit_working_tree` and `git_commit_files` return committed or
+  partial-commit results; `prepare_commits` returns bounded commit entries.
+- Errors raised before a result is constructed remain MCP errors; returned
+  result statuses remain structured and text-compatible.
+
+`outputSchema` is a tool contract. This local repository MCP exposes no
+resources, so there is no resource output schema to advertise.
+
 ## Profiles
 
 - `app` covers `apps/portfolio-web/` application files.
