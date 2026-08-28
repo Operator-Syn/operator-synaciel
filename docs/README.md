@@ -28,8 +28,10 @@ root. Topic notes live in focused folders.
   and thicker boundary exceptions.
 - [[architecture/models|Models]] - D1, R2, aggregation, and persistence
   responsibilities.
-- [[architecture/portfolio-mcp|Portfolio MCP]] - public agent access, API
-  boundary, and local Worker workflow.
+- [[architecture/portfolio-mcp|Public Portfolio MCP (Streamable HTTP)]] - remote
+  read-only agent access, API boundary, and Worker workflow.
+- [[architecture/portfolio-mcp-modules|Public Portfolio MCP module structure]] -
+  internal seams and the refactor convention for the public Worker.
 - [[api/routes|API routes]] - public routes, private routes, and auth order.
 - [[database/schema|Database schema]] - current D1 tables, relationships, and
   storage references.
@@ -39,8 +41,8 @@ root. Topic notes live in focused folders.
   generation boundaries.
 - [[operations/local-development|Local development]] - install, check, build,
   Graphify, and database commands.
-- [[operations/repository-mcp|Repository MCP]] - guarded changes, verification,
-  one-file commits, and versioned Git hooks.
+- [[operations/repository-mcp|Local Repository MCP (stdio)]] - guarded local
+  changes, verification, one-file commits, and versioned Git hooks.
 
 ## Vault rules
 
@@ -51,6 +53,8 @@ root. Topic notes live in focused folders.
    Markdown links for GitHub navigation.
 5. Treat source code, configuration, and command output as authoritative when
    a note and the repository disagree.
+6. Add backlinks for direct source, consumer, or workflow relationships; do not
+   link every note to every neighboring note.
 
 Generated Graphify files remain under `graphify-out/` and are not part of this
 human-maintained vault.
