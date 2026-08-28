@@ -1,0 +1,137 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { test } from "node:test";
+
+const repositoryRoot = resolve(import.meta.dirname, "../..");
+
+function readRepositoryFile(relativePath: string) {
+  return readFile(resolve(repositoryRoot, relativePath), "utf8");
+}
+
+const publicSourceFiles = [
+  "workers/portfolio-mcp/src/config.ts",
+  "workers/portfolio-mcp/src/mcp/handler.ts",
+  "workers/portfolio-mcp/src/mcp/links.ts",
+  "workers/portfolio-mcp/src/mcp/resources.ts",
+  "workers/portfolio-mcp/src/mcp/results.ts",
+  "workers/portfolio-mcp/src/mcp/search.ts",
+  "workers/portfolio-mcp/src/mcp/server.ts",
+  "workers/portfolio-mcp/src/mcp/snippets.ts",
+  "workers/portfolio-mcp/src/mcp/tools/certificates.ts",
+  "workers/portfolio-mcp/src/mcp/tools/index.ts",
+  "workers/portfolio-mcp/src/mcp/tools/overview.ts",
+  "workers/portfolio-mcp/src/mcp/tools/projects.ts",
+  "workers/portfolio-mcp/src/mcp/tools/search.ts",
+  "workers/portfolio-mcp/src/mcp/tools/snippets.ts",
+  "workers/portfolio-mcp/src/mcp/validation.ts",
+  "workers/portfolio-mcp/src/worker.ts",
+  "workers/portfolio-mcp/src/portfolio-api/client.ts",
+  "workers/portfolio-mcp/src/portfolio-api/errors.ts",
+  "workers/portfolio-mcp/src/portfolio-api/index.ts",
+  "workers/portfolio-mcp/src/portfolio-api/snippets.ts",
+  "workers/portfolio-mcp/src/portfolio-api/transport.ts",
+  "workers/portfolio-mcp/src/portfolio-api/types.ts",
+  "workers/portfolio-mcp/src/portfolio-api/urls.ts",
+];
+
+test("keeps public and local MCP documentation aligned with their boundaries", async () => {
+  const [
+    publicEntrypoint,
+    publicSource,
+    publicApiBarrel,
+    publicDocumentation,
+    moduleDocumentation,
+    discoveryFile,
+    publicWorkerConfig,
+    localSource,
+    localDocumentation,
+    documentationMap,
+    config,
+    codexConfig,
+  ] = await Promise.all([
+    readRepositoryFile("workers/portfolio-mcp/src/index.ts"),
+    Promise.all(publicSourceFiles.map((file) => readRepositoryFile(file))).then((sources) =>
+      sources.join("\n"),
+    ),
+    readRepositoryFile("workers/portfolio-mcp/src/portfolioApi.ts"),
+    readRepositoryFile("docs/architecture/portfolio-mcp.md"),
+    readRepositoryFile("docs/architecture/portfolio-mcp-modules.md"),
+    readRepositoryFile("apps/portfolio-web/public/llms.txt"),
+    readRepositoryFile("workers/portfolio-mcp/wrangler.toml"),
+    readRepositoryFile("tools/repository-mcp/src/server.ts"),
+    readRepositoryFile("docs/operations/repository-mcp.md"),
+    readRepositoryFile("docs/README.md"),
+    readRepositoryFile(".mcp.json"),
+    readRepositoryFile(".codex/config.toml"),
+  ]);
+
+  const endpoint = publicSource.match(/PORTFOLIO_MCP_ENDPOINT = "([^"]+)"/)?.[1];
+  const serverName = publicSource.match(/PORTFOLIO_MCP_SERVER_NAME = "([^"]+)"/)?.[1];
+  assert.ok(endpoint);
+  assert.ok(serverName);
+  assert.match(publicSource, /createMcpHandler/);
+  assert.doesNotMatch(publicEntrypoint, /new McpServer|registerTool|registerResource/);
+  assert.match(publicApiBarrel, /^export \* from "\.\/portfolio-api\/index\.ts";$/m);
+  assert.match(publicDocumentation, /^# Public Portfolio MCP \(Streamable HTTP\)$/m);
+  assert.match(moduleDocumentation, /^# Public Portfolio MCP Module Structure$/m);
+  assert.match(moduleDocumentation, /src\/portfolio-api\/transport\.ts/);
+  assert.match(
+    publicDocumentation,
+    /\[\[architecture\/portfolio-mcp-modules\|Public Portfolio MCP module structure\]\]/,
+  );
+  assert.ok(publicDocumentation.includes(endpoint));
+  assert.ok(publicDocumentation.includes(serverName));
+  assert.match(
+    publicDocumentation,
+    /\[\[operations\/repository-mcp\|Local Repository MCP \(stdio\)/,
+  );
+  assert.match(discoveryFile, /Transport: Streamable HTTP/);
+  assert.ok(discoveryFile.includes(endpoint));
+  assert.ok(discoveryFile.includes(serverName));
+  assert.match(publicWorkerConfig, /binding = "PORTFOLIO_API"/);
+  assert.match(publicWorkerConfig, /service = "portfolio-api"/);
+  assert.match(publicWorkerConfig, /pattern = "mcp\.syn-forge\.com"/);
+  assert.match(
+    documentationMap,
+    /\[\[architecture\/portfolio-mcp\|Public Portfolio MCP \(Streamable HTTP\)\]\]/,
+  );
+  assert.match(
+    documentationMap,
+    /\[\[architecture\/portfolio-mcp-modules\|Public Portfolio MCP module structure\]\]/,
+  );
+  assert.match(
+    documentationMap,
+    /\[\[operations\/repository-mcp\|Local Repository MCP \(stdio\)\]\]/,
+  );
+
+  const toolNames = [...publicSource.matchAll(/server\.registerTool\(\s*"([^"]+)"/g)].map(
+    (match) => match[1],
+  );
+  assert.ok(toolNames.length > 0);
+  for (const toolName of toolNames) {
+    assert.ok(toolName);
+    assert.ok(publicDocumentation.includes(`\`${toolName}\``));
+    assert.ok(discoveryFile.includes(toolName));
+  }
+
+  const resourceUris = [...publicSource.matchAll(/"(portfolio:\/\/[^"]+)"/g)].map(
+    (match) => match[1],
+  );
+  assert.ok(resourceUris.length > 0);
+  for (const resourceUri of resourceUris) {
+    assert.ok(resourceUri);
+    assert.ok(publicDocumentation.includes(`\`${resourceUri}\``));
+  }
+
+  assert.match(localSource, /new StdioServerTransport\(\)/);
+  assert.match(localDocumentation, /^# Local Repository MCP \(stdio\) and Commit Pipeline$/m);
+  assert.match(localDocumentation, /no public HTTP endpoint/);
+  assert.match(
+    localDocumentation,
+    /\[\[architecture\/portfolio-mcp\|Public Portfolio MCP \(Streamable HTTP\)/,
+  );
+  assert.match(config, /"operator-synaciel-repository"/);
+  assert.equal(config.includes(endpoint), false);
+  assert.equal(codexConfig.includes(endpoint), false);
+});
