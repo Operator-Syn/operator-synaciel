@@ -2,7 +2,7 @@ export const PORTFOLIO_MCP_ENDPOINT = "https://mcp.syn-forge.com/mcp";
 export const PORTFOLIO_MCP_SERVER_NAME = "syn-forge-portfolio";
 export const PORTFOLIO_MCP_TRANSPORT = "Streamable HTTP";
 export const PORTFOLIO_MCP_DESCRIPTION =
-  "Connect AI agents to Syn-Forge's public portfolio MCP for grounded profile, project, certificate, and public snippet information.";
+  "Connect AI agents to Syn-Forge's public portfolio MCP for grounded profile, project, certificate, public snippet, and bounded GitHub project information.";
 
 export const PORTFOLIO_MCP_ONBOARDING_PROMPT = `Please add Syn-Forge's public portfolio MCP to this agent.
 
@@ -32,6 +32,19 @@ export const PORTFOLIO_MCP_TOOLS = [
   ["get_certificate", "Read one public certificate and its media items."],
   ["list_snippets", "List public Markdown and PDF snippet metadata."],
   ["read_snippet", "Read Markdown in chunks or get canonical links for a PDF."],
+  [
+    "get_project_repository",
+    "Inspect the linked public GitHub repository and main-branch availability.",
+  ],
+  [
+    "get_project_readme",
+    "Read the linked repository's root README.md from main in bounded chunks.",
+  ],
+  [
+    "list_project_commits",
+    "List bounded commit metadata reachable from the linked repository's main branch.",
+  ],
+  ["get_project_commit", "Read a main-reachable commit and bounded changed-file summaries."],
 ] as const;
 
 export const PORTFOLIO_MCP_RESOURCES = [
