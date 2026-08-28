@@ -1,0 +1,124 @@
+/* Fixed quick-navigation utility and its compact navigation shell. */
+.quick-navigation {
+    pointer-events: none;
+    top: auto;
+    inset-inline-end: var(--floating-control-inline-end);
+    inset-block-end: var(--floating-control-block-end);
+}
+
+.quick-navigation-toggle {
+    pointer-events: auto;
+}
+
+.navigation-shell {
+    transition:
+        box-shadow var(--motion-feedback-duration) var(--motion-ease),
+        transform var(--motion-feedback-duration) var(--motion-ease);
+}
+
+.quick-navigation-panel {
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.985);
+    transform-origin: bottom right;
+    visibility: hidden;
+    transition:
+        opacity var(--motion-disclosure-exit-duration) var(--motion-ease-exit),
+        transform var(--motion-disclosure-exit-duration) var(--motion-ease-exit),
+        visibility 0s linear var(--motion-disclosure-exit-duration);
+}
+
+.quick-navigation-panel[data-state="open"] {
+    pointer-events: auto;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    visibility: visible;
+    transition:
+        opacity var(--motion-disclosure-enter-duration) var(--motion-ease),
+        transform var(--motion-disclosure-enter-duration) var(--motion-ease),
+        visibility 0s linear 0s;
+}
+
+.navigation-menu {
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-0.35rem);
+    transform-origin: top;
+    visibility: hidden;
+    transition:
+        opacity var(--motion-disclosure-exit-duration) var(--motion-ease-exit),
+        transform var(--motion-disclosure-exit-duration) var(--motion-ease-exit),
+        visibility 0s linear var(--motion-disclosure-exit-duration);
+}
+
+.navigation-menu[data-navigation-state="open"] {
+    pointer-events: auto;
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+    transition:
+        opacity var(--motion-disclosure-enter-duration) var(--motion-ease),
+        transform var(--motion-disclosure-enter-duration) var(--motion-ease),
+        visibility 0s linear 0s;
+}
+
+@media (min-width: 1024px) {
+    .navigation-menu,
+    .navigation-menu[data-navigation-state="closed"] {
+        pointer-events: auto;
+        opacity: 1;
+        transform: none;
+        visibility: visible;
+        transition: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quick-navigation-panel,
+    .navigation-menu {
+        transition: none;
+        transform: none;
+    }
+}
+
+@media (max-width: 1400px) {
+    .quick-navigation-toggle {
+        width: 3rem;
+        justify-content: center;
+        gap: 0;
+        padding-inline: 0.5rem;
+    }
+
+    .quick-navigation-toggle > svg:last-child {
+        display: none;
+    }
+}
+
+@media (max-width: 1023px) {
+    .navigation-shell[data-navigation-hidden="true"] {
+        transform: translateY(-100%);
+    }
+
+    .navigation-shell[data-navigation-hidden="true"]:focus-within {
+        transform: translateY(0);
+    }
+
+    .quick-navigation.is-open {
+        top: auto;
+        inset-inline-end: var(--floating-control-inline-end);
+        inset-block-end: var(--floating-control-block-end);
+        width: calc(
+            100vw -
+            var(--floating-control-inline-end) -
+            var(--floating-control-inline-end)
+        );
+    }
+
+    .quick-navigation-panel {
+        width: 100%;
+    }
+
+    .quick-navigation.is-open .quick-navigation-toggle {
+        justify-self: end;
+    }
+}
