@@ -1,14 +1,14 @@
 {
   "compilerOptions": {
+    "jsx": "react-jsx",
     "types": ["@cloudflare/workers-types"]
   },
   "files": [],
   "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" },
-    { "path": "./tsconfig.mcp.json" },
-    { "path": "./tsconfig.test.json" },
-    { "path": "./functions" },
-    { "path": "./tsconfig.portfolio-mcp.json" }
+    { "path": "./apps/portfolio-web" },
+    { "path": "./workers/portfolio-api" },
+    { "path": "./workers/portfolio-mcp" },
+    { "path": "./tools/repository-mcp" },
+    { "path": "./tsconfig.tests.json" }
   ]
 }
