@@ -58,7 +58,7 @@ intentionally separate and should be generated with `/impeccable document`
 from the incumbent tokens, components, and assets. These files complement this
 vault's focused implementation notes and must remain truthful to them.
 
-Use `npx impeccable detect src/` for a deterministic detector pass. Current
+Use `npx impeccable detect apps/portfolio-web/src/` for a deterministic detector pass. Current
 baseline findings are documented as follow-up work rather than hidden with
 ignore rules.
 
