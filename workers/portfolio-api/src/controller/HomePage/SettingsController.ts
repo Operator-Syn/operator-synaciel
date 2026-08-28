@@ -6,7 +6,7 @@ import { SettingsModel } from "../../model/HomePage/SettingsModel";
 export const SettingsController = {
   async list(c: Context<{ Bindings: Bindings }>) {
     const model = new SettingsModel(c.env.DB);
-    return c.json(await model.list());
+    return c.json(await model.listPublic());
   },
 
   async create(c: Context<{ Bindings: Bindings }>) {
