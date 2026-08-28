@@ -92,7 +92,12 @@ export default function GlobalHeadManager({
     setMetaName("twitter:description", description);
     setMetaName("twitter:image", socialImage);
     setMetaName("twitter:card", "summary_large_image");
-    setMetaName("robots", robots);
+    if (robots) {
+      setMetaName("robots", robots);
+    } else {
+      const robotsTag = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
+      if (robotsTag) robotsTag.content = "index, follow";
+    }
 
     document
       .querySelectorAll('script[type="application/ld+json"][data-global-head-manager="true"]')
