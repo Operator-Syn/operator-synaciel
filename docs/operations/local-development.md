@@ -43,9 +43,6 @@ root. Cloudflare Pages' monorepo support and Functions routing require that
 project-root arrangement; this repository does not deploy Pages from the
 legacy root layout.
 
-The root `npm run deploy` command remains a legacy `gh-pages` publisher for
-`apps/portfolio-web/dist/`. It does not deploy Pages Functions.
-
 ## Portfolio API Worker
 
 The Hono API Worker is the `workers/portfolio-api/` workspace. Its entrypoint
