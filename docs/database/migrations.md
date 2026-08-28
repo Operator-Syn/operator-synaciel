@@ -33,6 +33,11 @@ normalizes legacy `Certificates.display_order` NULLs to `0`, then `0004` adds
 order. Both are forward-compatible with the unversioned certificate routes;
 they do not rewrite certificate content or the baseline file.
 
+Migration `0005` normalizes surrounding ASCII whitespace in persisted
+`section_items.image_url` and `section_items.target_url` values. The API model
+also trims those URL fields before future creates and updates, so public web and
+portfolio MCP readers receive the same canonical stored values.
+
 ## File rules
 
 - Generate one readable SQL file per logical schema change with Drizzle.
