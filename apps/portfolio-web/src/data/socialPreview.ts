@@ -112,7 +112,7 @@ export const SOCIAL_PREVIEW_ROUTES = [
     label: "AI and MCP",
     title: "AI and MCP Access",
     description:
-      "Connect AI agents to Syn-Forge's public portfolio MCP for grounded profile, project, certificate, and public snippet information.",
+      "Connect AI agents to Syn-Forge's public portfolio MCP for grounded profile, project, certificate, public snippet, and bounded GitHub project information.",
   },
 ] as const satisfies readonly SocialPreviewRouteDefinition[];
 
