@@ -4,7 +4,12 @@ import { lstat, mkdir, readFile, realpath, rename, rm, stat, writeFile } from "n
 import { dirname, extname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { BINARY_EXTENSIONS, CONSENTABLE_RESTRICTED_DIRS, IGNORED_DIRS } from "./policy.ts";
+import {
+  BINARY_EXTENSIONS,
+  CONSENTABLE_RESTRICTED_DIRS,
+  IGNORED_DIRS,
+  ROOT_VALIDATION_CACHE_TTL_MS,
+} from "./policy.ts";
 import { isSensitiveFileName } from "./redaction.ts";
 
 const serverRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -71,37 +76,61 @@ export function isLikelyBinaryPath(path: string): boolean {
   return BINARY_EXTENSIONS.has(extname(path).toLowerCase());
 }
 
-export async function validateLocalProjectRoot(): Promise<
+type RootValidationResult =
   | { readonly valid: true; readonly root: string }
-  | { readonly valid: false; readonly reason: string }
-> {
+  | { readonly valid: false; readonly reason: string };
+
+let rootValidationCache: {
+  readonly value: RootValidationResult;
+  readonly expiresAt: number;
+} | null = null;
+
+export function invalidateProjectRootValidation(): void {
+  rootValidationCache = null;
+}
+
+export async function validateLocalProjectRoot(
+  options: { readonly fresh?: boolean } = {},
+): Promise<RootValidationResult> {
+  const now = Date.now();
+  if (!options.fresh && rootValidationCache && rootValidationCache.expiresAt > now) {
+    return rootValidationCache.value;
+  }
+
+  let value: RootValidationResult;
   const info = await lstat(PROJECT_ROOT).catch(() => null);
   if (!info?.isDirectory() || info.isSymbolicLink()) {
-    return { valid: false, reason: "The configured MCP repository root must be a real directory." };
-  }
-
-  const canonical = await realpath(PROJECT_ROOT).catch(() => null);
-  if (!canonical || canonical !== PROJECT_ROOT) {
-    return { valid: false, reason: "The configured MCP repository root must be canonical." };
-  }
-
-  const packageInfo = await lstat(resolve(PROJECT_ROOT, "package.json")).catch(() => null);
-  if (!packageInfo?.isFile()) {
-    return { valid: false, reason: "The configured MCP repository root lacks package.json." };
-  }
-
-  const git = spawnSync("git", ["rev-parse", "--show-toplevel"], {
-    cwd: PROJECT_ROOT,
-    encoding: "utf8",
-    timeout: 5_000,
-  });
-  if (git.status !== 0 || resolve(git.stdout.trim()) !== PROJECT_ROOT) {
-    return {
+    value = {
       valid: false,
-      reason: "The configured MCP repository root must be the canonical Git root.",
+      reason: "The configured MCP repository root must be a real directory.",
     };
+  } else {
+    const canonical = await realpath(PROJECT_ROOT).catch(() => null);
+    if (!canonical || canonical !== PROJECT_ROOT) {
+      value = { valid: false, reason: "The configured MCP repository root must be canonical." };
+    } else {
+      const packageInfo = await lstat(resolve(PROJECT_ROOT, "package.json")).catch(() => null);
+      if (!packageInfo?.isFile()) {
+        value = { valid: false, reason: "The configured MCP repository root lacks package.json." };
+      } else {
+        const git = spawnSync("git", ["rev-parse", "--show-toplevel"], {
+          cwd: PROJECT_ROOT,
+          encoding: "utf8",
+          timeout: 5_000,
+        });
+        value =
+          git.status !== 0 || resolve(git.stdout.trim()) !== PROJECT_ROOT
+            ? {
+                valid: false,
+                reason: "The configured MCP repository root must be the canonical Git root.",
+              }
+            : { valid: true, root: PROJECT_ROOT };
+      }
+    }
   }
-  return { valid: true, root: PROJECT_ROOT };
+
+  rootValidationCache = { value, expiresAt: Date.now() + ROOT_VALIDATION_CACHE_TTL_MS };
+  return value;
 }
 
 export async function safeAbsolutePath(
