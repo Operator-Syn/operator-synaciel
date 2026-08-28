@@ -1,8 +1,13 @@
 export const MCP_SERVER_NAME = "operator-synaciel-repository";
-export const MCP_SERVER_VERSION = "1.1.0";
+export const MCP_SERVER_VERSION = "1.2.0";
 export const COMMIT_APPROVAL_ENV = "OPERATOR_SYNACIEL_COMMIT_PIPELINE_APPROVAL";
 export const MCP_SERVER_INSTRUCTIONS =
-  "Use repository_workflow_status before mutation. For changes, prepare, review exact paths and hashes, apply only with explicit approval, run fixed verification, then commit through the guarded one-file pipeline. Never deploy, access Cloudflare credentials, apply D1 migrations, or perform remote Git operations through this server. Use Graphify separately for code relationships.";
+  "Start with repository_workflow_status. Query Graphify narrowly with context_filter, shallow depth, and an explicit budget, then read the cited source directly. For planned changes, prepare complete source content with old hashes, review the bounded diff and read any remaining chunks, apply only with explicit approval, run the matching fixed verification profile, then commit through the guarded one-file pipeline. For dirty-tree commits, use prepare_working_tree_commit directly; use prepare_commits only after an applied-change operation. Never deploy, access Cloudflare credentials, apply D1 migrations, or perform remote Git operations through this server.";
+
+export const MAX_PREPARED_FILES = 20;
+export const MAX_DIFF_PREVIEW_CHARACTERS = 16_000;
+export const MAX_DIFF_CHUNK_CHARACTERS = 64_000;
+export const MAX_DIFF_STORAGE_CHARACTERS = 8_000_000;
 
 export const IGNORED_DIRS: ReadonlySet<string> = new Set([
   "node_modules",
@@ -163,6 +168,8 @@ export const LOCAL_ONLY_MCP_TOOLS = new Set([
   "prepare_repository_change",
   "apply_repository_change",
   "verify_repository_change",
+  "read_repository_change_diff",
+  "read_working_tree_diff",
   "prepare_working_tree_commit",
   "git_commit_working_tree",
   "prepare_commits",
