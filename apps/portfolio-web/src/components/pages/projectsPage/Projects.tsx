@@ -187,7 +187,7 @@ export default function Projects() {
     <>
       <GlobalHeadManager
         title="Projects"
-        description="Browse software projects by John-Ronan Beira."
+        description="Browse software projects by Operator-Syn."
         url="https://syn-forge.com/projects"
       />
       <main aria-labelledby="projects-page-title">
