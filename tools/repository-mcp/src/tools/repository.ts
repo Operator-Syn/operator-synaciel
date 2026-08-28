@@ -7,8 +7,11 @@ import {
   commitWorkingTree,
   prepareCommits,
   prepareWorkingTreeCommit,
+  readWorkingTreeDiff,
 } from "../commit-pipeline.ts";
 import {
+  MAX_DIFF_CHUNK_CHARACTERS,
+  MAX_PREPARED_FILES,
   REPOSITORY_VERIFICATION_PROFILES,
   REPOSITORY_WRITE_PROFILES,
   type SafeVerificationCheck,
@@ -16,6 +19,7 @@ import {
 import {
   applyRepositoryChange,
   prepareRepositoryChange,
+  readRepositoryChangeDiff,
   verifyRepositoryChange,
 } from "../repository-changes.ts";
 import {
@@ -25,13 +29,15 @@ import {
   prepareCommitsOutputSchema,
   prepareRepositoryChangeOutputSchema,
   prepareWorkingTreeCommitOutputSchema,
+  readRepositoryChangeDiffOutputSchema,
+  readWorkingTreeDiffOutputSchema,
   repositoryWorkflowStatusOutputSchema,
   verifyRepositoryChangeOutputSchema,
 } from "../schemas.ts";
 import { getRepositoryWorkflowStatus } from "../workflow-status.ts";
 
 const result = <T>(value: T) => ({
-  content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
+  content: [{ type: "text" as const, text: JSON.stringify(value) }],
   structuredContent: value,
 });
 
@@ -90,7 +96,7 @@ export function registerRepositoryTools(server: McpServer): void {
             }),
           )
           .min(1)
-          .max(80),
+          .max(MAX_PREPARED_FILES),
         verificationProfile: z.enum(verificationProfiles).optional(),
         requestedBy: z.string().max(120).optional(),
       },
@@ -133,6 +139,24 @@ export function registerRepositoryTools(server: McpServer): void {
   );
 
   server.registerTool(
+    "read_repository_change_diff",
+    {
+      title: "Read a prepared repository-change diff chunk",
+      description:
+        "Read-only bounded access to the diff for an un-applied repository change. Requires the exact plan ID and apply token returned by preparation; use nextOffset until complete.",
+      annotations: readOnlyAnnotations,
+      inputSchema: {
+        planId: z.string().min(1),
+        applyToken: z.string().min(1),
+        offset: z.number().int().nonnegative().optional(),
+        maxChars: z.number().int().min(1).max(MAX_DIFF_CHUNK_CHARACTERS).optional(),
+      },
+      outputSchema: readRepositoryChangeDiffOutputSchema,
+    },
+    async (input) => result(readRepositoryChangeDiff(input)),
+  );
+
+  server.registerTool(
     "prepare_working_tree_commit",
     {
       title: "Prepare the complete dirty working tree for review",
@@ -146,6 +170,24 @@ export function registerRepositoryTools(server: McpServer): void {
       outputSchema: prepareWorkingTreeCommitOutputSchema,
     },
     async (input) => result(await prepareWorkingTreeCommit(input)),
+  );
+
+  server.registerTool(
+    "read_working_tree_diff",
+    {
+      title: "Read a prepared working-tree diff chunk",
+      description:
+        "Read-only bounded access to the diff for a prepared dirty working tree. Requires the exact operation ID and approval hash; use nextOffset until complete.",
+      annotations: readOnlyAnnotations,
+      inputSchema: {
+        operationId: z.string().min(1),
+        approvalHash: z.string().length(64),
+        offset: z.number().int().nonnegative().optional(),
+        maxChars: z.number().int().min(1).max(MAX_DIFF_CHUNK_CHARACTERS).optional(),
+      },
+      outputSchema: readWorkingTreeDiffOutputSchema,
+    },
+    async (input) => result(readWorkingTreeDiff(input)),
   );
 
   server.registerTool(
@@ -176,7 +218,7 @@ export function registerRepositoryTools(server: McpServer): void {
     {
       title: "Prepare commit subjects for an applied repository change",
       description:
-        "Read-only helper that rechecks applied file hashes and suggests one subject per file. The reviewer must edit the subjects before approval.",
+        "Read-only helper for an already-applied repository change. Rechecks applied file hashes and suggests one subject per file; it does not prepare dirty-tree commits. The reviewer must edit the subjects before approval.",
       annotations: readOnlyAnnotations,
       inputSchema: {
         operationId: z.string().min(1),
