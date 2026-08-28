@@ -1,5 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import NavBar from "./components/navBar/NavBar";
+import NotFound from "./components/pages/notFoundPage/NotFound";
 import SnippetDocument from "./components/pages/snippetsPage/SnippetDocument";
 import PageTransition from "./components/pageTransition/PageTransition";
 import QuickNavigation from "./components/quickNavigation/QuickNavigation";
@@ -20,6 +21,7 @@ export default function App() {
               element={link.component ? <link.component /> : null}
             />
           ))}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
 
