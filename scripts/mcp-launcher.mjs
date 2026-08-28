@@ -71,12 +71,12 @@ export function buildLaunchSpec(root, mode) {
     );
     return {
       command: runner,
-      args: [resolve(root, "mcp", "server.ts")],
+      args: [resolve(root, "tools", "repository-mcp", "src", "server.ts")],
       env: { OPERATOR_SYNACIEL_MCP_ROOT: root },
       required: [
         { path: resolve(root, "package.json"), message: "Repository MCP requires package.json." },
         {
-          path: resolve(root, "mcp", "server.ts"),
+          path: resolve(root, "tools", "repository-mcp", "src", "server.ts"),
           message: "Repository MCP entrypoint is missing.",
         },
         {
