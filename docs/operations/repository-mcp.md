@@ -36,6 +36,8 @@ pipenv run graphify query "<focused question>" \
   --depth 2 --budget 2_500
 ```
 
+For repeated MCP iterations, use the cached `mcp-fast` verification profile after each bounded apply. It checks the fixed MCP configuration and typecheck commands; run the complete matching profile before committing.
+
 Use the bounded flow for planned edits:
 
 1. `prepare_repository_change` with complete replacement content, the current
@@ -56,7 +58,7 @@ Use the complete dirty-tree flow when reviewing existing work:
 2. Resolve any restricted-path consent challenge.
 3. Review every dirty path, status, size, hash, and bounded diff preview. When
    `diffTruncated` is true, read all chunks with `read_working_tree_diff`.
-4. Run the matching verification profile before committing.
+4. Run `mcp-fast` while iterating when only MCP wiring/type safety needs a quick check; run the complete matching profile returned by preparation before committing.
 5. `git_commit_working_tree` with one reviewed subject per path.
 
 `prepare_commits` is intentionally limited to an operation returned by
@@ -64,7 +66,8 @@ Use the complete dirty-tree flow when reviewing existing work:
 
 The server rechecks status and content hashes immediately before each commit,
 keeps the Git hooks active, and stops on the first failure. Partial progress
-is returned instead of silently continuing.
+is returned instead of silently continuing. Use `responseMode: "structured"` for
+compact transport when a client does not need the compatibility JSON text block.
 
 Mutating apply and commit operations are serialized per checkout with an atomic
 lock in the Git common directory. Same-process calls queue; other server
@@ -88,7 +91,17 @@ Diff previews are capped at 16,000 characters. The server reports the full
 character and UTF-8 byte totals, the next offset, and every path omitted from the
 preview. Reader requests accept offsets and up to 64,000 characters per chunk;
 review diffs larger than the 8,000,000-character storage ceiling are rejected
-with a request to split the change.
+with a request to split the change. `read_repository_files` reads up to 20
+profile-allowed text files in one bounded request, defaults to 16,000 characters
+per file, caps chunks at 64,000 characters, and caps the aggregate response at
+256,000 characters. Use `responseMode: "structured"` when the client already
+consumes `structuredContent`, avoiding duplicate JSON text.
+
+Prepared plans and commit operations expire after 30 minutes and are evicted
+under a 64 MiB retained-review budget. Verification results are cached for 30
+seconds against the Git/status/dependency fingerprint; successful cache hits are
+reported as `cached: true`.
+
 
 ## Codex PostToolUse feedback
 
@@ -109,7 +122,7 @@ so manual shell writes should be followed by the explicit Biome command.
 
 ## Tool output contracts
 
-All ten repository MCP tools advertise a native `outputSchema` in
+All eleven repository MCP tools advertise a native `outputSchema` in
 `tools/list`. Successful calls return the canonical object in
 `structuredContent` and retain a compact JSON text block for clients that still
 consume text content. The schemas describe the existing status unions rather
@@ -118,7 +131,9 @@ than changing the guarded workflow behavior.
 The output families are:
 
 - `repository_workflow_status` returns readiness, tooling, Git hook, and
-  capability status.
+  capability status, with a short-lived cache and `checkedAt`/`cacheHit` metadata.
+- `read_repository_files` returns bounded, profile-checked source snapshots for
+  up to 20 files with per-file hashes, byte totals, and pagination offsets.
 - `prepare_repository_change` returns either a prepared plan with hashes and
   an apply token or a rejected result.
 - `apply_repository_change` returns an applied result, verification-failure
@@ -145,6 +160,8 @@ the corresponding fixed check when the diagnostic tail is omitted.
 
 - `app` covers `apps/portfolio-web/` application files.
 - `docs` covers the vault, root documentation, and design context.
+- `mcp-fast` covers only the fixed MCP configuration and MCP typecheck commands
+  for rapid iteration; its successful results are cached briefly.
 - `mcp` covers `tools/repository-mcp/`, `workers/portfolio-mcp/`, tests,
   scripts, hooks, MCP registrations, and tooling metadata.
 - `database` covers `workers/portfolio-api/` migrations, schema, seed,
@@ -165,6 +182,9 @@ npm run mcp:check
 npm run skills:check
 npm run mcp:typecheck
 npm run test:mcp
+# Optional warm compiled launcher output
+npm run mcp:build
+OPERATOR_SYNACIEL_MCP_COMPILED=1 npm run mcp:repository
 npm run setup:git-hooks
 pipenv install --dev --deploy
 pipenv run graphify update . --no-cluster
@@ -176,8 +196,11 @@ The status tool is read-only and does not return secrets. A missing Graphify
 output is an onboarding warning, not a reason to mutate the repository through
 the MCP.
 
-The local stdio server requires Git, Node/npm, Bash, and the existing
-repository toolchain. A collaborator must trust or approve project-scoped MCP
+The local stdio server uses the tsx source launcher by default. After
+`npm run mcp:build`, setting `OPERATOR_SYNACIEL_MCP_COMPILED=1` selects the
+compiled `tools/repository-mcp/dist/server.js` entrypoint and fails closed if it
+is missing; there is no silent source fallback. It requires Git, Node/npm, Bash,
+and the existing repository toolchain. A collaborator must trust or approve project-scoped MCP
 servers in their client; that approval is intentionally not stored as a global
 machine setting.
 
