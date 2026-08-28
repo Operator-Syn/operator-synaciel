@@ -27,33 +27,68 @@ otherwise it resolves the root from the current Git directory.
 
 ## Workflow
 
+Start every change with `repository_workflow_status`. For codebase questions,
+query Graphify narrowly and then confirm the cited source directly, for example:
+
+```bash
+pipenv run graphify query "<focused question>" \
+  --context-filter "tools/repository-mcp,tests,docs/operations/repository-mcp.md" \
+  --depth 2 --budget 2_500
+```
+
 Use the bounded flow for planned edits:
 
-1. `prepare_repository_change`
-2. Review the returned paths, hashes, and diff.
+1. `prepare_repository_change` with complete replacement content, the current
+   hash for every existing file, and the smallest practical file set.
+2. Review every returned path, old hash, new hash, byte count, profile, and
+   bounded diff preview. When `diffTruncated` is true, read all chunks with
+   `read_repository_change_diff` before applying.
 3. `apply_repository_change` with the exact token, hashes, and approval.
-4. `verify_repository_change` with the narrowest profile.
+4. Run `verify_repository_change` explicitly with the returned matching profile;
+   do not prepare or commit subjects until the required checks pass. An apply
+   response may include a passing optional verification summary, but an absent
+   or failing summary leaves `verificationRequired` true.
 5. `prepare_commits`, edit the subjects, then `git_commit_files`.
 
 Use the complete dirty-tree flow when reviewing existing work:
 
-1. `prepare_working_tree_commit`
+1. `prepare_working_tree_commit` directly.
 2. Resolve any restricted-path consent challenge.
-3. Review every dirty path, status, size, hash, and diff.
-4. `git_commit_working_tree` with one reviewed subject per path.
+3. Review every dirty path, status, size, hash, and bounded diff preview. When
+   `diffTruncated` is true, read all chunks with `read_working_tree_diff`.
+4. Run the matching verification profile before committing.
+5. `git_commit_working_tree` with one reviewed subject per path.
+
+`prepare_commits` is intentionally limited to an operation returned by
+`apply_repository_change`; it is not the dirty-tree preparation tool.
 
 The server rechecks status and content hashes immediately before each commit,
 keeps the Git hooks active, and stops on the first failure. Partial progress
 is returned instead of silently continuing.
 
+Mutating apply and commit operations are serialized per checkout with an atomic
+lock in the Git common directory. Same-process calls queue; other server
+processes wait briefly for the lock. A lock is reclaimed only when its owner is
+gone or its lease is demonstrably stale, and every completed operation releases
+it in a `finally` path.
+
 For `prepare_repository_change`, each operation must contain the complete
-replacement content for its target text file. Do not use bounded terminal output
-as the replacement payload. To catch accidental truncation before any write, a
-shorter replacement for an existing file is rejected by default with a request
-to set `allowContentShortening: true`. Use that opt-in only after reviewing the
-complete diff for an intentional reduction. The apply step rechecks hashes,
-writes atomically, verifies final hashes, and rolls back earlier writes when a
-later write fails.
+replacement content for its target text file. A single operation is limited to
+20 files and each profile keeps its existing byte budget. Do not use bounded
+terminal output as the replacement payload. To catch accidental truncation
+before any write, a shorter replacement for an existing file is rejected by
+default with a request to set `allowContentShortening: true`. Use that opt-in
+only after reviewing the complete diff for an intentional reduction. The
+preparation response includes compact old/new SHA-256 and new-byte metadata; it
+never needs to echo full source content. The apply step rechecks hashes, writes
+atomically, verifies final hashes, and rolls back earlier writes when a later
+write fails.
+
+Diff previews are capped at 16,000 characters. The server reports the full
+character and UTF-8 byte totals, the next offset, and every path omitted from the
+preview. Reader requests accept offsets and up to 64,000 characters per chunk;
+review diffs larger than the 8,000,000-character storage ceiling are rejected
+with a request to split the change.
 
 ## Codex PostToolUse feedback
 
@@ -74,11 +109,11 @@ so manual shell writes should be followed by the explicit Biome command.
 
 ## Tool output contracts
 
-All eight repository MCP tools advertise a native `outputSchema` in
+All ten repository MCP tools advertise a native `outputSchema` in
 `tools/list`. Successful calls return the canonical object in
-`structuredContent` and retain a pretty-printed JSON text block for clients
-that still consume text content. The schemas describe the existing status
-unions rather than changing the guarded workflow behavior.
+`structuredContent` and retain a compact JSON text block for clients that still
+consume text content. The schemas describe the existing status unions rather
+than changing the guarded workflow behavior.
 
 The output families are:
 
@@ -90,7 +125,10 @@ The output families are:
   result, conflict, or failed result.
 - `verify_repository_change` returns a verification summary or rejection.
 - `prepare_working_tree_commit` returns either a restricted-path consent
-  challenge or a prepared snapshot.
+  challenge or a prepared snapshot with bounded diff metadata.
+- `read_repository_change_diff` and `read_working_tree_diff` return bounded
+  chunks from still-valid prepared operations and never accept arbitrary paths
+  or source content.
 - `git_commit_working_tree` and `git_commit_files` return committed or
   partial-commit results; `prepare_commits` returns bounded commit entries.
 - Errors raised before a result is constructed remain MCP errors; returned
@@ -98,6 +136,10 @@ The output families are:
 
 `outputSchema` is a tool contract. This local repository MCP exposes no
 resources, so there is no resource output schema to advertise.
+
+Git status and commit diagnostics in returned commit results are capped at
+12,000 characters; the complete command remains visible so a caller can rerun
+the corresponding fixed check when the diagnostic tail is omitted.
 
 ## Profiles
 
@@ -149,6 +191,10 @@ multi-path commits in the outgoing range.
 Direct shell `git commit`, `--no-verify`, changing `core.hooksPath`, and
 deleting the versioned hooks are unsupported bypasses. Push, deployment, and
 database application remain separate user-authorized actions.
+
+The synchronous Codex commit gate recognizes direct Git invocations and the
+supported `bash`/`sh`, `env`, `command`, `eval`, and `exec` wrappers while
+ignoring quoted search text and comments.
 
 The repository does not install a generic filesystem writer or run an
 automatic post-commit Graphify rebuild. Graphify state is ignored local output
