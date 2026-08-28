@@ -7,29 +7,36 @@ role: concept
 
 # Architecture Overview
 
-Operator-Syn is a split frontend and API project. The source of truth for the
-frontend entrypoint is [`src/main.tsx`](../../src/main.tsx); the Worker entrypoint
-is [`src/Api.ts`](../../src/Api.ts).
+Operator-Syn is an npm monorepo with separate frontend, API Worker, public
+Streamable HTTP MCP, and local repository-only stdio workspaces. The source of
+truth for the frontend entrypoint
+is [`apps/portfolio-web/src/main.tsx`](../../apps/portfolio-web/src/main.tsx);
+the API Worker entrypoint is
+[`workers/portfolio-api/src/entrypoint.ts`](../../workers/portfolio-api/src/entrypoint.ts).
 
 ## Frontend
 
 - Vite builds the React and TypeScript application.
-- `src/main.tsx` creates the React root, installs React Query, and mounts a
+- `apps/portfolio-web/src/main.tsx` creates the React root, installs React Query, and mounts a
   `BrowserRouter`.
-- `src/App.tsx` renders the navigation shell and maps the route registry to
+- `apps/portfolio-web/src/App.tsx` renders the navigation shell and maps the route registry to
   React Router routes.
-- `src/data/NavLinks.types.ts` defines the brand name, visible navigation, and
+- `apps/portfolio-web/src/data/NavLinks.types.ts` defines the brand name, visible navigation, and
   all application routes.
 
 The route list includes the home, projects, certificates, snippets, AI and MCP,
 privacy, terms, NetBird, and Atelier pages. The snippets page also supports
-nested paths. The [[architecture/portfolio-mcp|portfolio MCP note]] documents
-the separate agent-facing Worker and its deployment boundary.
+nested paths. The [[architecture/portfolio-mcp|Public Portfolio MCP (Streamable HTTP)]]
+note documents the separate agent-facing Worker and its deployment boundary;
+[[operations/repository-mcp|Local Repository MCP (stdio)]] documents the
+development-only repository tooling.
 
 ## API and storage
 
-The Hono Worker in [`src/Api.ts`](../../src/Api.ts) exposes `/api/*` routes and
-uses these bindings from [`wrangler.toml`](../../wrangler.toml):
+The Hono Worker in
+[`workers/portfolio-api/src/entrypoint.ts`](../../workers/portfolio-api/src/entrypoint.ts)
+exposes `/api/*` routes and uses these bindings from
+[`workers/portfolio-api/wrangler.toml`](../../workers/portfolio-api/wrangler.toml):
 
 - `DB` for Cloudflare D1 data.
 - `BUCKET` for Cloudflare R2 media and snippet files.
@@ -37,8 +44,8 @@ uses these bindings from [`wrangler.toml`](../../wrangler.toml):
 - `VITE_CDN_URL`, `R2_BUCKET_NAME`, and related environment values for storage
   integration.
 
-Controllers under `src/controller/` coordinate requests. Models under
-`src/model/` issue D1 queries and shape data for the controllers. The current
+Controllers under `workers/portfolio-api/src/controller/` coordinate requests.
+Models under `workers/portfolio-api/src/model/` issue D1 queries and shape data for the controllers. The current
 layer assessment is [[architecture/layer-boundaries|fat-model, skinny-controller with
 storage-heavy exceptions]]. See [[architecture/controllers|controller responsibilities]] and
 [[architecture/models|model responsibilities]] for the focused inventories. Media flows use
