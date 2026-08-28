@@ -17,19 +17,22 @@ Open Graph and Twitter metadata. The React component is the visual source of
 truth; the PNGs are generated outputs that can be opened directly while
 polishing the composition.
 
+This route contract belongs to the [[design-system/README|Design System]] and
+consumes the semantic palette in [[design-system/tokens|Design Tokens]].
+
 ## Source and output contract
 
-- `src/data/socialPreview.ts` owns the route metadata, route fallback, image
+- `apps/portfolio-web/src/data/socialPreview.ts` owns the route metadata, route fallback, image
   dimensions, colors, avatar source, and existing public image-path contract.
-- `src/components/socialPreview/SocialPreviewCard.tsx` owns the pure React TSX
+- `apps/portfolio-web/src/components/socialPreview/SocialPreviewCard.tsx` owns the pure React TSX
   composition and accepts `SocialPreviewMetadata`.
 - `SOCIAL_PREVIEW_AVATAR_URL` points at the profile image used by the site's
   identity surface; the avatar is baked into each PNG at generation time.
-- `scripts/generate-social-previews.ts` renders the component with
+- `apps/portfolio-web/scripts/generate-social-previews.ts` renders the component with
   `renderToStaticMarkup`, captures Chromium at native size with Playwright,
   waits for `document.fonts.ready` and a successfully loaded avatar, and
   overwrites the generated PNGs.
-- `functions/_middleware.ts` rewrites HTML metadata only. Static image requests
+- `apps/portfolio-web/functions/_middleware.ts` rewrites HTML metadata only. Static image requests
   are excluded from Functions and served by Pages as ordinary public files.
 - `GlobalHeadManager` and the Pages HTML rewriter continue to use the existing
   image URLs, so no Open Graph URL contract changes.
@@ -38,14 +41,15 @@ Generated files remain at the current public URLs:
 
 | Route | Generated file |
 | --- | --- |
-| Home | `public/social-image.png` |
-| Projects | `public/projects/social-image.png` |
-| Certificates | `public/certificates/social-image.png` |
-| Snippets | `public/snippets/social-image.png` |
-| Privacy | `public/privacy-policy/social-image.png` |
-| Terms | `public/terms-and-conditions/social-image.png` |
-| NetBird | `public/netbird/social-image.png` |
-| Atelier | `public/atelier/social-image.png` |
+| Home | `apps/portfolio-web/public/social-image.png` |
+| Projects | `apps/portfolio-web/public/projects/social-image.png` |
+| Certificates | `apps/portfolio-web/public/certificates/social-image.png` |
+| Snippets | `apps/portfolio-web/public/snippets/social-image.png` |
+| Privacy | `apps/portfolio-web/public/privacy-policy/social-image.png` |
+| Terms | `apps/portfolio-web/public/terms-and-conditions/social-image.png` |
+| NetBird | `apps/portfolio-web/public/netbird/social-image.png` |
+| Atelier | `apps/portfolio-web/public/atelier/social-image.png` |
+| AI and MCP | `apps/portfolio-web/public/ai/social-image.png` |
 
 The PNGs are checked in because normal builds must not require a browser. Run
 the generator after changing the component or route copy, review the binary
