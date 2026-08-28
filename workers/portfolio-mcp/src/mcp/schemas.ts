@@ -1,5 +1,8 @@
 import { z } from "zod";
 import {
+  GITHUB_COMMIT_FILE_LIMIT,
+  GITHUB_COMMIT_MESSAGE_MAX_CHARACTERS,
+  GITHUB_README_MAX_CHARACTERS,
   MAX_LIST_LIMIT,
   MAX_SEARCH_RESULTS,
   MAX_SNIPPET_CHUNK_CHARACTERS,
@@ -121,6 +124,49 @@ const pdfSnippetSchema = z.strictObject({
   content_available: z.literal(false),
 });
 
+const githubRepositorySchema = z.strictObject({
+  owner: z.string().max(39),
+  name: z.string().max(100),
+  full_name: z.string().max(140),
+  description: z.string().max(500).nullable(),
+  canonical_url: z.string().url(),
+  branch: z.literal("main"),
+  main_available: z.boolean(),
+  main_sha: z
+    .string()
+    .regex(/^[0-9a-f]{40}$/i)
+    .nullable(),
+  readme_available: z.boolean(),
+  commit_history_available: z.boolean(),
+});
+
+const githubCommitAuthorSchema = z.strictObject({
+  login: z.string().max(100).nullable(),
+  name: z.string().max(200).nullable(),
+});
+
+const githubCommitSummarySchema = z.strictObject({
+  sha: z.string().regex(/^[0-9a-f]{40}$/i),
+  message: z.string().max(GITHUB_COMMIT_MESSAGE_MAX_CHARACTERS),
+  author: githubCommitAuthorSchema,
+  authored_at: z.string().max(64).nullable(),
+  committed_at: z.string().max(64).nullable(),
+  canonical_url: z.string().url(),
+});
+
+const githubChangedFileSchema = z.strictObject({
+  filename: z.string().max(512),
+  status: z.string().max(32),
+  additions: z.number().int().nonnegative(),
+  deletions: z.number().int().nonnegative(),
+  changes: z.number().int().nonnegative(),
+});
+
+const githubCommitDetailsSchema = githubCommitSummarySchema.extend({
+  files: z.array(githubChangedFileSchema).max(GITHUB_COMMIT_FILE_LIMIT),
+  files_truncated: z.boolean(),
+});
+
 export const portfolioOverviewOutputSchema = z.strictObject({
   site: siteSchema,
   profile: z.array(profileRecordSchema),
@@ -208,3 +254,40 @@ export const readSnippetOutputSchema = z.discriminatedUnion("format", [
   markdownSnippetSchema,
   pdfSnippetSchema,
 ]);
+
+export const getProjectRepositoryOutputSchema = z.strictObject({
+  project_id: z.number().int().positive(),
+  repository: githubRepositorySchema,
+});
+
+export const getProjectReadmeOutputSchema = z.strictObject({
+  project_id: z.number().int().positive(),
+  repository_url: z.string().url(),
+  branch: z.literal("main"),
+  path: z.literal("README.md"),
+  canonical_url: z.string().url(),
+  offset: z.number().int().nonnegative().max(GITHUB_README_MAX_CHARACTERS),
+  content: z.string().max(MAX_SNIPPET_CHUNK_CHARACTERS),
+  next_offset: z.number().int().nonnegative().max(GITHUB_README_MAX_CHARACTERS),
+  total_characters: z.number().int().nonnegative().max(GITHUB_README_MAX_CHARACTERS),
+  complete: z.boolean(),
+});
+
+export const listProjectCommitsOutputSchema = z.strictObject({
+  project_id: z.number().int().positive(),
+  repository_url: z.string().url(),
+  branch: z.literal("main"),
+  commits: z.array(githubCommitSummarySchema).max(MAX_LIST_LIMIT),
+  pagination: z.strictObject({
+    limit: z.number().int().min(1).max(MAX_LIST_LIMIT),
+    has_more: z.boolean(),
+    next_cursor: z.string().nullable(),
+  }),
+});
+
+export const getProjectCommitOutputSchema = z.strictObject({
+  project_id: z.number().int().positive(),
+  repository_url: z.string().url(),
+  branch: z.literal("main"),
+  commit: githubCommitDetailsSchema,
+});
