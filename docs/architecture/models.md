@@ -8,7 +8,7 @@ role: catalog
 
 # Models
 
-Models under `src/model/` are the main persistence and data-shaping layer for
+Models under `workers/portfolio-api/src/model/` are the main persistence and data-shaping layer for
 the Worker. Most receive a `D1Database`, issue parameterized SQL, and map rows
 into API-facing objects. `SnippetsPageModel` also receives an `R2Bucket`.
 
