@@ -8,12 +8,12 @@ role: catalog
 
 # Controllers
 
-Controllers under `src/controller/` are Hono request handlers. Their normal
+Controllers under `workers/portfolio-api/src/controller/` are Hono request handlers. Their normal
 contract is to read the Hono context, perform transport-level validation,
 delegate data work to a model, and return an HTTP response.
 
 The route registry and shared middleware remain in
-[`src/Api.ts`](../../src/Api.ts). This note describes responsibilities, not a
+[`workers/portfolio-api/src/entrypoint.ts`](../../workers/portfolio-api/src/entrypoint.ts). This note describes responsibilities, not a
 second route list; see [[api/routes|API routes]] for route paths.
 
 ## Controller groups
