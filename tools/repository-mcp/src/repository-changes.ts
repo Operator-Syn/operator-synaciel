@@ -2,6 +2,14 @@ import { randomUUID } from "node:crypto";
 import { lstat, readFile, rm } from "node:fs/promises";
 
 import { registerAppliedRepositoryOperation } from "./commit-pipeline.ts";
+import {
+  buildDiffDocument,
+  type DiffChunk,
+  type DiffDocument,
+  type DiffSection,
+  previewDiff,
+  readDiffChunk,
+} from "./diff.ts";
 import { withMutationLock } from "./mutation-lock.ts";
 import {
   atomicWrite,
@@ -12,6 +20,7 @@ import {
   validateRelativeProjectPath,
 } from "./path.ts";
 import {
+  MAX_PREPARED_FILES,
   REPOSITORY_WRITE_PROFILES,
   type RepositoryVerificationProfile,
   type RepositoryWriteProfile,
@@ -48,6 +57,15 @@ type PreparedOperation = {
   readonly path: string;
   readonly content: string;
   readonly expectedSha256: string | null;
+  readonly newSha256: string;
+  readonly newBytes: number;
+};
+
+export type RepositoryChangeFileSummary = {
+  readonly path: string;
+  readonly oldSha256: string | null;
+  readonly newSha256: string;
+  readonly newBytes: number;
 };
 
 type RepositoryPlan = {
@@ -59,7 +77,9 @@ type RepositoryPlan = {
   readonly profile: RepositoryWriteProfile;
   readonly verificationProfile: RepositoryVerificationProfile | null;
   readonly operations: readonly PreparedOperation[];
-  readonly diff: string;
+  readonly fileSummaries: readonly RepositoryChangeFileSummary[];
+  readonly totalBytes: number;
+  readonly diff: DiffDocument;
 };
 
 export type RepositoryChangeResult = {
@@ -74,9 +94,19 @@ export type RepositoryChangeResult = {
   readonly auditId: string;
   readonly planId?: string;
   readonly requestedBy?: string;
+  readonly profile?: RepositoryWriteProfile;
+  readonly verificationProfile?: RepositoryVerificationProfile;
+  readonly verificationRequired?: boolean;
   readonly files?: readonly string[];
+  readonly fileSummaries?: readonly RepositoryChangeFileSummary[];
+  readonly totalBytes?: number;
   readonly finalFileHashes?: Readonly<Record<string, string>>;
   readonly diff?: string;
+  readonly diffTruncated?: boolean;
+  readonly diffTotalCharacters?: number;
+  readonly diffTotalBytes?: number;
+  readonly diffNextOffset?: number | null;
+  readonly omittedPaths?: readonly string[];
   readonly message: string;
   readonly verification?: VerificationSummary;
   readonly conflicts?: readonly string[];
@@ -137,21 +167,35 @@ function validateWritePath(profile: RepositoryWriteProfile, input: string): stri
 function buildDiff(
   operations: readonly PreparedOperation[],
   states: ReadonlyMap<string, FileState>,
-): string {
-  return operations
-    .map((operation) => {
-      const before = states.get(operation.path)?.content ?? "";
-      const oldLines = before.split(/\r?\n/);
-      const newLines = operation.content.split(/\r?\n/);
-      return [
+): DiffDocument {
+  const sections: DiffSection[] = operations.map((operation) => {
+    const before = states.get(operation.path)?.content ?? "";
+    const oldLines = before.split(/\r?\n/);
+    const newLines = operation.content.split(/\r?\n/);
+    return {
+      path: operation.path,
+      content: [
         `--- a/${operation.path}`,
         `+++ b/${operation.path}`,
         `@@ -1,${oldLines.length} +1,${newLines.length} @@`,
         ...(before ? oldLines.map((line) => `-${line}`) : []),
         ...newLines.map((line) => `+${line}`),
-      ].join("\n");
-    })
-    .join("\n\n");
+      ].join("\n"),
+    };
+  });
+  return buildDiffDocument(sections);
+}
+
+function diffResult(
+  kind: "repository-change" | "working-tree",
+  identity: Record<string, string>,
+  chunk: DiffChunk,
+): Record<string, unknown> {
+  return {
+    kind,
+    ...identity,
+    ...chunk,
+  };
 }
 
 function prunePlans(): void {
@@ -178,15 +222,19 @@ export async function prepareRepositoryChange(
       throw new Error("A bounded change description is required.");
     }
     const policy = REPOSITORY_WRITE_PROFILES[request.profile];
-    if (request.operations.length === 0 || request.operations.length > policy.maxFiles) {
+    if (
+      request.operations.length === 0 ||
+      request.operations.length > Math.min(policy.maxFiles, MAX_PREPARED_FILES)
+    ) {
       throw new Error(
-        `The ${request.profile} profile limits the number of files in one operation.`,
+        `One prepared operation may contain at most ${Math.min(policy.maxFiles, MAX_PREPARED_FILES)} files for the ${request.profile} profile.`,
       );
     }
 
     const seen = new Set<string>();
     let totalBytes = 0;
     const prepared: PreparedOperation[] = [];
+    const fileSummaries: RepositoryChangeFileSummary[] = [];
     const states = new Map<string, FileState>();
     for (const operation of request.operations) {
       const path = validateWritePath(request.profile, operation.path);
@@ -195,7 +243,7 @@ export async function prepareRepositoryChange(
       if (isCredentialLikeContent(operation.content)) {
         throw new Error(`Credential-like content is not accepted: ${path}`);
       }
-      const bytes = new TextEncoder().encode(operation.content).byteLength;
+      const bytes = Buffer.byteLength(operation.content, "utf8");
       if (operation.content.includes("\0"))
         throw new Error(`Binary file content is not allowed: ${path}`);
       totalBytes += bytes;
@@ -207,7 +255,7 @@ export async function prepareRepositoryChange(
       if (
         state.exists &&
         state.content !== null &&
-        bytes < new TextEncoder().encode(state.content).byteLength &&
+        bytes < Buffer.byteLength(state.content, "utf8") &&
         !operation.allowContentShortening
       ) {
         throw new Error(`Content-shortening changes require allowContentShortening: true: ${path}`);
@@ -219,7 +267,20 @@ export async function prepareRepositoryChange(
       } else if (operation.expectedSha256) {
         throw new Error(`New files must not provide expectedSha256: ${path}`);
       }
-      prepared.push({ path, content: operation.content, expectedSha256: state.sha256 });
+      const newSha256 = digestBytes(Buffer.from(operation.content, "utf8"));
+      prepared.push({
+        path,
+        content: operation.content,
+        expectedSha256: state.sha256,
+        newSha256,
+        newBytes: bytes,
+      });
+      fileSummaries.push({
+        path,
+        oldSha256: state.sha256,
+        newSha256,
+        newBytes: bytes,
+      });
     }
 
     prunePlans();
@@ -234,16 +295,29 @@ export async function prepareRepositoryChange(
       profile: request.profile,
       verificationProfile: request.verificationProfile ?? null,
       operations: prepared,
+      fileSummaries,
+      totalBytes,
       diff: buildDiff(prepared, states),
     };
     plans.set(planId, plan);
+    const preview = previewDiff(plan.diff);
     return {
       status: "prepared",
       auditId: id,
       planId,
       requestedBy: plan.requestedBy,
+      profile: plan.profile,
+      verificationProfile: plan.verificationProfile ?? plan.profile,
+      verificationRequired: true,
       files: prepared.map((operation) => operation.path),
-      diff: plan.diff,
+      fileSummaries: plan.fileSummaries,
+      totalBytes: plan.totalBytes,
+      diff: preview.content,
+      diffTruncated: preview.diffTruncated,
+      diffTotalCharacters: preview.totalCharacters,
+      diffTotalBytes: preview.totalBytes,
+      diffNextOffset: preview.nextOffset,
+      omittedPaths: preview.omittedPaths,
       message: "Change prepared. Review the diff before applying it.",
       expectedFileHashes: Object.fromEntries(
         prepared.map((operation) => [operation.path, operation.expectedSha256]),
@@ -288,6 +362,9 @@ export async function applyRepositoryChange(input: {
         auditId: id,
         planId: plan.id,
         requestedBy: plan.requestedBy,
+        profile: plan.profile,
+        verificationProfile: plan.verificationProfile ?? plan.profile,
+        verificationRequired: true,
         message: "The expected hash map must cover exactly the prepared file set.",
         conflicts: plan.operations.map((operation) => operation.path),
       };
@@ -309,6 +386,9 @@ export async function applyRepositoryChange(input: {
         auditId: id,
         planId: plan.id,
         requestedBy: plan.requestedBy,
+        profile: plan.profile,
+        verificationProfile: plan.verificationProfile ?? plan.profile,
+        verificationRequired: true,
         message: "Collaborator changes detected; the plan is stale and was not applied.",
         conflicts,
       };
@@ -331,6 +411,11 @@ export async function applyRepositoryChange(input: {
             if (!finalState.exists || !finalState.sha256) {
               throw new Error(`The applied file is no longer present: ${operation.path}`);
             }
+            if (finalState.sha256 !== operation.newSha256) {
+              throw new Error(
+                `The applied file hash does not match the prepared content: ${operation.path}`,
+              );
+            }
             return [operation.path, finalState.sha256] as const;
           }),
         ),
@@ -352,7 +437,12 @@ export async function applyRepositoryChange(input: {
         auditId: id,
         planId: plan.id,
         requestedBy: plan.requestedBy,
+        profile: plan.profile,
+        verificationProfile: plan.verificationProfile ?? plan.profile,
+        verificationRequired: verification?.passed !== true,
         files: changed,
+        fileSummaries: plan.fileSummaries,
+        totalBytes: plan.totalBytes,
         finalFileHashes,
         message:
           verification && !verification.passed
@@ -376,11 +466,28 @@ export async function applyRepositoryChange(input: {
         auditId: id,
         planId: plan.id,
         requestedBy: plan.requestedBy,
+        profile: plan.profile,
+        verificationProfile: plan.verificationProfile ?? plan.profile,
+        verificationRequired: true,
         message:
           error instanceof Error ? error.message : "Repository change failed and was rolled back.",
       };
     }
   });
+}
+
+export function readRepositoryChangeDiff(input: {
+  readonly planId: string;
+  readonly applyToken: string;
+  readonly offset?: number;
+  readonly maxChars?: number;
+}): Record<string, unknown> {
+  const plan = getPlan(input.planId, input.applyToken);
+  return diffResult(
+    "repository-change",
+    { planId: plan.id },
+    readDiffChunk(plan.diff, input.offset, input.maxChars),
+  );
 }
 
 export function verifyRepositoryChange(input: {
