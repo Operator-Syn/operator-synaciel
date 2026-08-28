@@ -12,6 +12,7 @@ import {
 import {
   MAX_DIFF_CHUNK_CHARACTERS,
   MAX_PREPARED_FILES,
+  MAX_SOURCE_READ_CHUNK_CHARACTERS,
   REPOSITORY_VERIFICATION_PROFILES,
   REPOSITORY_WRITE_PROFILES,
   type SafeVerificationCheck,
@@ -22,6 +23,7 @@ import {
   readRepositoryChangeDiff,
   verifyRepositoryChange,
 } from "../repository-changes.ts";
+import { readRepositoryFiles } from "../repository-files.ts";
 import {
   applyRepositoryChangeOutputSchema,
   gitCommitFilesOutputSchema,
@@ -30,14 +32,23 @@ import {
   prepareRepositoryChangeOutputSchema,
   prepareWorkingTreeCommitOutputSchema,
   readRepositoryChangeDiffOutputSchema,
+  readRepositoryFilesOutputSchema,
   readWorkingTreeDiffOutputSchema,
   repositoryWorkflowStatusOutputSchema,
   verifyRepositoryChangeOutputSchema,
 } from "../schemas.ts";
 import { getRepositoryWorkflowStatus } from "../workflow-status.ts";
 
-const result = <T>(value: T) => ({
-  content: [{ type: "text" as const, text: JSON.stringify(value) }],
+type ResponseMode = "both" | "structured";
+
+const responseModeSchema = z.enum(["both", "structured"]).optional();
+const result = <T>(value: T, responseMode: ResponseMode = "both") => ({
+  content: [
+    {
+      type: "text" as const,
+      text: responseMode === "structured" ? '{"structuredContent":true}' : JSON.stringify(value),
+    },
+  ],
   structuredContent: value,
 });
 
@@ -69,10 +80,39 @@ export function registerRepositoryTools(server: McpServer): void {
       description:
         "Read-only status for the clone-safe MCP registrations, local dependencies, Graphify output, Obsidian vault index, and versioned Git hooks. It never returns secrets or mutates the checkout.",
       annotations: readOnlyAnnotations,
-      inputSchema: {},
+      inputSchema: {
+        refresh: z.boolean().optional(),
+        responseMode: responseModeSchema,
+      },
       outputSchema: repositoryWorkflowStatusOutputSchema,
     },
-    async () => result(await getRepositoryWorkflowStatus()),
+    async (input) => result(await getRepositoryWorkflowStatus(input), input.responseMode),
+  );
+
+  server.registerTool(
+    "read_repository_files",
+    {
+      title: "Read bounded repository source snapshots",
+      description:
+        "Read-only, profile-checked snapshots for up to 20 repository text files. Returns hashes, byte counts, and bounded per-file chunks; traversal, symlinks, sensitive files, binary content, and credential-like content are rejected.",
+      annotations: readOnlyAnnotations,
+      inputSchema: {
+        profile: z.enum(writeProfiles),
+        files: z
+          .array(
+            z.object({
+              path: z.string().min(1),
+              offset: z.number().int().nonnegative().optional(),
+            }),
+          )
+          .min(1)
+          .max(MAX_PREPARED_FILES),
+        maxChars: z.number().int().min(1).max(MAX_SOURCE_READ_CHUNK_CHARACTERS).optional(),
+        responseMode: responseModeSchema,
+      },
+      outputSchema: readRepositoryFilesOutputSchema,
+    },
+    async (input) => result(await readRepositoryFiles(input), input.responseMode),
   );
 
   server.registerTool(
@@ -98,11 +138,13 @@ export function registerRepositoryTools(server: McpServer): void {
           .min(1)
           .max(MAX_PREPARED_FILES),
         verificationProfile: z.enum(verificationProfiles).optional(),
+        verifyOnApply: z.boolean().optional(),
         requestedBy: z.string().max(120).optional(),
+        responseMode: responseModeSchema,
       },
       outputSchema: prepareRepositoryChangeOutputSchema,
     },
-    async (input) => result(await prepareRepositoryChange(input)),
+    async (input) => result(await prepareRepositoryChange(input), input.responseMode),
   );
 
   server.registerTool(
@@ -116,10 +158,11 @@ export function registerRepositoryTools(server: McpServer): void {
         applyToken: z.string().min(1),
         expectedFileHashes: z.record(z.string(), z.string().length(64).or(z.null())),
         approve: z.literal(true),
+        responseMode: responseModeSchema,
       },
       outputSchema: applyRepositoryChangeOutputSchema,
     },
-    async (input) => result(await applyRepositoryChange(input)),
+    async (input) => result(await applyRepositoryChange(input), input.responseMode),
   );
 
   server.registerTool(
@@ -132,10 +175,11 @@ export function registerRepositoryTools(server: McpServer): void {
       inputSchema: {
         profile: z.enum(verificationProfiles),
         checks: z.array(z.enum(verificationChecks)).max(10).optional(),
+        responseMode: responseModeSchema,
       },
       outputSchema: verifyRepositoryChangeOutputSchema,
     },
-    async (input) => result(verifyRepositoryChange(input)),
+    async (input) => result(verifyRepositoryChange(input), input.responseMode),
   );
 
   server.registerTool(
@@ -150,10 +194,11 @@ export function registerRepositoryTools(server: McpServer): void {
         applyToken: z.string().min(1),
         offset: z.number().int().nonnegative().optional(),
         maxChars: z.number().int().min(1).max(MAX_DIFF_CHUNK_CHARACTERS).optional(),
+        responseMode: responseModeSchema,
       },
       outputSchema: readRepositoryChangeDiffOutputSchema,
     },
-    async (input) => result(readRepositoryChangeDiff(input)),
+    async (input) => result(readRepositoryChangeDiff(input), input.responseMode),
   );
 
   server.registerTool(
@@ -166,10 +211,11 @@ export function registerRepositoryTools(server: McpServer): void {
       inputSchema: {
         consentToken: z.string().min(1).optional(),
         approveRestrictedPaths: z.literal(true).optional(),
+        responseMode: responseModeSchema,
       },
       outputSchema: prepareWorkingTreeCommitOutputSchema,
     },
-    async (input) => result(await prepareWorkingTreeCommit(input)),
+    async (input) => result(await prepareWorkingTreeCommit(input), input.responseMode),
   );
 
   server.registerTool(
@@ -184,10 +230,11 @@ export function registerRepositoryTools(server: McpServer): void {
         approvalHash: z.string().length(64),
         offset: z.number().int().nonnegative().optional(),
         maxChars: z.number().int().min(1).max(MAX_DIFF_CHUNK_CHARACTERS).optional(),
+        responseMode: responseModeSchema,
       },
       outputSchema: readWorkingTreeDiffOutputSchema,
     },
-    async (input) => result(readWorkingTreeDiff(input)),
+    async (input) => result(readWorkingTreeDiff(input), input.responseMode),
   );
 
   server.registerTool(
@@ -200,6 +247,7 @@ export function registerRepositoryTools(server: McpServer): void {
         operationId: z.string().min(1),
         approvalHash: z.string().length(64),
         commits: commitEntries,
+        responseMode: responseModeSchema,
       },
       outputSchema: gitCommitWorkingTreeOutputSchema,
     },
@@ -210,6 +258,7 @@ export function registerRepositoryTools(server: McpServer): void {
           input.approvalHash,
           input.commits as CommitEntry[],
         ),
+        input.responseMode,
       ),
   );
 
@@ -223,10 +272,12 @@ export function registerRepositoryTools(server: McpServer): void {
       inputSchema: {
         operationId: z.string().min(1),
         approvalHash: z.string().length(64),
+        responseMode: responseModeSchema,
       },
       outputSchema: prepareCommitsOutputSchema,
     },
-    async (input) => result(await prepareCommits(input.operationId, input.approvalHash)),
+    async (input) =>
+      result(await prepareCommits(input.operationId, input.approvalHash), input.responseMode),
   );
 
   server.registerTool(
@@ -234,11 +285,12 @@ export function registerRepositoryTools(server: McpServer): void {
     {
       title: "Commit an approved applied change one file at a time",
       description:
-        "Approval-gated local commit for an already-applied change. Requires exact file coverage, rejects unrelated or stale changes, keeps hooks active, and creates one commit per reviewed file.",
+        "Approval-gated local commit for an already-applied change. Requires exact file coverage, rejects unrelated or stale changes, keeps hooks active, and creates one commit per file.",
       inputSchema: {
         operationId: z.string().min(1),
         approvalHash: z.string().length(64),
         commits: commitEntries,
+        responseMode: responseModeSchema,
       },
       outputSchema: gitCommitFilesOutputSchema,
     },
@@ -249,6 +301,7 @@ export function registerRepositoryTools(server: McpServer): void {
           input.approvalHash,
           input.commits as CommitEntry[],
         ),
+        input.responseMode,
       ),
   );
 }
