@@ -90,18 +90,18 @@ of the final pagination band.
 
 ## Implementation map
 
-- [`src/components/pages/certificatesPage/Certificates.tsx`](../../src/components/pages/certificatesPage/Certificates.tsx)
+- [`apps/portfolio-web/src/components/pages/certificatesPage/Certificates.tsx`](../../apps/portfolio-web/src/components/pages/certificatesPage/Certificates.tsx)
   owns public queries, paging, modal state, and route landmarks.
-- [`src/components/pages/certificatesPage/CertificateArchive.tsx`](../../src/components/pages/certificatesPage/CertificateArchive.tsx)
+- [`apps/portfolio-web/src/components/pages/certificatesPage/CertificateArchive.tsx`](../../apps/portfolio-web/src/components/pages/certificatesPage/CertificateArchive.tsx)
   owns the repeated credential record and its media/link semantics.
-- [`src/components/pagination/CursorPaginationControls.tsx`](../../src/components/pagination/CursorPaginationControls.tsx)
+- [`apps/portfolio-web/src/components/pagination/CursorPaginationControls.tsx`](../../apps/portfolio-web/src/components/pagination/CursorPaginationControls.tsx)
   renders the certificate cursor range controls.
-- [`src/styles/certificate-archive.css`](../../src/styles/certificate-archive.css)
+- [`apps/portfolio-web/src/styles/certificate-archive.css`](../../apps/portfolio-web/src/styles/certificate-archive.css)
   owns the archive grid, full-record feedback, cursor controls, and
   container-query collapse.
-- [`src/controller/CertificatesPageController.ts`](../../src/controller/CertificatesPageController.ts)
+- [`workers/portfolio-api/src/controller/CertificatesPageController.ts`](../../workers/portfolio-api/src/controller/CertificatesPageController.ts)
   validates the versioned archive query contract.
-- [`src/model/CertificatesPageModel.ts`](../../src/model/CertificatesPageModel.ts)
+- [`workers/portfolio-api/src/model/CertificatesPageModel.ts`](../../workers/portfolio-api/src/model/CertificatesPageModel.ts)
   owns certificate keyset ordering, cursor encoding, totals, and batched items.
 - [[design-system/interaction-patterns|Route interaction patterns]] owns the
   shared coordinate rail, modal, cursor, and fixed-navigation rules.
