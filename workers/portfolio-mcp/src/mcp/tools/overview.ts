@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import type { PortfolioApiClient } from "../../portfolio-api/index.ts";
 import { errorResult, jsonResult } from "../results.ts";
+import { portfolioOverviewOutputSchema } from "../schemas.ts";
 
 export function registerOverviewTool(server: McpServer, api: PortfolioApiClient): void {
   server.registerTool(
@@ -9,8 +10,10 @@ export function registerOverviewTool(server: McpServer, api: PortfolioApiClient)
     {
       title: "Get portfolio overview",
       description:
-        "Return John-Ronan Beira's public identity, capabilities, home content, and portfolio links.",
-      inputSchema: z.object({}),
+        "Return Operator-Syn's public identity, capabilities, home content, and portfolio links.",
+      inputSchema: z.strictObject({}),
+      outputSchema: portfolioOverviewOutputSchema,
+      annotations: { readOnlyHint: true },
     },
     async () => {
       try {
