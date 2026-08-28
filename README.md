@@ -38,9 +38,7 @@ The frontend preview command is `npm run preview`. The production frontend is
 deployed through Cloudflare Pages Git integration with the Pages project root
 set to `apps/portfolio-web`, `npm run build` as the build command, and `dist`
 as the output directory; Pages Functions are discovered from that workspace.
-The `npm run deploy` script remains a legacy `gh-pages` publisher and does not
-deploy Pages Functions. Worker deployment is configured separately in each
-Worker workspace.
+Worker deployment is configured separately in each Worker workspace.
 
 ## Graphify
 
