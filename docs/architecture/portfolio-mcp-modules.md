@@ -15,7 +15,9 @@ role: reference
 
 The Worker keeps its Wrangler entrypoint and protocol assembly thin. Independent
 responsibilities live behind small interfaces so a change to one concern stays
-local and the public MCP contract remains easy to verify.
+local and the public MCP contract remains easy to verify. Tool output schemas live in
+`src/mcp/schemas.ts`; the result helper keeps structured content and a text
+compatibility block in sync.
 
 ## Module map
 
@@ -30,9 +32,10 @@ local and the public MCP contract remains easy to verify.
 | `src/mcp/tools/` | Tool schemas and callbacks grouped by overview, search, projects, certificates, and snippets |
 | `src/mcp/search.ts` | Bounded cross-domain search and ranking |
 | `src/mcp/snippets.ts` | Public snippet metadata projection |
-| `src/mcp/results.ts` | JSON success and error result formatting |
+| `src/mcp/schemas.ts` | Strict Zod 4 output schemas for every public tool |
+| `src/mcp/results.ts` | Structured JSON/text success results and sanitized error formatting |
 | `src/mcp/links.ts` and `validation.ts` | Canonical collection URLs and input normalization |
-| `src/portfolio-api/client.ts` | Portfolio API route composition and response aggregation |
+| `src/portfolio-api/client.ts` | Portfolio API route composition, response aggregation, and explicit public projections |
 | `src/portfolio-api/transport.ts` | GET requests, timeout, status, JSON/text decoding, and byte limits |
 | `src/portfolio-api/types.ts` | The adapter's data and client contract types |
 | `src/portfolio-api/snippets.ts` and `urls.ts` | Snippet-tree normalization and public URL helpers |
