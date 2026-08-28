@@ -41,6 +41,7 @@ root. Topic notes live in focused folders.
   generation boundaries.
 - [[operations/local-development|Local development]] - install, check, build,
   Graphify, and database commands.
+- [[operations/deployment|Production deployment]] - production prerequisites, deployment order, smoke checks, and rollback.
 - [[operations/repository-mcp|Local Repository MCP (stdio)]] - guarded local
   changes, verification, one-file commits, and versioned Git hooks.
 
