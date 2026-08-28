@@ -90,6 +90,15 @@ export async function checkMcpConfig() {
   ) {
     errors.push("Codex Impeccable hooks must resolve the Git root at runtime.");
   }
+  if (
+    !codexHooks.includes("check-biome-hook.mjs") ||
+    !codexHooks.includes("mcp__operator_synaciel_repository__apply_repository_change") ||
+    !codexHooks.includes("additionalContextLimit")
+  ) {
+    errors.push(
+      "Codex PostToolUse hooks must provide repository Biome feedback after edits and MCP applies.",
+    );
+  }
 
   const launcher = await read("scripts/mcp-launcher.mjs").catch(() => "");
   if (!launcher) errors.push("scripts/mcp-launcher.mjs is required.");
