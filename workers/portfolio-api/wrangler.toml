@@ -1,0 +1,33 @@
+# wrangler.toml
+name = "portfolio-api"
+main = "src/entrypoint.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+VITE_CDN_URL = "https://personal-portfolio-bucket.syn-forge.com"
+R2_BUCKET_NAME = "personal-portfolio"
+
+[[services]]
+binding = "AUTH_WORKER"
+service = "auth-worker"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "my-personal-portfolio"
+database_id = "6663c46e-f2ab-4da4-9af0-ccd03afcb3e3"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "personal-portfolio"
+
+[[routes]]
+pattern = "personal-portfolio.syn-forge.com"
+custom_domain = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+
+[observability.traces]
+enabled = true
