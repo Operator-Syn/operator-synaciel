@@ -8,10 +8,10 @@ const advisory = process.argv.includes("--hook");
 const errors = [];
 
 const legacyFiles = [
-  "migrations/README.md",
-  "src/readme",
-  "src/assets/readme",
-  "src/components/readme.md",
+  "workers/portfolio-api/migrations/README.md",
+  "apps/portfolio-web/src/readme",
+  "apps/portfolio-web/src/assets/readme",
+  "apps/portfolio-web/src/components/readme.md",
 ];
 
 async function collectMarkdownFiles(directory) {
