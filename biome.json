@@ -8,18 +8,19 @@
   "files": {
     "ignoreUnknown": true,
     "includes": [
-      "src/**/*.{css,js,jsx,ts,tsx}",
-      "functions/**/*.{js,jsx,ts,tsx}",
-      "mcp/**/*.{cjs,js,jsx,mjs,ts,tsx}",
+      "apps/**/*.{css,js,jsx,ts,tsx}",
+      "workers/**/*.{js,jsx,mjs,ts,tsx,toml}",
+      "tools/**/*.{cjs,js,jsx,mjs,ts,tsx}",
       "scripts/**/*.{cjs,js,jsx,mjs,ts,tsx}",
       "tests/**/*.{cjs,js,jsx,mjs,ts,tsx}",
       "biome.json",
-      "drizzle.config.ts",
       "eslint.config.js",
-      "index.html",
-      "package.json",
-      "tsconfig*.json",
-      "vite.config.ts",
+      "**/drizzle.config.ts",
+      "**/index.html",
+      "**/package.json",
+      "**/tsconfig*.json",
+      "**/vite.config.ts",
+      "**/wrangler.toml",
       ".mcp.json"
     ]
   },
