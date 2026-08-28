@@ -1,7 +1,8 @@
 # Operator-Syn
 
-Operator-Syn is a React and TypeScript portfolio frontend built with Vite. Its
-API is a Hono Cloudflare Worker backed by D1, R2, and a separate auth Worker.
+Operator-Syn is an npm monorepo containing the React/Vite portfolio frontend,
+its Hono/D1/R2 API Worker, a public Streamable HTTP portfolio MCP Worker, and a
+local repository-only stdio MCP server.
 
 ## Start here
 
@@ -10,7 +11,8 @@ The repository documentation is also an Obsidian vault:
 - [Documentation map](docs/README.md)
 - [Architecture overview](docs/architecture/overview.md)
 - [Local development](docs/operations/local-development.md)
-- [Repository MCP and commit pipeline](docs/operations/repository-mcp.md)
+- [Public portfolio MCP (Streamable HTTP)](docs/architecture/portfolio-mcp.md)
+- [Local repository MCP (stdio) and commit pipeline](docs/operations/repository-mcp.md)
 - [Database migrations](docs/database/migrations.md)
 
 ## Development
@@ -33,11 +35,12 @@ npm run test:mcp
 ```
 
 The frontend preview command is `npm run preview`. The production frontend is
-deployed through Cloudflare Pages Git integration with `npm run build` and
-`dist` as the output directory; root Pages Functions are deployed alongside
-that output. The `npm run deploy` script remains a legacy `gh-pages` publisher
-and does not deploy Pages Functions. Worker deployment is configured separately
-through `wrangler.toml`.
+deployed through Cloudflare Pages Git integration with the Pages project root
+set to `apps/portfolio-web`, `npm run build` as the build command, and `dist`
+as the output directory; Pages Functions are discovered from that workspace.
+The `npm run deploy` script remains a legacy `gh-pages` publisher and does not
+deploy Pages Functions. Worker deployment is configured separately in each
+Worker workspace.
 
 ## Graphify
 
