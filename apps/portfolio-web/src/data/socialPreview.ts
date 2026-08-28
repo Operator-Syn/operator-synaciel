@@ -41,7 +41,7 @@ export type SocialPreviewMetadata = SocialPreviewRouteDefinition & {
 };
 
 export const HOME_PAGE_DESCRIPTION =
-  "Explore Syn-Forge: John-Ronan Beira's software developer portfolio of projects, experiments, code snippets, and practical notes on software development.";
+  "Explore Syn-Forge: Operator-Syn's software developer portfolio of projects, experiments, code snippets, and practical notes on software development.";
 
 export const SOCIAL_PREVIEW_ROUTES = [
   {
@@ -56,7 +56,7 @@ export const SOCIAL_PREVIEW_ROUTES = [
     pathname: "/projects",
     label: "Projects",
     title: "Projects",
-    description: "Browse software projects by John-Ronan Beira.",
+    description: "Browse software projects by Operator-Syn.",
   },
   {
     route: "certificates",
