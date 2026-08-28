@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { lstat, readFile } from "node:fs/promises";
 
+import { buildDiffDocument, type DiffDocument, previewDiff, readDiffChunk } from "./diff.ts";
 import { withMutationLock } from "./mutation-lock.ts";
 import {
   digestBytes,
@@ -14,6 +15,7 @@ import { COMMIT_APPROVAL_ENV, CONSENTABLE_RESTRICTED_DIRS } from "./policy.ts";
 import { isCredentialLikeContent } from "./redaction.ts";
 
 const MAX_COMMIT_FILE_BYTES = 50 * 1024 * 1024;
+const MAX_RESULT_OUTPUT_CHARACTERS = 12_000;
 const OPERATION_TTL_MS = 30 * 60 * 1_000;
 const MAX_OPERATIONS = 100;
 
@@ -41,6 +43,11 @@ type FileSnapshot = {
 type WorkingTreeSnapshot = {
   readonly files: readonly FileSnapshot[];
   readonly diff: string;
+  readonly diffTruncated: boolean;
+  readonly diffTotalCharacters: number;
+  readonly diffTotalBytes: number;
+  readonly diffNextOffset: number | null;
+  readonly omittedPaths: readonly string[];
   readonly hash: string;
 };
 
@@ -50,6 +57,7 @@ type WorkingTreeOperation = {
   readonly createdAt: string;
   readonly expiresAt: number;
   readonly snapshot: WorkingTreeSnapshot;
+  readonly diff: DiffDocument;
   readonly commitApprovalMarker?: string;
 };
 
@@ -184,7 +192,17 @@ function currentStatus(
 }
 
 function statusResult(): GitResult {
-  return runGit(["status", "--short", "--untracked-files=all", "--no-renames"]);
+  return compactGitResult(runGit(["status", "--short", "--untracked-files=all", "--no-renames"]));
+}
+
+function boundedOutput(value: string): string {
+  return value.length <= MAX_RESULT_OUTPUT_CHARACTERS
+    ? value
+    : `${value.slice(0, MAX_RESULT_OUTPUT_CHARACTERS)}\n[output truncated]`;
+}
+
+function compactGitResult(result: GitResult): GitResult {
+  return { ...result, stdout: boundedOutput(result.stdout), stderr: boundedOutput(result.stderr) };
 }
 
 async function fileSnapshot(
@@ -214,49 +232,58 @@ async function buildDiff(
   entries: readonly GitStatusEntry[],
   allowRestrictedPaths: boolean,
   allowIgnoredDeletions = false,
-): Promise<string> {
-  if (entries.length === 0) return "";
-  const tracked = entries.filter((entry) => entry.status !== "??").map((entry) => entry.path);
-  const parts: string[] = [];
-  if (tracked.length > 0) {
-    parts.push(
-      requireGit(["diff", "--binary", "--no-ext-diff", "--no-renames", "HEAD", "--", ...tracked])
-        .stdout,
-    );
+): Promise<DiffDocument> {
+  if (entries.length === 0) return buildDiffDocument([]);
+  const sections: Array<{ readonly path: string; readonly content: string }> = [];
+  const tracked = entries.filter((entry) => entry.status !== "??");
+  for (const entry of tracked) {
+    const content = requireGit([
+      "diff",
+      "--binary",
+      "--no-ext-diff",
+      "--no-renames",
+      "HEAD",
+      "--",
+      entry.path,
+    ]).stdout;
+    if (content) sections.push({ path: entry.path, content });
   }
 
   for (const entry of entries.filter((candidate) => candidate.status === "??")) {
     const { absolutePath } = await safeAbsolutePath(entry.path, { allowRestrictedPaths });
     const snapshot = await fileSnapshot(entry.path, allowRestrictedPaths, allowIgnoredDeletions);
     if (snapshot.size > 1_000_000) {
-      parts.push(
-        `diff --git a/${entry.path} b/${entry.path}\nBinary files differ: ${entry.path}\n`,
-      );
+      sections.push({
+        path: entry.path,
+        content: `diff --git a/${entry.path} b/${entry.path}\nBinary files differ: ${entry.path}\n`,
+      });
       continue;
     }
     const content = await readFile(absolutePath, "utf8");
     if (content.includes("\0")) {
-      parts.push(
-        `diff --git a/${entry.path} b/${entry.path}\nBinary files differ: ${entry.path}\n`,
-      );
+      sections.push({
+        path: entry.path,
+        content: `diff --git a/${entry.path} b/${entry.path}\nBinary files differ: ${entry.path}\n`,
+      });
       continue;
     }
-    parts.push(
-      [
+    sections.push({
+      path: entry.path,
+      content: [
         `--- /dev/null`,
         `+++ b/${entry.path}`,
         `@@ -0,0 +1,${content.split(/\r?\n/).length} @@`,
         ...content.split(/\r?\n/).map((line) => `+${line}`),
       ].join("\n"),
-    );
+    });
   }
-  return parts.join("\n").slice(0, 2_000_000);
+  return buildDiffDocument(sections);
 }
 
 async function captureWorkingTreeSnapshot(
   allowRestrictedPaths = false,
   allowIgnoredDeletions = false,
-): Promise<WorkingTreeSnapshot> {
+): Promise<{ readonly snapshot: WorkingTreeSnapshot; readonly diff: DiffDocument }> {
   const entries = currentStatus(allowRestrictedPaths, allowIgnoredDeletions);
   const files = await Promise.all(
     entries.map(async (entry) => ({
@@ -270,8 +297,21 @@ async function captureWorkingTreeSnapshot(
     })),
   );
   const diff = await buildDiff(entries, allowRestrictedPaths, allowIgnoredDeletions);
+  const preview = previewDiff(diff);
   const hash = digest(JSON.stringify(files));
-  return { files, diff, hash };
+  return {
+    snapshot: {
+      files,
+      diff: preview.content,
+      diffTruncated: preview.diffTruncated,
+      diffTotalCharacters: preview.totalCharacters,
+      diffTotalBytes: preview.totalBytes,
+      diffNextOffset: preview.nextOffset,
+      omittedPaths: preview.omittedPaths,
+      hash,
+    },
+    diff,
+  };
 }
 
 function pruneOperations(): void {
@@ -309,6 +349,20 @@ function getWorkingTreeOperation(operationId: string, approvalHash: string): Wor
   if (!operation || operation.hash !== approvalHash)
     fail("The working-tree operation ID or approval hash is invalid or stale.");
   return operation;
+}
+
+export function readWorkingTreeDiff(input: {
+  readonly operationId: string;
+  readonly approvalHash: string;
+  readonly offset?: number;
+  readonly maxChars?: number;
+}): Record<string, unknown> {
+  const operation = getWorkingTreeOperation(input.operationId, input.approvalHash);
+  return {
+    kind: "working-tree",
+    operationId: operation.id,
+    ...readDiffChunk(operation.diff, input.offset, input.maxChars),
+  };
 }
 
 function getAppliedOperation(operationId: string, approvalHash: string): AppliedOperation {
@@ -454,7 +508,8 @@ export async function prepareWorkingTreeCommit(
   if (input.approveRestrictedPaths && !input.consentToken)
     fail("Restricted-path approval requires the consent token returned by preparation.");
 
-  const initialSnapshot = await captureWorkingTreeSnapshot(true, true);
+  const initialCapture = await captureWorkingTreeSnapshot(true, true);
+  const initialSnapshot = initialCapture.snapshot;
   const restrictedPaths = restrictedPathReviews(initialSnapshot.files);
   if (restrictedPaths.length > 0 && !input.consentToken) {
     const consentToken = randomUUID();
@@ -496,7 +551,8 @@ export async function prepareWorkingTreeCommit(
     commitApprovalMarker = randomUUID();
   }
 
-  const snapshot = await captureWorkingTreeSnapshot(true, true);
+  const capture = await captureWorkingTreeSnapshot(true, true);
+  const snapshot = capture.snapshot;
   const operationId = randomUUID();
   const operation: WorkingTreeOperation = {
     id: operationId,
@@ -504,6 +560,7 @@ export async function prepareWorkingTreeCommit(
     createdAt: new Date().toISOString(),
     expiresAt: Date.now() + OPERATION_TTL_MS,
     snapshot,
+    diff: capture.diff,
     ...(commitApprovalMarker ? { commitApprovalMarker } : {}),
   };
   workingTreeOperations.set(operationId, operation);
@@ -555,7 +612,7 @@ export async function commitWorkingTree(
         commits[paths.indexOf(path)].message,
         hasRestrictedPath(path) ? operation.commitApprovalMarker : undefined,
       );
-      results.push({ path, ...result });
+      results.push({ path, ...compactGitResult(result) });
       if (result.status !== 0) {
         return {
           status: "partial",
@@ -685,7 +742,7 @@ export async function commitAppliedFiles(
         commits[paths.indexOf(path)].message,
         hasRestrictedPath(path) ? operation.commitApprovalMarker : undefined,
       );
-      results.push({ path, ...result });
+      results.push({ path, ...compactGitResult(result) });
       if (result.status !== 0) {
         return {
           status: "partial",
