@@ -24,6 +24,7 @@ enabled_tools = [
   "apply_repository_change",
   "verify_repository_change",
   "read_repository_change_diff",
+  "read_repository_files",
   "read_working_tree_diff",
   "prepare_working_tree_commit",
   "git_commit_working_tree",
