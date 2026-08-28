@@ -7,6 +7,7 @@ import { afterEach, describe, test } from "node:test";
 
 import {
   createRepository,
+  type JsonRpcMessage,
   payload,
   removeRepository,
   repositoryRoot,
@@ -17,6 +18,17 @@ import {
 
 const repositories: string[] = [];
 const servers: Array<{ close: () => Promise<void> }> = [];
+
+function assertStructuredResponse(response: JsonRpcMessage): Record<string, unknown> {
+  const text = response.result?.content?.[0]?.text;
+  const structuredContent = response.result?.structuredContent;
+
+  assert.ok(text);
+  assert.ok(structuredContent);
+  assert.deepEqual(structuredContent, JSON.parse(text));
+
+  return structuredContent;
+}
 
 afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => server.close()));
@@ -46,6 +58,53 @@ describe("repository MCP protocol", () => {
       ]),
     );
     assert.match(server.initialization.result?.instructions ?? "", /repository_workflow_status/);
+  });
+
+  test("advertises output schemas and structured text-compatible results", async () => {
+    const repository = await createRepository();
+    repositories.push(repository);
+    const server = await startServer(repository);
+    servers.push(server);
+
+    const listed = await server.call("tools/list");
+    const tools = listed.result?.tools ?? [];
+    assert.equal(tools.length, 8);
+    for (const tool of tools) {
+      assert.ok(tool.outputSchema);
+    }
+
+    const status = await server.call("tools/call", {
+      name: "repository_workflow_status",
+      arguments: {},
+    });
+    assert.equal(assertStructuredResponse(status).status, "attention");
+
+    const prepared = await server.call("tools/call", {
+      name: "prepare_repository_change",
+      arguments: {
+        taskType: "app",
+        description: "exercise structured repository output",
+        profile: "app",
+        operations: [
+          {
+            path: "apps/portfolio-web/src/structured-output.ts",
+            content: "export const structuredOutput = true;\n",
+          },
+        ],
+      },
+    });
+    assert.equal(assertStructuredResponse(prepared).status, "prepared");
+
+    const rejected = await server.call("tools/call", {
+      name: "prepare_repository_change",
+      arguments: {
+        taskType: "patch",
+        description: "reject traversal",
+        profile: "app",
+        operations: [{ path: "../outside.txt", content: "nope\n" }],
+      },
+    });
+    assert.equal(assertStructuredResponse(rejected).status, "rejected");
   });
 
   test("reports workflow readiness without exposing approval or credential values", async () => {
