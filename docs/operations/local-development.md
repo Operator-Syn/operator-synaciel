@@ -36,6 +36,80 @@ npm run build
 npm run preview
 ```
 
+## Local portfolio assistant
+
+Vite development requires explicit assistant endpoints. To use the deployed
+Workers from `npm run dev`, put these values in the ignored repository-root
+`.env.local` file (the Vite configuration uses that root as its `envDir`):
+
+```dotenv
+VITE_PUBLIC_AUTH_URL=https://public-auth.syn-forge.com
+VITE_PORTFOLIO_AGENT_URL=https://assistant.syn-forge.com
+VITE_TURNSTILE_SITE_KEY=<production widget site key>
+```
+
+If either endpoint is missing or malformed in a development build, the FAB
+shows a configuration error instead of redirecting to production. Production
+builds use the explicit production defaults only when no production override
+is provided. The production Worker `BROWSER_ORIGINS` values are parameterized
+in the Wrangler files and include `http://localhost:5173` for this workflow;
+they are not wildcard origins.
+
+The production auth Worker uses a `Secure; HttpOnly; SameSite=None` session
+cookie for this cross-site local-browser flow, while state-changing routes still
+require the exact configured Origin. If Brave or another browser blocks
+third-party cookies, allow cookies for `public-auth.syn-forge.com` during local
+testing or use the isolated local Worker profile below.
+
+The Google OAuth callback remains the production URI
+`https://public-auth.syn-forge.com/oauth/google/callback`; the OAuth state stores
+the localhost return target. The production Turnstile widget must allow the
+`localhost` hostname, and its production site key must be paired with the
+production `TURNSTILE_SECRET_KEY`. Do not use Cloudflare's dummy test keys with
+the production Worker secret.
+
+### Optional: run isolated local Workers
+
+If you do not want local Vite requests to use production authentication and
+agent state, switch the two Vite endpoint values to `http://localhost:8787` and
+`http://localhost:8788`, then run the local Workers and frontend in separate
+terminals:
+
+```bash
+npx wrangler d1 migrations apply portfolio-agent-auth --local \
+  --config workers/portfolio-public-auth/wrangler.toml --env local
+npm run portfolio-agent:dev
+npm run public-auth:dev
+npm run dev
+```
+
+The local Wrangler profiles use `localhost:8787` for public-auth,
+`localhost:8788` for the agent, and a local service binding between them. They
+also pin the local compatibility date to the newest date supported by the
+installed Wrangler runtime; the production compatibility date remains
+unchanged. The shared local D1 database is keyed by the checked-in database ID
+but is not the remote database when `--local` is used. Do not apply this command
+with `--remote` as part of frontend testing.
+
+Create or fill the ignored `.dev.vars` files beside each Worker Wrangler
+configuration. This is needed only for the isolated local Worker profile.
+Use local-only values for the Google client credentials, Turnstile secret,
+ES256 JWK pair, and shared internal key; public-auth needs the private JWK and
+the agent needs the matching public JWK. Never copy those values into the
+frontend `.env` file or commit either `.dev.vars` file.
+
+For the isolated local Worker profile, the Google OAuth client must allow
+`http://localhost:5173` as an authorized JavaScript origin and
+`http://localhost:8787/oauth/google/callback` as an authorized redirect URI.
+The redirect URI must match that profile exactly. Use a local Turnstile
+widget/site key for the localhost build; its secret remains only in
+public-auth's `.dev.vars`.
+
+The local profile intentionally points the unused admin-auth check at
+`http://localhost:8789`; the existing Atelier/admin auth Worker is not started
+by this workflow, so local admin reset endpoints remain unavailable and fail
+closed.
+
 Cloudflare Pages should use `apps/portfolio-web` as its project root, `npm run
 build` as its build command, and `dist` as its output directory; Pages
 Functions are discovered from the `functions/` directory at that workspace
