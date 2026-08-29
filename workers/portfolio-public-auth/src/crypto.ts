@@ -1,0 +1,91 @@
+import { createRemoteJWKSet, importJWK, jwtVerify, SignJWT } from "jose";
+import { AGENT_ACCESS_TTL_SECONDS, getConfigString, type PublicAuthEnvironment } from "./config.ts";
+
+const GOOGLE_ISSUERS = ["https://accounts.google.com", "accounts.google.com"];
+const GOOGLE_JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
+
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+
+export function randomToken(byteLength = 32): string {
+  const bytes = new Uint8Array(byteLength);
+  crypto.getRandomValues(bytes);
+  return bytesToBase64Url(bytes);
+}
+
+export async function sha256Base64Url(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return bytesToBase64Url(new Uint8Array(digest));
+}
+
+export type GoogleIdentity = {
+  sub: string;
+  email: string;
+  displayName: string;
+};
+
+export async function verifyGoogleIdToken(
+  idToken: string,
+  environment: PublicAuthEnvironment,
+  nonce: string,
+): Promise<GoogleIdentity> {
+  const verified = await jwtVerify(idToken, GOOGLE_JWKS, {
+    issuer: GOOGLE_ISSUERS,
+    audience: getConfigString(environment, "GOOGLE", "CLIENT", "ID"),
+  });
+  const payload = verified.payload;
+  if (payload.nonce !== nonce) throw new Error("Google nonce did not match the OAuth state.");
+  if (
+    typeof payload.sub !== "string" ||
+    typeof payload.email !== "string" ||
+    payload.email_verified !== true
+  ) {
+    throw new Error("Google identity is missing a verified email.");
+  }
+
+  return {
+    sub: payload.sub,
+    email: payload.email,
+    displayName:
+      typeof payload.name === "string" && payload.name.trim().length > 0
+        ? payload.name.trim().slice(0, 120)
+        : payload.email,
+  };
+}
+
+export async function issueAgentAccessToken(
+  environment: PublicAuthEnvironment,
+  claims: {
+    sub: string;
+    sid: string;
+    tid: string;
+    quotaEpoch: number;
+  },
+): Promise<{ token: string; jti: string; expiresAt: number }> {
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = now + AGENT_ACCESS_TTL_SECONDS;
+  const jti = randomToken(16);
+  const privateJwk = JSON.parse(
+    getConfigString(environment, "AGENT", "TOKEN", "PRIVATE", "JWK"),
+  ) as JsonWebKey;
+  const key = await importJWK(privateJwk, "ES256");
+  const token = await new SignJWT({
+    sub: claims.sub,
+    sid: claims.sid,
+    tid: claims.tid,
+    scope: "chat",
+    q: claims.quotaEpoch,
+  })
+    .setProtectedHeader({ alg: "ES256", typ: "JWT" })
+    .setIssuer(environment.PUBLIC_AUTH_ORIGIN)
+    .setAudience(environment.AGENT_AUDIENCE)
+    .setJti(jti)
+    .setIssuedAt(now)
+    .setExpirationTime(expiresAt)
+    .sign(key);
+
+  return { token, jti, expiresAt };
+}
