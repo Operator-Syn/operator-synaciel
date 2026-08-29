@@ -329,7 +329,7 @@ Turnstile widget permits localhost before browser testing.
 
 ## Sweep 16 — async agent connection render guard
 
-**Date:** 2026-08-29
+**Date:** 2026-08-30
 **Scope:** authenticated frontend `useAgent` setup, token-query caching,
 reconnect behavior, and the user-visible failure boundary.
 
@@ -352,7 +352,17 @@ reconnect behavior, and the user-visible failure boundary.
       portfolio shell.
 - [x] Updated the architecture, local-development, and deployment notes with
       the lifecycle contract and diagnostic interpretation.
+- [x] Pushed commit `344cfbd` to `main`; GitHub Actions run
+      [33261570102](https://github.com/Operator-Syn/operator-synaciel/actions/runs/33261570102)
+      passed validation and deployed API, MCP, portfolio-agent, and public-auth
+      in order.
+- [x] The production Pages bundle serves the loading fallback and retry-boundary
+      strings. A controlled production-browser check with mocked auth rendered
+      the chat composer without the React crash and contained a rejected token
+      inside the assistant panel.
+- [ ] Complete the operator-owned Google, Turnstile, real session, and real
+      WebSocket smoke flow; the automation browser has no Google account
+      session, so this evidence is intentionally not claimed as live auth.
 
-Production Pages must still serve this frontend fix before the authenticated
-browser smoke flow can be marked live. The source fix does not alter OAuth
-origins, cookies, token claims, Worker limits, or MCP scope.
+The source fix does not alter OAuth origins, cookies, token claims, Worker
+limits, or MCP scope.
