@@ -32,6 +32,48 @@ test("reads bounded source snapshots in a batch", async () => {
   assert.equal(next.files[0]?.nextOffset, 64);
 });
 
+test("reads cross-workspace source through the repository profile", async () => {
+  const result = await readRepositoryFiles({
+    profile: "repository",
+    files: [
+      { path: "workers/portfolio-api/src/entrypoint.ts" },
+      { path: "workers/portfolio-mcp/src/mcp/server.ts" },
+      { path: "apps/portfolio-web/src/data/portfolioMcp.ts" },
+      { path: "package-lock.json" },
+    ],
+    maxChars: 128,
+  });
+  assert.equal(result.profile, "repository");
+  assert.equal(result.files.length, 4);
+  for (const file of result.files) {
+    assert.equal(file.exists, true, file.path);
+    assert.equal(file.content.length, 128);
+    assert.equal(typeof file.sha256, "string");
+  }
+  const packageLock = result.files.find((file) => file.path === "package-lock.json");
+  assert.ok(packageLock);
+  assert.equal(packageLock.totalBytes > 512_000, true);
+  assert.equal(packageLock.complete, false);
+  assert.equal(packageLock.nextOffset, 128);
+});
+
+test("rejects binary and ignored paths from the broad source profile", async () => {
+  await assert.rejects(
+    readRepositoryFiles({
+      profile: "repository",
+      files: [{ path: "apps/portfolio-web/public/social-image.png" }],
+    }),
+    /Binary file paths cannot be read/,
+  );
+  await assert.rejects(
+    readRepositoryFiles({
+      profile: "repository",
+      files: [{ path: "graphify-out/graph.json" }],
+    }),
+    /ignored runtime directory/,
+  );
+});
+
 test("rejects duplicate and out-of-profile source requests", async () => {
   await assert.rejects(
     readRepositoryFiles({
