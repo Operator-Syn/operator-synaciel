@@ -1,0 +1,62 @@
+name = "portfolio-agent"
+main = "src/index.ts"
+compatibility_date = "2026-08-29"
+
+[vars]
+PORTFOLIO_MCP_URL = "https://mcp.syn-forge.com/mcp"
+PUBLIC_AUTH_ORIGIN = "https://public-auth.syn-forge.com"
+AGENT_AUDIENCE = "portfolio-agent"
+MODEL_ID = "@cf/zai-org/glm-4.7-flash"
+BROWSER_ORIGINS = "https://syn-forge.com,https://www.syn-forge.com,http://localhost:5173"
+
+[ai]
+binding = "AI"
+
+[[d1_databases]]
+binding = "AUTH_DB"
+database_name = "portfolio-agent-auth"
+database_id = "5921ab3b-ebd6-4377-a474-4618d78f4aa4"
+
+[[durable_objects.bindings]]
+name = "PortfolioAgent"
+class_name = "PortfolioAgent"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["PortfolioAgent"]
+
+[[routes]]
+pattern = "assistant.syn-forge.com"
+custom_domain = true
+
+[env.local]
+name = "portfolio-agent-local"
+compatibility_date = "2026-08-27"
+routes = []
+
+[env.local.vars]
+PORTFOLIO_MCP_URL = "https://mcp.syn-forge.com/mcp"
+PUBLIC_AUTH_ORIGIN = "http://localhost:8787"
+AGENT_AUDIENCE = "portfolio-agent"
+MODEL_ID = "@cf/zai-org/glm-4.7-flash"
+BROWSER_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
+
+[env.local.ai]
+binding = "AI"
+
+[[env.local.d1_databases]]
+binding = "AUTH_DB"
+database_name = "portfolio-agent-auth"
+database_id = "5921ab3b-ebd6-4377-a474-4618d78f4aa4"
+
+[[env.local.durable_objects.bindings]]
+name = "PortfolioAgent"
+class_name = "PortfolioAgent"
+
+[[env.local.migrations]]
+tag = "v1"
+new_sqlite_classes = ["PortfolioAgent"]
+
+[observability.logs]
+enabled = true
+invocation_logs = true
