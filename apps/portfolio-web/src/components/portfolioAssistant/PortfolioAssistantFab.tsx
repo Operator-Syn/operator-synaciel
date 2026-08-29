@@ -12,7 +12,17 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import {
+  Component,
+  type FormEvent,
+  type ReactNode,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import {
   type AssistantThread,
@@ -48,6 +58,7 @@ declare global {
 }
 
 const { agentOrigin, turnstileSiteKey } = portfolioAssistantConfig;
+const AGENT_QUERY_CACHE_TTL_MS = 4 * 60 * 1_000;
 
 function messageText(message: UIMessage): string {
   return message.parts
@@ -136,6 +147,43 @@ function TurnstileGate({ onVerified }: { onVerified: () => void }) {
   );
 }
 
+type AssistantChatErrorBoundaryProps = {
+  children: ReactNode;
+};
+
+type AssistantChatErrorBoundaryState = {
+  hasError: boolean;
+};
+
+class AssistantChatErrorBoundary extends Component<
+  AssistantChatErrorBoundaryProps,
+  AssistantChatErrorBoundaryState
+> {
+  state: AssistantChatErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): AssistantChatErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  reset = () => this.setState({ hasError: false });
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="portfolio-assistant-empty-state">
+          <p className="portfolio-assistant-error">
+            The assistant connection could not be opened. Please try again.
+          </p>
+          <button className="action-quiet" onClick={this.reset} type="button">
+            Retry connection
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function AssistantChat({
   threadId,
   onConnectionError,
@@ -147,13 +195,14 @@ function AssistantChat({
     async () => ({ token: (await issueAgentToken(threadId)).token }),
     [threadId],
   );
+  const queryDeps = useMemo(() => [threadId], [threadId]);
   const agent = useAgent({
     agent: "PortfolioAgent",
     name: threadId,
     host: agentOrigin ?? "",
     query,
-    queryDeps: [threadId],
-    cacheTtl: 0,
+    queryDeps,
+    cacheTtl: AGENT_QUERY_CACHE_TTL_MS,
     onConnectionError: (error) => {
       onConnectionError(error.reason || "The assistant connection was closed.");
     },
@@ -238,6 +287,26 @@ function AssistantChat({
               : "Grounded answers include source links."}
       </output>
     </div>
+  );
+}
+
+function AssistantChatBoundary({
+  threadId,
+  onConnectionError,
+}: {
+  threadId: string;
+  onConnectionError: (message: string) => void;
+}) {
+  return (
+    <AssistantChatErrorBoundary>
+      <Suspense
+        fallback={
+          <p className="portfolio-assistant-status">Authenticating the assistant connection…</p>
+        }
+      >
+        <AssistantChat onConnectionError={onConnectionError} threadId={threadId} />
+      </Suspense>
+    </AssistantChatErrorBoundary>
   );
 }
 
@@ -363,7 +432,7 @@ function AuthenticatedAssistant({ onLogout }: { onLogout: () => void }) {
       </div>
       {error ? <p className="portfolio-assistant-error">{error}</p> : null}
       {activeThreadId ? (
-        <AssistantChat
+        <AssistantChatBoundary
           key={activeThreadId}
           onConnectionError={setError}
           threadId={activeThreadId}
