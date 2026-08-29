@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { lstat, readFile } from "node:fs/promises";
 
+import { buildDiffDocument, type DiffDocument, previewDiff, readDiffChunk } from "./diff.ts";
 import { withMutationLock } from "./mutation-lock.ts";
 import {
   digestBytes,
@@ -10,12 +11,20 @@ import {
   validateLocalProjectRoot,
   validateRelativeProjectPath,
 } from "./path.ts";
-import { COMMIT_APPROVAL_ENV, CONSENTABLE_RESTRICTED_DIRS } from "./policy.ts";
+import {
+  COMMIT_APPROVAL_ENV,
+  CONSENTABLE_RESTRICTED_DIRS,
+  MAX_RETAINED_REVIEW_BYTES,
+} from "./policy.ts";
 import { isCredentialLikeContent } from "./redaction.ts";
+import { clearVerificationCache } from "./verification.ts";
+import { invalidateWorkflowStatusCache } from "./workflow-status.ts";
 
 const MAX_COMMIT_FILE_BYTES = 50 * 1024 * 1024;
+const MAX_RESULT_OUTPUT_CHARACTERS = 12_000;
 const OPERATION_TTL_MS = 30 * 60 * 1_000;
 const MAX_OPERATIONS = 100;
+const MAX_CONSENT_CHALLENGES = 100;
 
 export type CommitEntry = {
   readonly path: string;
@@ -38,9 +47,20 @@ type FileSnapshot = {
   readonly size: number;
 };
 
+type FileSnapshotState = {
+  readonly hash: string | null;
+  readonly size: number;
+  readonly text?: string;
+};
+
 type WorkingTreeSnapshot = {
   readonly files: readonly FileSnapshot[];
   readonly diff: string;
+  readonly diffTruncated: boolean;
+  readonly diffTotalCharacters: number;
+  readonly diffTotalBytes: number;
+  readonly diffNextOffset: number | null;
+  readonly omittedPaths: readonly string[];
   readonly hash: string;
 };
 
@@ -50,6 +70,7 @@ type WorkingTreeOperation = {
   readonly createdAt: string;
   readonly expiresAt: number;
   readonly snapshot: WorkingTreeSnapshot;
+  readonly diff: DiffDocument;
   readonly commitApprovalMarker?: string;
 };
 
@@ -104,6 +125,36 @@ export type CommitPipelineResult = {
 const workingTreeOperations = new Map<string, WorkingTreeOperation>();
 const appliedOperations = new Map<string, AppliedOperation>();
 const consentChallenges = new Map<string, WorkingTreeConsentChallenge>();
+let retainedOperationBytes = 0;
+
+function workingTreeOperationBytes(operation: WorkingTreeOperation): number {
+  return (
+    operation.diff.totalBytes +
+    Buffer.byteLength(operation.snapshot.diff, "utf8") +
+    operation.snapshot.files.reduce((sum, file) => sum + file.size, 0)
+  );
+}
+
+function appliedOperationBytes(operation: AppliedOperation): number {
+  return operation.files.reduce((sum, file) => sum + file.path.length + 64, 0);
+}
+
+function deleteWorkingTreeOperation(operationId: string): void {
+  const operation = workingTreeOperations.get(operationId);
+  if (!operation) return;
+  retainedOperationBytes = Math.max(
+    0,
+    retainedOperationBytes - workingTreeOperationBytes(operation),
+  );
+  workingTreeOperations.delete(operationId);
+}
+
+function deleteAppliedOperation(operationId: string): void {
+  const operation = appliedOperations.get(operationId);
+  if (!operation) return;
+  retainedOperationBytes = Math.max(0, retainedOperationBytes - appliedOperationBytes(operation));
+  appliedOperations.delete(operationId);
+}
 
 function digest(value: string | Uint8Array): string {
   return createHash("sha256").update(value).digest("hex");
@@ -184,17 +235,25 @@ function currentStatus(
 }
 
 function statusResult(): GitResult {
-  return runGit(["status", "--short", "--untracked-files=all", "--no-renames"]);
+  return compactGitResult(runGit(["status", "--short", "--untracked-files=all", "--no-renames"]));
+}
+
+function boundedOutput(value: string): string {
+  return value.length <= MAX_RESULT_OUTPUT_CHARACTERS
+    ? value
+    : `${value.slice(0, MAX_RESULT_OUTPUT_CHARACTERS)}\n[output truncated]`;
+}
+
+function compactGitResult(result: GitResult): GitResult {
+  return { ...result, stdout: boundedOutput(result.stdout), stderr: boundedOutput(result.stderr) };
 }
 
 async function fileSnapshot(
   path: string,
   allowRestrictedPaths = false,
   allowIgnoredPath = false,
-): Promise<{
-  readonly hash: string | null;
-  readonly size: number;
-}> {
+  includeText = false,
+): Promise<FileSnapshotState> {
   const { absolutePath } = await safeAbsolutePath(path, {
     allowIgnoredPaths: allowIgnoredPath,
     allowRestrictedPaths,
@@ -204,92 +263,166 @@ async function fileSnapshot(
   if (!info.isFile()) fail(`The reviewed path is not a regular file: ${path}`);
   if (info.size > MAX_COMMIT_FILE_BYTES) fail(`The reviewed file is too large: ${path}`);
   const bytes = await readFile(absolutePath);
-  if (!bytes.includes(0) && isCredentialLikeContent(bytes.toString("utf8"))) {
+  const isText = !bytes.includes(0);
+  const fullText = isText ? bytes.toString("utf8") : undefined;
+  if (isText && isCredentialLikeContent(fullText ?? "")) {
     fail(`Credential-like content cannot be reviewed through the commit pipeline: ${path}`);
   }
-  return { hash: digestBytes(bytes), size: bytes.byteLength };
+  return {
+    hash: digestBytes(bytes),
+    size: bytes.byteLength,
+    ...(includeText && isText && info.size <= 1_000_000 ? { text: fullText } : {}),
+  };
+}
+
+function trackedDiffSections(
+  content: string,
+  paths: readonly string[],
+): Array<{ readonly path: string; readonly content: string }> {
+  const sections: Array<{ readonly path: string; readonly content: string }> = [];
+  for (const path of paths) {
+    const marker = `diff --git a/${path} b/${path}`;
+    const start = content.indexOf(marker);
+    if (start < 0) continue;
+    const next = content.indexOf("\ndiff --git ", start + marker.length);
+    sections.push({
+      path,
+      content: content.slice(start, next < 0 ? content.length : next),
+    });
+  }
+  return sections;
 }
 
 async function buildDiff(
   entries: readonly GitStatusEntry[],
-  allowRestrictedPaths: boolean,
-  allowIgnoredDeletions = false,
-): Promise<string> {
-  if (entries.length === 0) return "";
-  const tracked = entries.filter((entry) => entry.status !== "??").map((entry) => entry.path);
-  const parts: string[] = [];
+  untrackedStates: ReadonlyMap<string, FileSnapshotState>,
+): Promise<DiffDocument> {
+  if (entries.length === 0) return buildDiffDocument([]);
+  const sections: Array<
+    | { readonly path: string; readonly content: string }
+    | { readonly path: string; readonly before: string; readonly after: string }
+  > = [];
+  const tracked = entries.filter((entry) => entry.status !== "??");
   if (tracked.length > 0) {
-    parts.push(
-      requireGit(["diff", "--binary", "--no-ext-diff", "--no-renames", "HEAD", "--", ...tracked])
-        .stdout,
-    );
+    const trackedPaths = tracked.map((entry) => entry.path);
+    const combined = requireGit([
+      "diff",
+      "--binary",
+      "--no-ext-diff",
+      "--no-renames",
+      "HEAD",
+      "--",
+      ...trackedPaths,
+    ]).stdout;
+    const parsed = trackedDiffSections(combined, trackedPaths);
+    const parsedPaths = new Set(parsed.map((section) => section.path));
+    sections.push(...parsed);
+    for (const entry of tracked) {
+      if (parsedPaths.has(entry.path)) continue;
+      const content = requireGit([
+        "diff",
+        "--binary",
+        "--no-ext-diff",
+        "--no-renames",
+        "HEAD",
+        "--",
+        entry.path,
+      ]).stdout;
+      if (content) sections.push({ path: entry.path, content });
+    }
   }
 
   for (const entry of entries.filter((candidate) => candidate.status === "??")) {
-    const { absolutePath } = await safeAbsolutePath(entry.path, { allowRestrictedPaths });
-    const snapshot = await fileSnapshot(entry.path, allowRestrictedPaths, allowIgnoredDeletions);
-    if (snapshot.size > 1_000_000) {
-      parts.push(
-        `diff --git a/${entry.path} b/${entry.path}\nBinary files differ: ${entry.path}\n`,
-      );
+    const state = untrackedStates.get(entry.path);
+    if (!state) fail(`Could not capture the untracked file state: ${entry.path}`);
+    if (state.size > 1_000_000 || state.text === undefined) {
+      sections.push({
+        path: entry.path,
+        content: `diff --git a/${entry.path} b/${entry.path}\nBinary files differ: ${entry.path}\n`,
+      });
       continue;
     }
-    const content = await readFile(absolutePath, "utf8");
-    if (content.includes("\0")) {
-      parts.push(
-        `diff --git a/${entry.path} b/${entry.path}\nBinary files differ: ${entry.path}\n`,
-      );
-      continue;
-    }
-    parts.push(
-      [
-        `--- /dev/null`,
-        `+++ b/${entry.path}`,
-        `@@ -0,0 +1,${content.split(/\r?\n/).length} @@`,
-        ...content.split(/\r?\n/).map((line) => `+${line}`),
-      ].join("\n"),
-    );
+    sections.push({ path: entry.path, before: "", after: state.text });
   }
-  return parts.join("\n").slice(0, 2_000_000);
+  return buildDiffDocument(sections);
 }
 
 async function captureWorkingTreeSnapshot(
   allowRestrictedPaths = false,
   allowIgnoredDeletions = false,
-): Promise<WorkingTreeSnapshot> {
+): Promise<{ readonly snapshot: WorkingTreeSnapshot; readonly diff: DiffDocument }> {
   const entries = currentStatus(allowRestrictedPaths, allowIgnoredDeletions);
-  const files = await Promise.all(
-    entries.map(async (entry) => ({
-      path: entry.path,
-      status: entry.status,
-      ...(await fileSnapshot(
+  const captured = await Promise.all(
+    entries.map(async (entry) => {
+      const state = await fileSnapshot(
         entry.path,
         allowRestrictedPaths,
         allowIgnoredDeletions && entry.status.includes("D"),
-      )),
-    })),
+        entry.status === "??",
+      );
+      return {
+        snapshot: {
+          path: entry.path,
+          status: entry.status,
+          hash: state.hash,
+          size: state.size,
+        },
+        state,
+      };
+    }),
   );
-  const diff = await buildDiff(entries, allowRestrictedPaths, allowIgnoredDeletions);
+  const files = captured.map(({ snapshot }) => snapshot);
+  const untrackedStates = new Map(
+    captured
+      .filter((entry) => entry.snapshot.status === "??")
+      .map((entry) => [entry.snapshot.path, entry.state] as const),
+  );
+  const diff = await buildDiff(entries, untrackedStates);
+  const preview = previewDiff(diff);
   const hash = digest(JSON.stringify(files));
-  return { files, diff, hash };
+  return {
+    snapshot: {
+      files,
+      diff: preview.content,
+      diffTruncated: preview.diffTruncated,
+      diffTotalCharacters: preview.totalCharacters,
+      diffTotalBytes: preview.totalBytes,
+      diffNextOffset: preview.nextOffset,
+      omittedPaths: preview.omittedPaths,
+      hash,
+    },
+    diff,
+  };
 }
 
-function pruneOperations(): void {
+function pruneOperations(incomingBytes = 0): void {
   const now = Date.now();
-  for (const [id, operation] of workingTreeOperations)
-    if (operation.expiresAt <= now) workingTreeOperations.delete(id);
-  for (const [id, operation] of appliedOperations)
-    if (operation.expiresAt <= now) appliedOperations.delete(id);
-  for (const [id, challenge] of consentChallenges)
+  for (const [id, operation] of workingTreeOperations) {
+    if (operation.expiresAt <= now) deleteWorkingTreeOperation(id);
+  }
+  for (const [id, operation] of appliedOperations) {
+    if (operation.expiresAt <= now) deleteAppliedOperation(id);
+  }
+  for (const [id, challenge] of consentChallenges) {
     if (challenge.expiresAt <= now) consentChallenges.delete(id);
-  while (workingTreeOperations.size + appliedOperations.size > MAX_OPERATIONS) {
+  }
+  while (consentChallenges.size > MAX_CONSENT_CHALLENGES) {
+    const first = consentChallenges.keys().next().value;
+    if (!first) break;
+    consentChallenges.delete(first);
+  }
+  while (
+    workingTreeOperations.size + appliedOperations.size > MAX_OPERATIONS ||
+    retainedOperationBytes + incomingBytes > MAX_RETAINED_REVIEW_BYTES
+  ) {
     const firstWorking = workingTreeOperations.keys().next().value;
-    if (firstWorking) workingTreeOperations.delete(firstWorking);
-    else {
-      const firstApplied = appliedOperations.keys().next().value;
-      if (!firstApplied) break;
-      appliedOperations.delete(firstApplied);
+    if (firstWorking) {
+      deleteWorkingTreeOperation(firstWorking);
+      continue;
     }
+    const firstApplied = appliedOperations.keys().next().value;
+    if (!firstApplied) break;
+    deleteAppliedOperation(firstApplied);
   }
 }
 
@@ -309,6 +442,20 @@ function getWorkingTreeOperation(operationId: string, approvalHash: string): Wor
   if (!operation || operation.hash !== approvalHash)
     fail("The working-tree operation ID or approval hash is invalid or stale.");
   return operation;
+}
+
+export function readWorkingTreeDiff(input: {
+  readonly operationId: string;
+  readonly approvalHash: string;
+  readonly offset?: number;
+  readonly maxChars?: number;
+}): Record<string, unknown> {
+  const operation = getWorkingTreeOperation(input.operationId, input.approvalHash);
+  return {
+    kind: "working-tree",
+    operationId: operation.id,
+    ...readDiffChunk(operation.diff, input.offset, input.maxChars),
+  };
 }
 
 function getAppliedOperation(operationId: string, approvalHash: string): AppliedOperation {
@@ -429,20 +576,24 @@ async function ensureWorkingTreeProgress(
     hasRestrictedPath(file.path),
   );
   const entries = currentStatus(allowRestrictedPaths, true);
+  const byPath = new Map(entries.map((entry) => [entry.path, entry]));
   const expected = new Set(operation.snapshot.files.map((file) => file.path));
-  for (const entry of entries)
-    if (!expected.has(entry.path))
+  for (const entry of entries) {
+    if (!expected.has(entry.path)) {
       fail(`Unrelated working-tree changes must be resolved before committing: ${entry.path}`);
+    }
+  }
   for (const file of operation.snapshot.files) {
-    const status = entries.find((entry) => entry.path === file.path);
-    await ensureFileHash(file.path, file.hash, allowRestrictedPaths, file.status.includes("D"));
+    const status = byPath.get(file.path);
     if (committed.has(file.path)) {
-      if (status) fail(`A previously committed file changed during the commit loop: ${file.path}`);
+      if (status) {
+        fail(`A previously committed file changed during the commit loop: ${file.path}`);
+      }
     } else if (!status) {
       fail(`The reviewed file is no longer dirty: ${file.path}`);
     }
   }
-  return new Map(entries.map((entry) => [entry.path, entry]));
+  return byPath;
 }
 
 export async function prepareWorkingTreeCommit(
@@ -454,7 +605,8 @@ export async function prepareWorkingTreeCommit(
   if (input.approveRestrictedPaths && !input.consentToken)
     fail("Restricted-path approval requires the consent token returned by preparation.");
 
-  const initialSnapshot = await captureWorkingTreeSnapshot(true, true);
+  const initialCapture = await captureWorkingTreeSnapshot(true, true);
+  const initialSnapshot = initialCapture.snapshot;
   const restrictedPaths = restrictedPathReviews(initialSnapshot.files);
   if (restrictedPaths.length > 0 && !input.consentToken) {
     const consentToken = randomUUID();
@@ -496,7 +648,8 @@ export async function prepareWorkingTreeCommit(
     commitApprovalMarker = randomUUID();
   }
 
-  const snapshot = await captureWorkingTreeSnapshot(true, true);
+  const capture = await captureWorkingTreeSnapshot(true, true);
+  const snapshot = capture.snapshot;
   const operationId = randomUUID();
   const operation: WorkingTreeOperation = {
     id: operationId,
@@ -504,9 +657,18 @@ export async function prepareWorkingTreeCommit(
     createdAt: new Date().toISOString(),
     expiresAt: Date.now() + OPERATION_TTL_MS,
     snapshot,
+    diff: capture.diff,
     ...(commitApprovalMarker ? { commitApprovalMarker } : {}),
   };
+  const retainedBytes = workingTreeOperationBytes(operation);
+  if (retainedBytes > MAX_RETAINED_REVIEW_BYTES) {
+    fail(
+      `The prepared working-tree review exceeds the ${MAX_RETAINED_REVIEW_BYTES.toLocaleString()}-byte retention limit.`,
+    );
+  }
+  pruneOperations(retainedBytes);
   workingTreeOperations.set(operationId, operation);
+  retainedOperationBytes += retainedBytes;
   return {
     status: "prepared",
     operationId,
@@ -538,13 +700,17 @@ export async function commitWorkingTree(
     const committed = new Set<string>();
     const results: Record<string, unknown>[] = [];
     const filesPerCommit: number[] = [];
+    const filesByPath = new Map(operation.snapshot.files.map((file) => [file.path, file]));
+    const commitMessages = new Map(
+      paths.map((path, index) => [path, commits[index].message] as const),
+    );
+    unstagePaths([...expected]);
     for (const path of paths) {
       const current = await ensureWorkingTreeProgress(operation, committed);
       if (!current.has(path)) fail(`The reviewed file is no longer dirty: ${path}`);
-      const file = operation.snapshot.files.find((candidate) => candidate.path === path);
+      const file = filesByPath.get(path);
       if (!file) fail(`The path was not part of the prepared working tree: ${path}`);
 
-      unstagePaths([...expected].filter((candidate) => !committed.has(candidate)));
       await ensureFileHash(path, file.hash, allowRestrictedPaths, file.status.includes("D"));
       stagePath(path, file.status.includes("D"));
       const staged = stagedPaths();
@@ -552,11 +718,13 @@ export async function commitWorkingTree(
         fail(`The commit stage must contain exactly one reviewed path: ${path}`);
       const result = commitPath(
         path,
-        commits[paths.indexOf(path)].message,
+        commitMessages.get(path) ?? "",
         hasRestrictedPath(path) ? operation.commitApprovalMarker : undefined,
       );
-      results.push({ path, ...result });
+      results.push({ path, ...compactGitResult(result) });
       if (result.status !== 0) {
+        clearVerificationCache();
+        invalidateWorkflowStatusCache();
         return {
           status: "partial",
           operationId,
@@ -578,7 +746,9 @@ export async function commitWorkingTree(
     const afterStatus = statusResult();
     if (afterStatus.status !== 0)
       fail(afterStatus.stderr || "Could not inspect the committed working tree.");
-    workingTreeOperations.delete(operationId);
+    deleteWorkingTreeOperation(operationId);
+    clearVerificationCache();
+    invalidateWorkflowStatusCache();
     return {
       status: "committed",
       operationId,
@@ -606,14 +776,18 @@ export function registerAppliedRepositoryOperation(input: AppliedRepositoryOpera
     : undefined;
   const createdAt = new Date().toISOString();
   const hash = digest(JSON.stringify({ kind: "applied-change-commit", files: input.files }));
-  appliedOperations.set(operationId, {
+  const operation: AppliedOperation = {
     id: operationId,
     hash,
     createdAt,
     expiresAt: Date.now() + OPERATION_TTL_MS,
     files: input.files,
     ...(commitApprovalMarker ? { commitApprovalMarker } : {}),
-  });
+  };
+  const retainedBytes = appliedOperationBytes(operation);
+  pruneOperations(retainedBytes);
+  appliedOperations.set(operationId, operation);
+  retainedOperationBytes += retainedBytes;
   return { operationId, approvalHash: hash };
 }
 
@@ -622,8 +796,11 @@ export async function prepareCommits(
   approvalHash: string,
 ): Promise<CommitPipelineResult & { readonly commits: readonly CommitEntry[] }> {
   const operation = getAppliedOperation(operationId, approvalHash);
-  for (const file of operation.files)
-    await ensureFileHash(file.path, file.hash, hasRestrictedPath(file.path));
+  await Promise.all(
+    operation.files.map((file) =>
+      ensureFileHash(file.path, file.hash, hasRestrictedPath(file.path)),
+    ),
+  );
   return {
     status: "prepared",
     operationId,
@@ -666,8 +843,13 @@ export async function commitAppliedFiles(
     const results: Record<string, unknown>[] = [];
     const filesPerCommit: number[] = [];
     const remaining = new Set(paths);
+    const filesByPath = new Map(operation.files.map((file) => [file.path, file]));
+    const commitMessages = new Map(
+      paths.map((path, index) => [path, commits[index].message] as const),
+    );
+    unstagePaths([...remaining]);
     for (const path of paths) {
-      const file = operation.files.find((candidate) => candidate.path === path);
+      const file = filesByPath.get(path);
       if (!file) fail(`The path was not part of the applied operation: ${path}`);
       await ensureFileHash(path, file.hash, allowRestrictedPaths);
       const currentEntries = currentStatus(allowRestrictedPaths);
@@ -675,18 +857,19 @@ export async function commitAppliedFiles(
         fail(`A previously committed or unrelated path changed during the commit loop: ${path}`);
       if (!currentEntries.some((entry) => entry.path === path))
         fail(`The applied file is no longer dirty: ${path}`);
-      unstagePaths([...remaining]);
       stagePath(path);
       const staged = stagedPaths();
       if (staged.length !== 1 || staged[0] !== path)
         fail(`The commit stage must contain exactly one reviewed path: ${path}`);
       const result = commitPath(
         path,
-        commits[paths.indexOf(path)].message,
+        commitMessages.get(path) ?? "",
         hasRestrictedPath(path) ? operation.commitApprovalMarker : undefined,
       );
-      results.push({ path, ...result });
+      results.push({ path, ...compactGitResult(result) });
       if (result.status !== 0) {
+        clearVerificationCache();
+        invalidateWorkflowStatusCache();
         return {
           status: "partial",
           operationId,
@@ -708,7 +891,9 @@ export async function commitAppliedFiles(
     const afterStatus = statusResult();
     if (afterStatus.status !== 0)
       fail(afterStatus.stderr || "Could not inspect the committed working tree.");
-    appliedOperations.delete(operationId);
+    deleteAppliedOperation(operationId);
+    clearVerificationCache();
+    invalidateWorkflowStatusCache();
     return {
       status: "committed",
       operationId,

@@ -11,9 +11,17 @@ export type McpLaunchSpec = {
   }[];
 };
 
+export type McpLaunchOptions = {
+  readonly compiled?: boolean;
+};
+
 export function resolveRepositoryRoot(options?: {
   readonly anchor?: string;
   readonly launcher?: string;
 }): string;
-export function buildLaunchSpec(root: string, mode: McpLaunchMode): McpLaunchSpec;
+export function buildLaunchSpec(
+  root: string,
+  mode: McpLaunchMode,
+  options?: McpLaunchOptions,
+): McpLaunchSpec;
 export function launch(mode: McpLaunchMode): void;

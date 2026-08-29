@@ -1,5 +1,14 @@
 export type { PortfolioMcpEnvironment } from "./config.ts";
 export {
+  GITHUB_COMMIT_CACHE_TTL_SECONDS,
+  GITHUB_COMMIT_FILE_LIMIT,
+  GITHUB_COMMIT_LIST_CACHE_TTL_SECONDS,
+  GITHUB_COMMIT_MESSAGE_MAX_CHARACTERS,
+  GITHUB_COMMIT_REACHABILITY_CACHE_TTL_SECONDS,
+  GITHUB_README_CACHE_TTL_SECONDS,
+  GITHUB_README_MAX_CHARACTERS,
+  GITHUB_REPOSITORY_CACHE_TTL_SECONDS,
+  MAX_GITHUB_COMMIT_PAGE,
   MAX_LIST_LIMIT,
   MAX_SEARCH_RESULTS,
   MAX_SNIPPET_CHUNK_CHARACTERS,
@@ -10,5 +19,6 @@ export {
   PORTFOLIO_MCP_SERVER_VERSION,
 } from "./config.ts";
 export { createPortfolioMcpHandler } from "./mcp/handler.ts";
+export type { PortfolioMcpTransportOptions } from "./mcp/server.ts";
 export { createPortfolioMcpServer } from "./mcp/server.ts";
 export { default } from "./worker.ts";

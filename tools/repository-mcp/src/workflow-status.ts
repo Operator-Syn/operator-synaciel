@@ -7,6 +7,7 @@ import {
   MCP_SERVER_VERSION,
   REPOSITORY_VERIFICATION_PROFILES,
   REPOSITORY_WRITE_PROFILES,
+  STATUS_CACHE_TTL_MS,
 } from "./policy.ts";
 
 type FileReadiness = {
@@ -37,13 +38,25 @@ export type RepositoryWorkflowStatus = {
     readonly verificationProfiles: Readonly<Record<string, readonly string[]>>;
   };
   readonly warnings: readonly string[];
+  readonly checkedAt: string;
+  readonly cacheHit: boolean;
 };
+
+type StatusCache = {
+  readonly value: RepositoryWorkflowStatus;
+  readonly expiresAt: number;
+};
+
+let statusCache: StatusCache | null = null;
+
+export function invalidateWorkflowStatusCache(): void {
+  statusCache = null;
+}
 
 async function fileReadiness(relativePath: string, executable = false): Promise<FileReadiness> {
   const info = await stat(resolve(PROJECT_ROOT, relativePath)).catch(() => null);
   if (!info?.isFile()) return { present: false, ...(executable ? { executable: false } : {}) };
-  if (!executable) return { present: true };
-  return { present: true, executable: (info.mode & 0o111) !== 0 };
+  return executable ? { present: true, executable: (info.mode & 0o111) !== 0 } : { present: true };
 }
 
 function commandAvailable(command: string): boolean {
@@ -84,10 +97,18 @@ function hooksAreActive(
   );
 }
 
-export async function getRepositoryWorkflowStatus(): Promise<RepositoryWorkflowStatus> {
-  const root = await validateLocalProjectRoot();
+export async function getRepositoryWorkflowStatus(
+  input: { readonly refresh?: boolean } = {},
+): Promise<RepositoryWorkflowStatus> {
+  const now = Date.now();
+  if (!input.refresh && statusCache && statusCache.expiresAt > now) {
+    return { ...statusCache.value, cacheHit: true };
+  }
+
+  const checkedAt = new Date().toISOString();
+  const root = await validateLocalProjectRoot({ fresh: input.refresh === true });
   if (!root.valid) {
-    return {
+    const value: RepositoryWorkflowStatus = {
       status: "blocked",
       projectRoot: PROJECT_ROOT,
       server: { name: MCP_SERVER_NAME, version: MCP_SERVER_VERSION },
@@ -99,11 +120,14 @@ export async function getRepositoryWorkflowStatus(): Promise<RepositoryWorkflowS
         verificationProfiles: REPOSITORY_VERIFICATION_PROFILES,
       },
       warnings: [root.reason],
+      checkedAt,
+      cacheHit: false,
     };
+    statusCache = { value, expiresAt: now + STATUS_CACHE_TTL_MS };
+    return value;
   }
 
-  const files: Record<string, FileReadiness> = {};
-  for (const path of [
+  const requiredPaths = [
     "package.json",
     "Pipfile",
     ".mcp.json",
@@ -116,12 +140,15 @@ export async function getRepositoryWorkflowStatus(): Promise<RepositoryWorkflowS
     ".codex/skills/repository-quality/SKILL.md",
     ".impeccable/config.json",
     "PRODUCT.md",
-  ]) {
-    files[path] = await fileReadiness(path, path.startsWith(".githooks/"));
-  }
-  files["graphify-out/graph.json"] = await fileReadiness("graphify-out/graph.json");
-  files["node_modules/.bin/tsx"] = await fileReadiness("node_modules/.bin/tsx");
-
+    "graphify-out/graph.json",
+    "node_modules/.bin/tsx",
+  ];
+  const entries = await Promise.all(
+    requiredPaths.map(
+      async (path) => [path, await fileReadiness(path, path.startsWith(".githooks/"))] as const,
+    ),
+  );
+  const files = Object.fromEntries(entries) as Record<string, FileReadiness>;
   const hooksPath = localGitHooksPath();
   const tooling = {
     npm: commandAvailable(process.platform === "win32" ? "npm.cmd" : "npm"),
@@ -150,7 +177,7 @@ export async function getRepositoryWorkflowStatus(): Promise<RepositoryWorkflowS
   if (!files["PRODUCT.md"].present)
     warnings.push("Impeccable product context is missing; run /impeccable init.");
 
-  return {
+  const value: RepositoryWorkflowStatus = {
     status: warnings.length === 0 ? "ready" : "attention",
     projectRoot: PROJECT_ROOT,
     server: { name: MCP_SERVER_NAME, version: MCP_SERVER_VERSION },
@@ -162,5 +189,9 @@ export async function getRepositoryWorkflowStatus(): Promise<RepositoryWorkflowS
       verificationProfiles: REPOSITORY_VERIFICATION_PROFILES,
     },
     warnings,
+    checkedAt,
+    cacheHit: false,
   };
+  statusCache = { value, expiresAt: Date.now() + STATUS_CACHE_TTL_MS };
+  return value;
 }

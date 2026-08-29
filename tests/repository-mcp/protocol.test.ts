@@ -30,6 +30,13 @@ function assertStructuredResponse(response: JsonRpcMessage): Record<string, unkn
   return structuredContent;
 }
 
+function assertStructuredOnlyResponse(response: JsonRpcMessage): Record<string, unknown> {
+  assert.equal(response.result?.content?.[0]?.text, '{"structuredContent":true}');
+  const structuredContent = response.result?.structuredContent;
+  assert.ok(structuredContent);
+  return structuredContent;
+}
+
 afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => server.close()));
   await Promise.all(repositories.splice(0).map(removeRepository));
@@ -51,13 +58,19 @@ describe("repository MCP protocol", () => {
         "prepare_repository_change",
         "apply_repository_change",
         "verify_repository_change",
+        "read_repository_change_diff",
+        "read_repository_files",
+        "read_working_tree_diff",
         "prepare_working_tree_commit",
         "git_commit_working_tree",
         "prepare_commits",
         "git_commit_files",
       ]),
     );
-    assert.match(server.initialization.result?.instructions ?? "", /repository_workflow_status/);
+    const instructions = server.initialization.result?.instructions ?? "";
+    assert.match(instructions, /repository_workflow_status/);
+    assert.match(instructions, /context_filter/);
+    assert.match(instructions, /prepare_working_tree_commit directly/);
   });
 
   test("advertises output schemas and structured text-compatible results", async () => {
@@ -68,7 +81,7 @@ describe("repository MCP protocol", () => {
 
     const listed = await server.call("tools/list");
     const tools = listed.result?.tools ?? [];
-    assert.equal(tools.length, 8);
+    assert.equal(tools.length, 11);
     for (const tool of tools) {
       assert.ok(tool.outputSchema);
     }
@@ -77,7 +90,29 @@ describe("repository MCP protocol", () => {
       name: "repository_workflow_status",
       arguments: {},
     });
-    assert.equal(assertStructuredResponse(status).status, "attention");
+    const statusPayload = assertStructuredResponse(status);
+    assert.equal(statusPayload.status, "attention");
+    const verificationProfiles = (statusPayload.capabilities as Record<string, unknown>)
+      .verificationProfiles as Record<string, unknown>;
+    assert.equal(typeof verificationProfiles, "object");
+    assert.ok("mcp-fast" in verificationProfiles);
+    assert.ok("repository" in verificationProfiles);
+    const writeProfiles = (statusPayload.capabilities as Record<string, unknown>)
+      .writeProfiles as string[];
+    assert.ok(writeProfiles.includes("repository"));
+    assert.ok((verificationProfiles.repository as string[]).includes("api_typecheck"));
+
+    const cachedStatus = await server.call("tools/call", {
+      name: "repository_workflow_status",
+      arguments: {},
+    });
+    assert.equal(assertStructuredResponse(cachedStatus).cacheHit, true);
+
+    const structuredStatus = await server.call("tools/call", {
+      name: "repository_workflow_status",
+      arguments: { responseMode: "structured" },
+    });
+    assertStructuredOnlyResponse(structuredStatus);
 
     const prepared = await server.call("tools/call", {
       name: "prepare_repository_change",
@@ -85,6 +120,7 @@ describe("repository MCP protocol", () => {
         taskType: "app",
         description: "exercise structured repository output",
         profile: "app",
+        verifyOnApply: false,
         operations: [
           {
             path: "apps/portfolio-web/src/structured-output.ts",
@@ -93,7 +129,78 @@ describe("repository MCP protocol", () => {
         ],
       },
     });
-    assert.equal(assertStructuredResponse(prepared).status, "prepared");
+    const preparedPayload = assertStructuredResponse(prepared);
+    assert.equal(preparedPayload.status, "prepared");
+    assert.equal(preparedPayload.verificationMode, "deferred");
+    assert.equal(preparedPayload.verificationRequired, true);
+    assert.equal(prepared.result?.content?.[0]?.text?.includes("\n"), false);
+
+    const sourceRead = await server.call("tools/call", {
+      name: "read_repository_files",
+      arguments: {
+        profile: "app",
+        files: [
+          { path: "apps/portfolio-web/src/one.ts", offset: 0 },
+          { path: "apps/portfolio-web/src/missing.ts" },
+        ],
+        maxChars: 4,
+      },
+    });
+    const sourcePayload = assertStructuredResponse(sourceRead);
+    const sourceFiles = sourcePayload.files as Array<Record<string, unknown>>;
+    assert.equal(sourceFiles[0]?.content, "one ");
+    assert.equal(sourceFiles[0]?.nextOffset, 4);
+    assert.equal(sourceFiles[1]?.exists, false);
+    assert.deepEqual(sourcePayload.omittedPaths, []);
+
+    const broadRead = await server.call("tools/call", {
+      name: "read_repository_files",
+      arguments: {
+        profile: "repository",
+        files: [
+          { path: "workers/portfolio-api/src/entrypoint.ts", offset: 0 },
+          { path: "apps/portfolio-web/src/one.ts", offset: 0 },
+        ],
+        maxChars: 8,
+      },
+    });
+    const broadPayload = assertStructuredResponse(broadRead);
+    assert.equal(broadPayload.profile, "repository");
+    const broadFiles = broadPayload.files as Array<Record<string, unknown>>;
+    assert.equal(broadFiles[0]?.exists, false);
+    assert.equal(broadFiles[0]?.content, "");
+    assert.equal(broadFiles[1]?.content, "one befo");
+
+    const broadPrepared = await server.call("tools/call", {
+      name: "prepare_repository_change",
+      arguments: {
+        taskType: "repository",
+        description: "exercise the broad repository profile",
+        profile: "repository",
+        operations: [
+          {
+            path: "workers/portfolio-api/src/entrypoint.ts",
+            content: "export const preparedApi = true;\n",
+          },
+        ],
+      },
+    });
+    const broadPreparedPayload = assertStructuredResponse(broadPrepared);
+    assert.equal(broadPreparedPayload.status, "prepared");
+    assert.deepEqual(broadPreparedPayload.files, ["workers/portfolio-api/src/entrypoint.ts"]);
+
+    const diff = await server.call("tools/call", {
+      name: "read_repository_change_diff",
+      arguments: {
+        planId: assertStructuredResponse(prepared).planId,
+        applyToken: assertStructuredResponse(prepared).applyToken,
+        maxChars: 8_000,
+      },
+    });
+    const diffPayload = assertStructuredResponse(diff);
+    assert.equal(diffPayload.kind, "repository-change");
+    assert.equal(typeof diffPayload.totalCharacters, "number");
+    assert.ok(diffPayload.nextOffset === null || typeof diffPayload.nextOffset === "number");
 
     const rejected = await server.call("tools/call", {
       name: "prepare_repository_change",
@@ -105,6 +212,20 @@ describe("repository MCP protocol", () => {
       },
     });
     assert.equal(assertStructuredResponse(rejected).status, "rejected");
+
+    const tooMany = await server.call("tools/call", {
+      name: "prepare_repository_change",
+      arguments: {
+        taskType: "app",
+        description: "reject an oversized prepared file set",
+        profile: "app",
+        operations: Array.from({ length: 21 }, (_, index) => ({
+          path: `apps/portfolio-web/src/many-${index}.ts`,
+          content: `${index}\n`,
+        })),
+      },
+    });
+    assert.ok(tooMany.error || tooMany.result?.isError);
   });
 
   test("reports workflow readiness without exposing approval or credential values", async () => {
@@ -154,6 +275,31 @@ describe("repository MCP protocol", () => {
       }),
     );
     assert.equal(invalidCheck.status, "rejected");
+  });
+
+  test("rejects binary planned changes even in the broad repository profile", async () => {
+    const repository = await createRepository();
+    repositories.push(repository);
+    const server = await startServer(repository);
+    servers.push(server);
+
+    const rejected = payload(
+      await server.call("tools/call", {
+        name: "prepare_repository_change",
+        arguments: {
+          taskType: "repository",
+          description: "reject binary text changes",
+          profile: "repository",
+          operations: [
+            {
+              path: "apps/portfolio-web/public/social-image.png",
+              content: "not a text source\n",
+            },
+          ],
+        },
+      }),
+    );
+    assert.equal(rejected.status, "rejected");
   });
 
   test("allows project directories through config while keeping protected boundaries scoped", async () => {

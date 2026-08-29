@@ -61,29 +61,39 @@ function requireExecutable(path, message) {
   }
 }
 
-export function buildLaunchSpec(root, mode) {
+export function buildLaunchSpec(root, mode, options = {}) {
   if (mode === "repository") {
-    const runner = resolve(
-      root,
-      "node_modules",
-      ".bin",
-      process.platform === "win32" ? "tsx.cmd" : "tsx",
-    );
+    const useCompiled = options.compiled ?? process.env.OPERATOR_SYNACIEL_MCP_COMPILED === "1";
+    const entry = useCompiled
+      ? resolve(root, "tools", "repository-mcp", "dist", "server.js")
+      : resolve(root, "tools", "repository-mcp", "src", "server.ts");
+    const runner = useCompiled
+      ? process.execPath
+      : resolve(root, "node_modules", ".bin", process.platform === "win32" ? "tsx.cmd" : "tsx");
     return {
       command: runner,
-      args: [resolve(root, "tools", "repository-mcp", "src", "server.ts")],
-      env: { OPERATOR_SYNACIEL_MCP_ROOT: root },
+      args: [entry],
+      env: {
+        OPERATOR_SYNACIEL_MCP_ROOT: root,
+        ...(useCompiled ? { OPERATOR_SYNACIEL_MCP_COMPILED: "1" } : {}),
+      },
       required: [
         { path: resolve(root, "package.json"), message: "Repository MCP requires package.json." },
         {
-          path: resolve(root, "tools", "repository-mcp", "src", "server.ts"),
-          message: "Repository MCP entrypoint is missing.",
+          path: entry,
+          message: useCompiled
+            ? "Compiled repository MCP output is missing; run npm run mcp:build first."
+            : "Repository MCP entrypoint is missing.",
         },
-        {
-          path: runner,
-          message: "Repository MCP dependencies are missing; run npm install first.",
-          executable: true,
-        },
+        ...(useCompiled
+          ? []
+          : [
+              {
+                path: runner,
+                message: "Repository MCP dependencies are missing; run npm install first.",
+                executable: true,
+              },
+            ]),
       ],
     };
   }

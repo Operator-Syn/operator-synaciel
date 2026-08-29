@@ -13,9 +13,9 @@ Syn-Forge provides a public, read-only Model Context Protocol server for agents 
 - Authentication: none for the current public surface
 - Writes: none
 
-The server exposes structured overview, project, certificate, and public snippet information. Markdown snippets can be read in bounded chunks; PDF snippets expose metadata and canonical links.
+The server exposes structured overview, project, certificate, public snippet, and bounded GitHub inspection information. Markdown snippets and linked project READMEs can be read in bounded chunks; PDF snippets expose metadata and canonical links. GitHub inspection is limited to public repositories already referenced by a project, and every GitHub read is pinned to the main branch.
 
-- Tools: get_portfolio_overview, search_portfolio, list_projects, get_project, list_certificates, get_certificate, list_snippets, read_snippet
+- Tools: get_portfolio_overview, search_portfolio, list_projects, get_project, list_certificates, get_certificate, list_snippets, read_snippet, get_project_repository, get_project_readme, list_project_commits, get_project_commit
 - Resources: portfolio://overview, portfolio://projects, portfolio://certificates, portfolio://snippets
 
 ## Canonical portfolio pages

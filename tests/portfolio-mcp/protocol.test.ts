@@ -90,7 +90,7 @@ function createFakeEnvironment(): PortfolioApiEnvironment {
               url: "https://example.com/portfolio.png",
               short_description: "A software portfolio",
               long_description: "A longer software portfolio description",
-              project_link: "https://github.com/Operator-Syn",
+              project_link: "https://github.com/Operator-Syn/portfolio",
               display_order: 1,
               created_at: "2026-08-27T00:00:00.000Z",
               internal_note: "hidden",
@@ -107,7 +107,7 @@ function createFakeEnvironment(): PortfolioApiEnvironment {
                 url: "https://example.com/portfolio.png",
                 short_description: "A software portfolio",
                 long_description: "A longer software portfolio description",
-                project_link: "https://github.com/Operator-Syn",
+                project_link: "https://github.com/Operator-Syn/portfolio",
                 display_order: 1,
                 created_at: "2026-08-27T00:00:00.000Z",
                 internal_note: "hidden",
@@ -129,7 +129,7 @@ function createFakeEnvironment(): PortfolioApiEnvironment {
             url: "https://example.com/portfolio.png",
             short_description: "A software portfolio",
             long_description: "A longer software portfolio description",
-            project_link: "https://github.com/Operator-Syn",
+            project_link: "https://github.com/Operator-Syn/portfolio",
             display_order: 1,
             created_at: "2026-08-27T00:00:00.000Z",
             internal_note: "hidden",
@@ -489,7 +489,7 @@ test("advertises strict output schemas and returns structured public results", a
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
 
   const tools = await client.listTools();
-  assert.equal(tools.tools.length, 8);
+  assert.equal(tools.tools.length, 12);
   for (const tool of tools.tools) {
     assert.ok(tool.outputSchema, "Every public tool should advertise an output schema.");
     assert.equal(tool.annotations?.readOnlyHint, true);
@@ -624,6 +624,10 @@ test("exposes the read-only portfolio contract through MCP tools and resources",
       "get_certificate",
       "list_snippets",
       "read_snippet",
+      "get_project_repository",
+      "get_project_readme",
+      "list_project_commits",
+      "get_project_commit",
     ],
   );
   assert.deepEqual(

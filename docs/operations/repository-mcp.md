@@ -27,33 +27,91 @@ otherwise it resolves the root from the current Git directory.
 
 ## Workflow
 
+Start every change with `repository_workflow_status`. For codebase questions,
+query Graphify narrowly and then confirm the cited source directly, for example:
+
+```bash
+pipenv run graphify query "<focused question>" \
+  --context-filter "tools/repository-mcp,tests,docs/operations/repository-mcp.md" \
+  --depth 2 --budget 2_500
+```
+
+For repeated MCP iterations, use the cached `mcp-fast` verification profile after each bounded apply. It checks the fixed MCP configuration and typecheck commands; run the complete matching profile before committing.
+
 Use the bounded flow for planned edits:
 
-1. `prepare_repository_change`
-2. Review the returned paths, hashes, and diff.
+1. `prepare_repository_change` with complete replacement content, the current
+   hash for every existing file, and the smallest practical file set.
+2. Review every returned path, old hash, new hash, byte count, profile, and
+   bounded diff preview. When `diffTruncated` is true, read all chunks with
+   `read_repository_change_diff` before applying.
 3. `apply_repository_change` with the exact token, hashes, and approval.
-4. `verify_repository_change` with the narrowest profile.
+4. Run `verify_repository_change` explicitly with the returned matching profile;
+   do not prepare or commit subjects until the required checks pass. An apply
+   response may include a passing optional verification summary, but an absent
+   or failing summary leaves `verificationRequired` true.
 5. `prepare_commits`, edit the subjects, then `git_commit_files`.
 
 Use the complete dirty-tree flow when reviewing existing work:
 
-1. `prepare_working_tree_commit`
+1. `prepare_working_tree_commit` directly.
 2. Resolve any restricted-path consent challenge.
-3. Review every dirty path, status, size, hash, and diff.
-4. `git_commit_working_tree` with one reviewed subject per path.
+3. Review every dirty path, status, size, hash, and bounded diff preview. When
+   `diffTruncated` is true, read all chunks with `read_working_tree_diff`.
+4. Run `mcp-fast` while iterating when only MCP wiring/type safety needs a quick check; run the complete matching profile returned by preparation before committing.
+5. `git_commit_working_tree` with one reviewed subject per path.
+
+`prepare_commits` is intentionally limited to an operation returned by
+`apply_repository_change`; it is not the dirty-tree preparation tool.
 
 The server rechecks status and content hashes immediately before each commit,
 keeps the Git hooks active, and stops on the first failure. Partial progress
-is returned instead of silently continuing.
+is returned instead of silently continuing. Use `responseMode: "structured"` for
+compact transport when a client does not need the compatibility JSON text block.
+
+Mutating apply and commit operations are serialized per checkout with an atomic
+lock in the Git common directory. Same-process calls queue; other server
+processes wait briefly for the lock. A lock is reclaimed only when its owner is
+gone or its lease is demonstrably stale, and every completed operation releases
+it in a `finally` path.
 
 For `prepare_repository_change`, each operation must contain the complete
-replacement content for its target text file. Do not use bounded terminal output
-as the replacement payload. To catch accidental truncation before any write, a
-shorter replacement for an existing file is rejected by default with a request
-to set `allowContentShortening: true`. Use that opt-in only after reviewing the
-complete diff for an intentional reduction. The apply step rechecks hashes,
-writes atomically, verifies final hashes, and rolls back earlier writes when a
-later write fails.
+replacement content for its target text file. A single operation is limited to
+20 files and each profile keeps its existing aggregate byte budget. Do not use
+bounded terminal output as the replacement payload. The `repository` profile
+is the broad cross-workspace option for planned changes; it covers the current
+application, API Worker, public MCP Worker, local MCP, tools, tests, scripts,
+documentation, workflows, restricted developer directories, and root
+configuration files. Focused profiles remain available when a narrower
+boundary is preferable. To catch accidental truncation
+before any write, a shorter replacement for an existing file is rejected by
+default with a request to set `allowContentShortening: true`. Use that opt-in
+only after reviewing the complete diff for an intentional reduction. The
+preparation response includes compact old/new SHA-256 and new-byte metadata; it
+never needs to echo full source content. The apply step rechecks hashes, writes
+atomically, verifies final hashes, and rolls back earlier writes when a later
+write fails.
+
+Diff previews are capped at 16,000 characters. The server reports the full
+character and UTF-8 byte totals, the next offset, and every path omitted from the
+preview. Reader requests accept offsets and up to 64,000 characters per chunk;
+each file must be at most 1,000,000 bytes and the aggregate response is capped
+at 256,000 characters. Review diffs larger than the 8,000,000-character storage
+ceiling are rejected with a request to split the change. `read_repository_files`
+reads up to 20 profile-allowed text files in one bounded request, defaults to
+16,000 characters per file, and returns hashes, byte totals, completion state,
+and pagination offsets. The source reader and text-change flow reject binary
+extensions, NUL-containing content, ignored runtime directories, sensitive
+environment or credential names, and credential-like/private-key content even
+when the broad `repository` profile would otherwise match the path. Use
+`responseMode: "structured"` when the client already consumes
+`structuredContent`, avoiding duplicate JSON text.
+
+Prepared plans and commit operations expire after 30 minutes and are evicted
+under a 64 MiB retained-review budget. Verification results are cached for 30
+seconds against the Git/status/dependency fingerprint; successful cache hits are
+reported as `cached: true`.
+
 
 ## Codex PostToolUse feedback
 
@@ -74,23 +132,28 @@ so manual shell writes should be followed by the explicit Biome command.
 
 ## Tool output contracts
 
-All eight repository MCP tools advertise a native `outputSchema` in
+All eleven repository MCP tools advertise a native `outputSchema` in
 `tools/list`. Successful calls return the canonical object in
-`structuredContent` and retain a pretty-printed JSON text block for clients
-that still consume text content. The schemas describe the existing status
-unions rather than changing the guarded workflow behavior.
+`structuredContent` and retain a compact JSON text block for clients that still
+consume text content. The schemas describe the existing status unions rather
+than changing the guarded workflow behavior.
 
 The output families are:
 
 - `repository_workflow_status` returns readiness, tooling, Git hook, and
-  capability status.
+  capability status, with a short-lived cache and `checkedAt`/`cacheHit` metadata.
+- `read_repository_files` returns bounded, profile-checked source snapshots for
+  up to 20 files with per-file hashes, byte totals, and pagination offsets.
 - `prepare_repository_change` returns either a prepared plan with hashes and
   an apply token or a rejected result.
 - `apply_repository_change` returns an applied result, verification-failure
   result, conflict, or failed result.
 - `verify_repository_change` returns a verification summary or rejection.
 - `prepare_working_tree_commit` returns either a restricted-path consent
-  challenge or a prepared snapshot.
+  challenge or a prepared snapshot with bounded diff metadata.
+- `read_repository_change_diff` and `read_working_tree_diff` return bounded
+  chunks from still-valid prepared operations and never accept arbitrary paths
+  or source content.
 - `git_commit_working_tree` and `git_commit_files` return committed or
   partial-commit results; `prepare_commits` returns bounded commit entries.
 - Errors raised before a result is constructed remain MCP errors; returned
@@ -99,21 +162,39 @@ The output families are:
 `outputSchema` is a tool contract. This local repository MCP exposes no
 resources, so there is no resource output schema to advertise.
 
+Git status and commit diagnostics in returned commit results are capped at
+12,000 characters; the complete command remains visible so a caller can rerun
+the corresponding fixed check when the diagnostic tail is omitted.
+
 ## Profiles
 
 - `app` covers `apps/portfolio-web/` application files.
 - `docs` covers the vault, root documentation, and design context.
-- `mcp` covers `tools/repository-mcp/`, `workers/portfolio-mcp/`, tests,
-  scripts, hooks, MCP registrations, and tooling metadata.
-- `database` covers `workers/portfolio-api/` migrations, schema, seed,
-  Drizzle configuration, and API Wrangler configuration.
+- `mcp-fast` covers only the fixed MCP configuration and MCP typecheck commands
+  for rapid iteration; its successful results are cached briefly.
+- `repository` is the broadest source and planned-change profile. It covers
+  every current tracked workspace boundary: `apps/`, the entire
+  `workers/` tree (including `workers/portfolio-api/` and
+  `workers/portfolio-mcp/`), `tools/`, `tests/`, `scripts/`,
+  documentation, workflows, restricted developer directories, editor
+  configuration, and root manifests. Ignored runtime directories, binary source
+  files, sensitive names, and credential-like content remain denied.
+- `mcp` remains focused on local/public MCP implementation, tests, scripts,
+  hooks, workflows, docs, and MCP metadata.
+- `database` remains focused on API migrations, schema, seed, Drizzle, and
+  Wrangler configuration; the broad `repository` profile intentionally
+  includes the full API Worker for cross-boundary reviews.
 - `config` covers ordinary root and workspace configuration while keeping
   database artifacts on the dedicated database profile.
 - `full` runs the complete fixed local check set.
 
-Verification uses only repository-native npm scripts. The MCP never accepts
-arbitrary shell commands, deployment, remote Git operations, Cloudflare
-credentials, or local/remote D1 migration application.
+Verification uses only repository-native npm scripts. The broad `repository`
+verification profile runs documentation and skills checks, local and public MCP
+checks/tests, API typecheck/tests and web tests (api_typecheck, api_test, web_test),
+migration validation/listing, root typecheck,
+lint, Biome, and the production build. It does not deploy, contact remote Git,
+read Cloudflare credentials, or apply local/remote D1 migrations. The MCP never
+accepts arbitrary shell commands or deployment operations.
 
 ## Setup
 
@@ -123,6 +204,9 @@ npm run mcp:check
 npm run skills:check
 npm run mcp:typecheck
 npm run test:mcp
+# Optional warm compiled launcher output
+npm run mcp:build
+OPERATOR_SYNACIEL_MCP_COMPILED=1 npm run mcp:repository
 npm run setup:git-hooks
 pipenv install --dev --deploy
 pipenv run graphify update . --no-cluster
@@ -134,8 +218,11 @@ The status tool is read-only and does not return secrets. A missing Graphify
 output is an onboarding warning, not a reason to mutate the repository through
 the MCP.
 
-The local stdio server requires Git, Node/npm, Bash, and the existing
-repository toolchain. A collaborator must trust or approve project-scoped MCP
+The local stdio server uses the tsx source launcher by default. After
+`npm run mcp:build`, setting `OPERATOR_SYNACIEL_MCP_COMPILED=1` selects the
+compiled `tools/repository-mcp/dist/server.js` entrypoint and fails closed if it
+is missing; there is no silent source fallback. It requires Git, Node/npm, Bash,
+and the existing repository toolchain. A collaborator must trust or approve project-scoped MCP
 servers in their client; that approval is intentionally not stored as a global
 machine setting.
 
@@ -149,6 +236,10 @@ multi-path commits in the outgoing range.
 Direct shell `git commit`, `--no-verify`, changing `core.hooksPath`, and
 deleting the versioned hooks are unsupported bypasses. Push, deployment, and
 database application remain separate user-authorized actions.
+
+The synchronous Codex commit gate recognizes direct Git invocations and the
+supported `bash`/`sh`, `env`, `command`, `eval`, and `exec` wrappers while
+ignoring quoted search text and comments.
 
 The repository does not install a generic filesystem writer or run an
 automatic post-commit Graphify rebuild. Graphify state is ignored local output

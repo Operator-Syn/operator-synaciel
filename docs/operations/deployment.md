@@ -25,8 +25,8 @@ The repository is an npm monorepo. Use the surface-specific procedures below.
 | Surface | Source | Production target | Deployment path |
 | --- | --- | --- | --- |
 | Portfolio web | apps/portfolio-web/ | Cloudflare Pages, syn-forge.com | Pages Git integration |
-| Portfolio API | workers/portfolio-api/ | Worker, personal-portfolio.syn-forge.com | Wrangler |
-| Portfolio MCP | workers/portfolio-mcp/ | Worker, mcp.syn-forge.com | Wrangler |
+| Portfolio API | workers/portfolio-api/ | Worker, personal-portfolio.syn-forge.com | GitHub Actions on main (Wrangler) |
+| Portfolio MCP | workers/portfolio-mcp/ | Worker, mcp.syn-forge.com | GitHub Actions on main (Wrangler) |
 | Database | workers/portfolio-api/migrations/ | D1 database my-personal-portfolio | Explicit Wrangler migration command |
 | Media and snippets | Portfolio API BUCKET binding | R2 bucket personal-portfolio | Existing bucket binding |
 
@@ -109,6 +109,42 @@ workers/portfolio-api/wrangler.toml:
 
 Do not add the API secrets to the MCP Worker. The MCP Worker only needs its
 PORTFOLIO_API Service Binding in production.
+
+## GitHub Actions Worker deployment
+
+The checked-in [production Worker workflow](../../.github/workflows/deploy-production-workers.yml)
+runs for every push to `main`. Its validation job installs the lockfile
+dependencies and runs the repository typecheck, lint, Biome, build, application
+tests, documentation check, repository MCP check, and public MCP check. After
+validation succeeds, the workflow dry-runs and deploys `portfolio-api`, then
+dry-runs and deploys `syn-forge-portfolio-mcp`.
+
+The API deploy completes before the MCP deploy so the MCP Worker's
+`PORTFOLIO_API` Service Binding continues to target the available API Worker.
+The workflow uses Wrangler 4.125.0 and an account-scoped Cloudflare API token.
+
+### Configure GitHub Actions secrets
+
+Add these GitHub repository secrets before pushing to `main`:
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+
+Create the token from Cloudflare's [GitHub Actions deployment
+guidance](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/)
+using the account-scoped **Edit Cloudflare Workers** template, then restrict it
+to the account that owns these Workers. Never commit either secret value or
+hard-code it in a workflow file.
+
+The workflow passes only the deployment token and account ID to Wrangler. It does
+not pass the API Worker's runtime secrets (`ACCOUNT_ID`,
+`R2_ACCESS_KEY_ID`, or `R2_SECRET_ACCESS_KEY`), apply D1 migrations, or deploy
+the separately managed `auth-worker`.
+
+The frontend is intentionally not uploaded by this workflow. Cloudflare Pages
+continues to use its existing Git integration and starts its own production
+deployment for the same `main` push. Pages and Worker releases are therefore
+coordinated by the push but are not one atomic deployment.
 
 ## Preflight verification
 
@@ -426,6 +462,8 @@ state.
 - [ ] D1 database and R2 bucket names match wrangler.toml.
 - [ ] API Worker secrets exist and are scoped appropriately.
 - [ ] npm ci completed from the repository root.
+- [ ] GitHub Actions secrets are configured for Worker deployment.
+- [ ] The main-branch validation job passed before Worker deployment.
 - [ ] Repository checks and targeted tests passed.
 - [ ] Any D1 migration was reviewed, tested locally, listed remotely, and
       explicitly authorized before application.
@@ -445,6 +483,7 @@ state.
 
 Repository sources:
 
+- [Production Worker deployment workflow](../../.github/workflows/deploy-production-workers.yml)
 - [Root scripts](../../package.json)
 - [Portfolio web manifest](../../apps/portfolio-web/package.json)
 - [Portfolio web Vite configuration](../../apps/portfolio-web/vite.config.ts)
@@ -463,10 +502,11 @@ Current Cloudflare references:
 
 - [Pages build configuration](https://developers.cloudflare.com/pages/configuration/build-configuration/)
 - [Pages monorepos](https://developers.cloudflare.com/pages/configuration/monorepos/)
-- [Pages Git integration](https://developers.cloudflare.com/pages/get-started/git-integration/)
+- [Pages Git integration](https://developers.cloudflare.com/pages/configuration/git-integration/)
 - [Pages custom domains](https://developers.cloudflare.com/pages/configuration/custom-domains/)
 - [Pages Functions routing](https://developers.cloudflare.com/pages/functions/routing/)
 - [Worker deploy command](https://developers.cloudflare.com/workers/wrangler/commands/workers/)
+- [GitHub Actions deployment](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/)
 - [Worker configuration](https://developers.cloudflare.com/workers/wrangler/configuration/)
 - [Service bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/)
 - [Worker secrets](https://developers.cloudflare.com/workers/configuration/secrets/)

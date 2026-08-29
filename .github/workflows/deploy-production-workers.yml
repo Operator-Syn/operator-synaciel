@@ -1,0 +1,98 @@
+name: Deploy production Workers
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Biome check
+        run: npm run check:biome
+      - name: Build portfolio web
+        run: npm run build
+      - name: Test portfolio web
+        run: npm run test --workspace=@syn-forge/portfolio-web --
+      - name: Test portfolio API
+        run: npm run test --workspace=@syn-forge/portfolio-api --
+      - name: Test portfolio MCP
+        run: npm run test:portfolio-mcp
+      - name: Check deployment paths
+        run: npm exec -- tsx --tsconfig tsconfig.tests.json --test tests/scripts/deployment-paths.test.ts
+      - name: Documentation check
+        run: npm run docs:check
+      - name: Repository MCP configuration check
+        run: npm run mcp:check
+      - name: Portfolio MCP check
+        run: npm run mcp:portfolio:check
+
+  deploy-api:
+    name: Deploy portfolio API
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Deploy portfolio API
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.125.0"
+          preCommands: npx wrangler deploy --dry-run --config workers/portfolio-api/wrangler.toml
+          command: deploy --config workers/portfolio-api/wrangler.toml
+
+  deploy-mcp:
+    name: Deploy portfolio MCP
+    needs: deploy-api
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Deploy portfolio MCP
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.125.0"
+          preCommands: npx wrangler deploy --dry-run --env="" --config workers/portfolio-mcp/wrangler.toml
+          command: deploy --env="" --config workers/portfolio-mcp/wrangler.toml

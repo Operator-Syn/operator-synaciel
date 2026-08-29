@@ -2,22 +2,39 @@ import { randomUUID } from "node:crypto";
 import { lstat, readFile, rm } from "node:fs/promises";
 
 import { registerAppliedRepositoryOperation } from "./commit-pipeline.ts";
+import {
+  buildDiffDocument,
+  type DiffChunk,
+  type DiffDocument,
+  type DiffSection,
+  previewDiff,
+  readDiffChunk,
+} from "./diff.ts";
 import { withMutationLock } from "./mutation-lock.ts";
 import {
   atomicWrite,
   digestBytes,
+  isLikelyBinaryPath,
   MAX_FILE_BYTES,
   safeAbsolutePath,
   validateLocalProjectRoot,
   validateRelativeProjectPath,
 } from "./path.ts";
 import {
+  isProfilePathAllowed,
+  MAX_PREPARED_FILES,
+  MAX_RETAINED_REVIEW_BYTES,
   REPOSITORY_WRITE_PROFILES,
   type RepositoryVerificationProfile,
   type RepositoryWriteProfile,
 } from "./policy.ts";
 import { isCredentialLikeContent, isSensitiveFileName } from "./redaction.ts";
-import { runVerificationProfile, type VerificationSummary } from "./verification.ts";
+import {
+  clearVerificationCache,
+  runVerificationProfile,
+  type VerificationSummary,
+} from "./verification.ts";
+import { invalidateWorkflowStatusCache } from "./workflow-status.ts";
 
 const PLAN_TTL_MS = 30 * 60 * 1_000;
 const MAX_PLANS = 100;
@@ -30,11 +47,12 @@ export type RepositoryChangeOperation = {
 };
 
 export type RepositoryChangeRequest = {
-  readonly taskType: "patch" | "app" | "docs" | "mcp" | "database" | "config";
+  readonly taskType: "patch" | "app" | "docs" | "mcp" | "database" | "config" | "repository";
   readonly description: string;
   readonly profile: RepositoryWriteProfile;
   readonly operations: readonly RepositoryChangeOperation[];
   readonly verificationProfile?: RepositoryVerificationProfile;
+  readonly verifyOnApply?: boolean;
   readonly requestedBy?: string;
 };
 
@@ -48,6 +66,15 @@ type PreparedOperation = {
   readonly path: string;
   readonly content: string;
   readonly expectedSha256: string | null;
+  readonly newSha256: string;
+  readonly newBytes: number;
+};
+
+export type RepositoryChangeFileSummary = {
+  readonly path: string;
+  readonly oldSha256: string | null;
+  readonly newSha256: string;
+  readonly newBytes: number;
 };
 
 type RepositoryPlan = {
@@ -58,8 +85,11 @@ type RepositoryPlan = {
   readonly requestedBy: string;
   readonly profile: RepositoryWriteProfile;
   readonly verificationProfile: RepositoryVerificationProfile | null;
+  readonly verifyOnApply: boolean;
   readonly operations: readonly PreparedOperation[];
-  readonly diff: string;
+  readonly fileSummaries: readonly RepositoryChangeFileSummary[];
+  readonly totalBytes: number;
+  readonly diff: DiffDocument;
 };
 
 export type RepositoryChangeResult = {
@@ -74,9 +104,20 @@ export type RepositoryChangeResult = {
   readonly auditId: string;
   readonly planId?: string;
   readonly requestedBy?: string;
+  readonly profile?: RepositoryWriteProfile;
+  readonly verificationProfile?: RepositoryVerificationProfile;
+  readonly verificationMode?: "deferred" | "on_apply";
+  readonly verificationRequired?: boolean;
   readonly files?: readonly string[];
+  readonly fileSummaries?: readonly RepositoryChangeFileSummary[];
+  readonly totalBytes?: number;
   readonly finalFileHashes?: Readonly<Record<string, string>>;
   readonly diff?: string;
+  readonly diffTruncated?: boolean;
+  readonly diffTotalCharacters?: number;
+  readonly diffTotalBytes?: number;
+  readonly diffNextOffset?: number | null;
+  readonly omittedPaths?: readonly string[];
   readonly message: string;
   readonly verification?: VerificationSummary;
   readonly conflicts?: readonly string[];
@@ -87,6 +128,18 @@ export type RepositoryChangeResult = {
 };
 
 const plans = new Map<string, RepositoryPlan>();
+let retainedPlanBytes = 0;
+
+function planBytes(plan: RepositoryPlan): number {
+  return plan.totalBytes + plan.diff.totalBytes;
+}
+
+function deletePlan(planId: string): void {
+  const plan = plans.get(planId);
+  if (!plan) return;
+  retainedPlanBytes = Math.max(0, retainedPlanBytes - planBytes(plan));
+  plans.delete(planId);
+}
 
 function auditId(): string {
   return randomUUID();
@@ -111,12 +164,6 @@ async function localFileState(path: string): Promise<FileState> {
   return { exists: true, sha256: digestBytes(bytes), content };
 }
 
-function profileAllowsPath(profile: RepositoryWriteProfile, path: string): boolean {
-  return REPOSITORY_WRITE_PROFILES[profile].prefixes.some((prefix) =>
-    prefix.endsWith("/") ? path.startsWith(prefix) : path === prefix,
-  );
-}
-
 function taskMatchesProfile(
   taskType: RepositoryChangeRequest["taskType"],
   profile: RepositoryWriteProfile,
@@ -126,10 +173,13 @@ function taskMatchesProfile(
 
 function validateWritePath(profile: RepositoryWriteProfile, input: string): string {
   const path = validateRelativeProjectPath(input, { allowRestrictedPaths: true });
-  if (!profileAllowsPath(profile, path))
+  if (!isProfilePathAllowed(profile, path))
     throw new Error(`Path is not allowed by the ${profile} write profile.`);
   if (path.split("/").some((part) => isSensitiveFileName(part))) {
     throw new Error("Sensitive environment and credential files cannot be changed.");
+  }
+  if (isLikelyBinaryPath(path)) {
+    throw new Error("Binary file paths cannot be changed through text repository changes.");
   }
   return path;
 }
@@ -137,30 +187,36 @@ function validateWritePath(profile: RepositoryWriteProfile, input: string): stri
 function buildDiff(
   operations: readonly PreparedOperation[],
   states: ReadonlyMap<string, FileState>,
-): string {
-  return operations
-    .map((operation) => {
-      const before = states.get(operation.path)?.content ?? "";
-      const oldLines = before.split(/\r?\n/);
-      const newLines = operation.content.split(/\r?\n/);
-      return [
-        `--- a/${operation.path}`,
-        `+++ b/${operation.path}`,
-        `@@ -1,${oldLines.length} +1,${newLines.length} @@`,
-        ...(before ? oldLines.map((line) => `-${line}`) : []),
-        ...newLines.map((line) => `+${line}`),
-      ].join("\n");
-    })
-    .join("\n\n");
+): DiffDocument {
+  const sections: DiffSection[] = operations.map((operation) => ({
+    path: operation.path,
+    before: states.get(operation.path)?.content ?? "",
+    after: operation.content,
+  }));
+  return buildDiffDocument(sections);
 }
 
-function prunePlans(): void {
+function diffResult(
+  kind: "repository-change" | "working-tree",
+  identity: Record<string, string>,
+  chunk: DiffChunk,
+): Record<string, unknown> {
+  return {
+    kind,
+    ...identity,
+    ...chunk,
+  };
+}
+
+function prunePlans(incomingBytes = 0): void {
   const now = Date.now();
-  for (const [id, plan] of plans) if (plan.expiresAt <= now) plans.delete(id);
-  while (plans.size > MAX_PLANS) {
+  for (const [id, plan] of plans) {
+    if (plan.expiresAt <= now) deletePlan(id);
+  }
+  while (plans.size > MAX_PLANS || retainedPlanBytes + incomingBytes > MAX_RETAINED_REVIEW_BYTES) {
     const first = plans.keys().next().value;
     if (!first) break;
-    plans.delete(first);
+    deletePlan(first);
   }
 }
 
@@ -178,36 +234,49 @@ export async function prepareRepositoryChange(
       throw new Error("A bounded change description is required.");
     }
     const policy = REPOSITORY_WRITE_PROFILES[request.profile];
-    if (request.operations.length === 0 || request.operations.length > policy.maxFiles) {
+    if (
+      request.operations.length === 0 ||
+      request.operations.length > Math.min(policy.maxFiles, MAX_PREPARED_FILES)
+    ) {
       throw new Error(
-        `The ${request.profile} profile limits the number of files in one operation.`,
+        `One prepared operation may contain at most ${Math.min(policy.maxFiles, MAX_PREPARED_FILES)} files for the ${request.profile} profile.`,
       );
     }
 
     const seen = new Set<string>();
     let totalBytes = 0;
-    const prepared: PreparedOperation[] = [];
-    const states = new Map<string, FileState>();
-    for (const operation of request.operations) {
+    const validated = request.operations.map((operation) => {
       const path = validateWritePath(request.profile, operation.path);
       if (seen.has(path)) throw new Error(`Duplicate file operation: ${path}`);
       seen.add(path);
       if (isCredentialLikeContent(operation.content)) {
         throw new Error(`Credential-like content is not accepted: ${path}`);
       }
-      const bytes = new TextEncoder().encode(operation.content).byteLength;
-      if (operation.content.includes("\0"))
+      if (operation.content.includes("\0")) {
         throw new Error(`Binary file content is not allowed: ${path}`);
+      }
+      const bytes = Buffer.byteLength(operation.content, "utf8");
       totalBytes += bytes;
       if (totalBytes > policy.maxBytes) {
         throw new Error(`The ${request.profile} profile permits at most ${policy.maxBytes} bytes.`);
       }
-      const state = await localFileState(path);
-      states.set(path, state);
+      return { operation, path, bytes };
+    });
+
+    const states = new Map(
+      await Promise.all(
+        validated.map(async ({ path }) => [path, await localFileState(path)] as const),
+      ),
+    );
+    const prepared: PreparedOperation[] = [];
+    const fileSummaries: RepositoryChangeFileSummary[] = [];
+    for (const { operation, path, bytes } of validated) {
+      const state = states.get(path);
+      if (!state) throw new Error(`Could not capture the current state for: ${path}`);
       if (
         state.exists &&
         state.content !== null &&
-        bytes < new TextEncoder().encode(state.content).byteLength &&
+        bytes < Buffer.byteLength(state.content, "utf8") &&
         !operation.allowContentShortening
       ) {
         throw new Error(`Content-shortening changes require allowContentShortening: true: ${path}`);
@@ -219,10 +288,25 @@ export async function prepareRepositoryChange(
       } else if (operation.expectedSha256) {
         throw new Error(`New files must not provide expectedSha256: ${path}`);
       }
-      prepared.push({ path, content: operation.content, expectedSha256: state.sha256 });
+      const newSha256 = digestBytes(Buffer.from(operation.content, "utf8"));
+      prepared.push({
+        path,
+        content: operation.content,
+        expectedSha256: state.sha256,
+        newSha256,
+        newBytes: bytes,
+      });
+      fileSummaries.push({
+        path,
+        oldSha256: state.sha256,
+        newSha256,
+        newBytes: bytes,
+      });
     }
 
-    prunePlans();
+    const diff = buildDiff(prepared, states);
+    const verifyOnApply = request.verifyOnApply ?? request.verificationProfile !== undefined;
+
     const planId = randomUUID();
     const applyToken = randomUUID();
     const plan: RepositoryPlan = {
@@ -233,17 +317,40 @@ export async function prepareRepositoryChange(
       requestedBy: cleanRequestedBy(request.requestedBy),
       profile: request.profile,
       verificationProfile: request.verificationProfile ?? null,
+      verifyOnApply,
       operations: prepared,
-      diff: buildDiff(prepared, states),
+      fileSummaries,
+      totalBytes,
+      diff,
     };
+    const retainedBytes = planBytes(plan);
+    if (retainedBytes > MAX_RETAINED_REVIEW_BYTES) {
+      throw new Error(
+        `The prepared review exceeds the ${MAX_RETAINED_REVIEW_BYTES.toLocaleString()}-byte retention limit; split the change into smaller operations.`,
+      );
+    }
+    prunePlans(retainedBytes);
     plans.set(planId, plan);
+    retainedPlanBytes += retainedBytes;
+    const preview = previewDiff(plan.diff);
     return {
       status: "prepared",
       auditId: id,
       planId,
       requestedBy: plan.requestedBy,
+      profile: plan.profile,
+      verificationProfile: plan.verificationProfile ?? plan.profile,
+      verificationMode: plan.verifyOnApply ? "on_apply" : "deferred",
+      verificationRequired: true,
       files: prepared.map((operation) => operation.path),
-      diff: plan.diff,
+      fileSummaries: plan.fileSummaries,
+      totalBytes: plan.totalBytes,
+      diff: preview.content,
+      diffTruncated: preview.diffTruncated,
+      diffTotalCharacters: preview.totalCharacters,
+      diffTotalBytes: preview.totalBytes,
+      diffNextOffset: preview.nextOffset,
+      omittedPaths: preview.omittedPaths,
       message: "Change prepared. Review the diff before applying it.",
       expectedFileHashes: Object.fromEntries(
         prepared.map((operation) => [operation.path, operation.expectedSha256]),
@@ -288,37 +395,50 @@ export async function applyRepositoryChange(input: {
         auditId: id,
         planId: plan.id,
         requestedBy: plan.requestedBy,
+        profile: plan.profile,
+        verificationProfile: plan.verificationProfile ?? plan.profile,
+        verificationMode: plan.verifyOnApply ? "on_apply" : "deferred",
+        verificationRequired: true,
         message: "The expected hash map must cover exactly the prepared file set.",
         conflicts: plan.operations.map((operation) => operation.path),
       };
     }
 
-    const conflicts: string[] = [];
-    for (const operation of plan.operations) {
-      const current = await localFileState(operation.path);
-      if (
-        current.sha256 !== operation.expectedSha256 ||
-        input.expectedFileHashes[operation.path] !== operation.expectedSha256
-      ) {
-        conflicts.push(operation.path);
-      }
-    }
+    const currentStates = new Map(
+      await Promise.all(
+        plan.operations.map(async (operation) => {
+          const current = await localFileState(operation.path);
+          return [operation.path, current] as const;
+        }),
+      ),
+    );
+    const conflicts = plan.operations
+      .filter((operation) => {
+        const current = currentStates.get(operation.path);
+        return (
+          current?.sha256 !== operation.expectedSha256 ||
+          input.expectedFileHashes[operation.path] !== operation.expectedSha256
+        );
+      })
+      .map((operation) => operation.path);
     if (conflicts.length > 0) {
       return {
         status: "conflict",
         auditId: id,
         planId: plan.id,
         requestedBy: plan.requestedBy,
+        profile: plan.profile,
+        verificationProfile: plan.verificationProfile ?? plan.profile,
+        verificationMode: plan.verifyOnApply ? "on_apply" : "deferred",
+        verificationRequired: true,
         message: "Collaborator changes detected; the plan is stale and was not applied.",
         conflicts,
       };
     }
 
-    const backups = new Map<string, FileState>();
+    const backups = currentStates;
     const changed: string[] = [];
     try {
-      for (const operation of plan.operations)
-        backups.set(operation.path, await localFileState(operation.path));
       for (const operation of plan.operations) {
         await atomicWrite(operation.path, operation.content, plan.id);
         changed.push(operation.path);
@@ -331,6 +451,11 @@ export async function applyRepositoryChange(input: {
             if (!finalState.exists || !finalState.sha256) {
               throw new Error(`The applied file is no longer present: ${operation.path}`);
             }
+            if (finalState.sha256 !== operation.newSha256) {
+              throw new Error(
+                `The applied file hash does not match the prepared content: ${operation.path}`,
+              );
+            }
             return [operation.path, finalState.sha256] as const;
           }),
         ),
@@ -342,17 +467,26 @@ export async function applyRepositoryChange(input: {
           hash: finalFileHashes[operation.path],
         })),
       });
-      plans.delete(plan.id);
-      const verification = plan.verificationProfile
-        ? runVerificationProfile(plan.verificationProfile)
-        : undefined;
+      deletePlan(plan.id);
+      clearVerificationCache();
+      invalidateWorkflowStatusCache();
+      const verification =
+        plan.verifyOnApply && plan.verificationProfile
+          ? runVerificationProfile(plan.verificationProfile)
+          : undefined;
       return {
         status:
           verification && !verification.passed ? "applied_with_verification_failures" : "applied",
         auditId: id,
         planId: plan.id,
         requestedBy: plan.requestedBy,
+        profile: plan.profile,
+        verificationProfile: plan.verificationProfile ?? plan.profile,
+        verificationMode: plan.verifyOnApply ? "on_apply" : "deferred",
+        verificationRequired: verification?.passed !== true,
         files: changed,
+        fileSummaries: plan.fileSummaries,
+        totalBytes: plan.totalBytes,
         finalFileHashes,
         message:
           verification && !verification.passed
@@ -376,11 +510,29 @@ export async function applyRepositoryChange(input: {
         auditId: id,
         planId: plan.id,
         requestedBy: plan.requestedBy,
+        profile: plan.profile,
+        verificationProfile: plan.verificationProfile ?? plan.profile,
+        verificationMode: plan.verifyOnApply ? "on_apply" : "deferred",
+        verificationRequired: true,
         message:
           error instanceof Error ? error.message : "Repository change failed and was rolled back.",
       };
     }
   });
+}
+
+export function readRepositoryChangeDiff(input: {
+  readonly planId: string;
+  readonly applyToken: string;
+  readonly offset?: number;
+  readonly maxChars?: number;
+}): Record<string, unknown> {
+  const plan = getPlan(input.planId, input.applyToken);
+  return diffResult(
+    "repository-change",
+    { planId: plan.id },
+    readDiffChunk(plan.diff, input.offset, input.maxChars),
+  );
 }
 
 export function verifyRepositoryChange(input: {

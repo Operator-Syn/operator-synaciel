@@ -39,6 +39,15 @@ describe("clone-safe MCP configuration", () => {
     const spec = buildLaunchSpec(repository, "repository");
     assert.equal(spec.env.OPERATOR_SYNACIEL_MCP_ROOT, repository);
     assert.equal(spec.args[0], join(repository, "tools", "repository-mcp", "src", "server.ts"));
+
+    const compiled = buildLaunchSpec(repository, "repository", { compiled: true });
+    assert.equal(compiled.command, process.execPath);
+    assert.equal(
+      compiled.args[0],
+      join(repository, "tools", "repository-mcp", "dist", "server.js"),
+    );
+    assert.equal(compiled.env.OPERATOR_SYNACIEL_MCP_COMPILED, "1");
+    assert.match(String(compiled.required[1]?.message), /mcp:build/);
   });
 
   test("fails closed outside Git", async () => {

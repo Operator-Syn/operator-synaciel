@@ -170,6 +170,121 @@ describe("approval-gated commit pipeline", () => {
     assert.equal(await readFile(join(repository, path), "utf8"), "one before\n");
   });
 
+  test("bounds planned diffs and exposes complete authenticated chunks", async () => {
+    const repository = await createRepository();
+    repositories.push(repository);
+    const server = await startServer(repository);
+    servers.push(server);
+    const path = "apps/portfolio-web/src/large.ts";
+    const content = "export const line = true;\n".repeat(1_500);
+
+    const prepared = payload(
+      await server.call("tools/call", {
+        name: "prepare_repository_change",
+        arguments: {
+          taskType: "patch",
+          description: "prepare a bounded large diff",
+          profile: "app",
+          operations: [{ path, content }],
+        },
+      }),
+    );
+    assert.equal(prepared.status, "prepared");
+    assert.equal(prepared.diffTruncated, true);
+    assert.ok(String(prepared.diff).length <= 16_000);
+    assert.ok(Number(prepared.diffTotalCharacters) > String(prepared.diff).length);
+    assert.deepEqual(prepared.omittedPaths, [path]);
+    const summary = (prepared.fileSummaries as Array<Record<string, unknown>>)[0];
+    assert.equal(summary?.path, path);
+    assert.equal(summary?.oldSha256, null);
+    assert.equal(summary?.newSha256, createHash("sha256").update(content).digest("hex"));
+    assert.equal(summary?.newBytes, Buffer.byteLength(content));
+
+    let offset = 0;
+    let assembled = "";
+    while (true) {
+      const chunk = payload(
+        await server.call("tools/call", {
+          name: "read_repository_change_diff",
+          arguments: {
+            planId: prepared.planId,
+            applyToken: prepared.applyToken,
+            offset,
+            maxChars: 5_000,
+          },
+        }),
+      );
+      assembled += String(chunk.content);
+      if (chunk.nextOffset === null) break;
+      offset = Number(chunk.nextOffset);
+    }
+    assert.equal(assembled.length, prepared.diffTotalCharacters);
+
+    const invalid = await server.call("tools/call", {
+      name: "read_repository_change_diff",
+      arguments: {
+        planId: prepared.planId,
+        applyToken: "stale-token",
+      },
+    });
+    assert.ok(invalid.error || invalid.result?.isError);
+
+    const applied = payload(
+      await server.call("tools/call", {
+        name: "apply_repository_change",
+        arguments: {
+          planId: prepared.planId,
+          applyToken: prepared.applyToken,
+          expectedFileHashes: prepared.expectedFileHashes,
+          approve: true,
+        },
+      }),
+    );
+    assert.equal(applied.status, "applied");
+    const staleAfterApply = await server.call("tools/call", {
+      name: "read_repository_change_diff",
+      arguments: { planId: prepared.planId, applyToken: prepared.applyToken },
+    });
+    assert.ok(staleAfterApply.error || staleAfterApply.result?.isError);
+  });
+
+  test("bounds dirty-tree previews and reads them through the prepared operation", async () => {
+    const repository = await createRepository();
+    repositories.push(repository);
+    const server = await startServer(repository);
+    servers.push(server);
+    const content = "const dirtyLine = true;\n".repeat(1_500);
+    await writeFile(join(repository, "apps/portfolio-web/src/one.ts"), content);
+
+    const prepared = payload(
+      await server.call("tools/call", {
+        name: "prepare_working_tree_commit",
+        arguments: {},
+      }),
+    );
+    assert.equal(prepared.status, "prepared");
+    const snapshot = prepared.snapshot as Record<string, unknown>;
+    assert.equal(snapshot.diffTruncated, true);
+    assert.ok(String(snapshot.diff).length <= 16_000);
+    assert.deepEqual(snapshot.omittedPaths, ["apps/portfolio-web/src/one.ts"]);
+
+    const chunk = payload(
+      await server.call("tools/call", {
+        name: "read_working_tree_diff",
+        arguments: {
+          operationId: prepared.operationId,
+          approvalHash: prepared.approvalHash,
+          maxChars: 4_000,
+        },
+      }),
+    );
+    assert.equal(chunk.kind, "working-tree");
+    assert.equal(chunk.offset, 0);
+    assert.equal(chunk.diffTruncated, true);
+    assert.equal(chunk.totalCharacters, snapshot.diffTotalCharacters);
+    assert.equal(chunk.totalBytes, snapshot.diffTotalBytes);
+  });
+
   test("applies a hashed change and commits the exact applied file", async () => {
     const repository = await createRepository();
     repositories.push(repository);
@@ -208,6 +323,8 @@ describe("approval-gated commit pipeline", () => {
       }),
     );
     assert.equal(applied.status, "applied");
+    assert.equal(applied.verificationProfile, "app");
+    assert.equal(applied.verificationRequired, true);
 
     const suggestions = payload(
       await server.call("tools/call", {

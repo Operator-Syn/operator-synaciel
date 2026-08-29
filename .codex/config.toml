@@ -3,6 +3,15 @@ command = "bash"
 args = ["-lc", "root=\"$(git -C \"${CLAUDE_PROJECT_DIR:-.}\" rev-parse --show-toplevel 2>/dev/null || exit 1)\"; cd \"$root\"; exec node \"$root/scripts/mcp-launcher.mjs\" graphify"]
 startup_timeout_sec = 30
 
+[mcp_servers.graphify.tools.graph_stats]
+approval_mode = "approve"
+
+[mcp_servers.graphify.tools.get_node]
+approval_mode = "approve"
+
+[mcp_servers.graphify.tools.query_graph]
+approval_mode = "approve"
+
 [mcp_servers."operator-synaciel-repository"]
 command = "bash"
 args = ["-lc", "root=\"$(git -C \"${CLAUDE_PROJECT_DIR:-.}\" rev-parse --show-toplevel 2>/dev/null || exit 1)\"; cd \"$root\"; exec node \"$root/scripts/mcp-launcher.mjs\" repository"]
@@ -14,6 +23,9 @@ enabled_tools = [
   "prepare_repository_change",
   "apply_repository_change",
   "verify_repository_change",
+  "read_repository_change_diff",
+  "read_repository_files",
+  "read_working_tree_diff",
   "prepare_working_tree_commit",
   "git_commit_working_tree",
   "prepare_commits",
