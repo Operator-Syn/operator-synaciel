@@ -34,7 +34,10 @@ test("mounts the portfolio assistant globally with bounded authenticated chat co
   assert.match(appSource, /<PortfolioAssistantFab \/>/);
   assert.match(fabSource, /useAgentChat/);
   assert.match(fabSource, /useAgent/);
-  assert.match(fabSource, /cacheTtl: 0/);
+  assert.match(fabSource, /AGENT_QUERY_CACHE_TTL_MS = 4 \* 60 \* 1_000/);
+  assert.match(fabSource, /cacheTtl: AGENT_QUERY_CACHE_TTL_MS/);
+  assert.match(fabSource, /<Suspense[\s\S]*fallback=/);
+  assert.match(fabSource, /AssistantChatErrorBoundary/);
   assert.match(fabSource, /turnstile/);
   assert.match(fabSource, /New assistant thread/);
   assert.match(fabSource, /Export assistant thread/);
