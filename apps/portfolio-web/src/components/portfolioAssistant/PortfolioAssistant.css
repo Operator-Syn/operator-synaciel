@@ -1,0 +1,243 @@
+.portfolio-assistant {
+    position: fixed;
+    right: max(calc(var(--floating-control-inline-end) + 4.5rem), 1rem);
+    bottom: max(var(--floating-control-block-end), 1rem);
+    z-index: 40;
+    display: grid;
+    justify-items: end;
+    gap: 0.75rem;
+    pointer-events: none;
+}
+
+.portfolio-assistant > * {
+    pointer-events: auto;
+}
+
+.portfolio-assistant-panel {
+    width: min(30rem, calc(100vw - 2rem));
+    max-height: min(42rem, calc(100dvh - 6rem));
+    overflow: hidden;
+    border: 1px solid var(--color-line-strong);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-panel);
+}
+
+.portfolio-assistant-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid var(--color-line);
+    padding: 1rem;
+}
+
+.portfolio-assistant-header h2 {
+    margin: 0.15rem 0 0.35rem;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 400;
+}
+
+.portfolio-assistant-body {
+    display: grid;
+    gap: 0.75rem;
+    max-height: calc(min(42rem, 100dvh - 6rem) - 6.8rem);
+    overflow-y: auto;
+    padding: 0.85rem;
+}
+
+.portfolio-assistant-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) repeat(4, auto);
+    gap: 0.35rem;
+    align-items: center;
+    border-bottom: 1px solid var(--color-line);
+    padding-bottom: 0.75rem;
+}
+
+.portfolio-assistant-toolbar select,
+.portfolio-assistant-composer textarea {
+    min-width: 0;
+    border: 1px solid var(--color-line-strong);
+    background: var(--color-surface-raised);
+    color: var(--color-text);
+    font: inherit;
+}
+
+.portfolio-assistant-toolbar select {
+    min-height: 2.25rem;
+    padding: 0.35rem 0.5rem;
+}
+
+.portfolio-assistant-icon,
+.portfolio-assistant-send {
+    display: inline-grid;
+    min-height: 2.25rem;
+    min-width: 2.25rem;
+    place-items: center;
+    border: 1px solid var(--color-line-strong);
+    background: transparent;
+    color: var(--color-text-muted);
+}
+
+.portfolio-assistant-icon:hover,
+.portfolio-assistant-send:hover {
+    border-color: var(--color-signal);
+    color: var(--color-signal);
+}
+
+.portfolio-assistant-icon:disabled,
+.portfolio-assistant-send:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.portfolio-assistant-message-list {
+    display: grid;
+    gap: 0.65rem;
+    min-height: 12rem;
+    max-height: 24rem;
+    overflow-y: auto;
+    padding-right: 0.2rem;
+}
+
+.portfolio-assistant-message {
+    border-left: 2px solid var(--color-line-strong);
+    padding: 0.55rem 0.7rem;
+    background: var(--color-surface-raised);
+}
+
+.portfolio-assistant-message.user {
+    border-left-color: var(--color-signal);
+}
+
+.portfolio-assistant-message p {
+    margin: 0;
+    color: var(--color-text-muted);
+    line-height: 1.55;
+}
+
+.portfolio-assistant-message p + p,
+.portfolio-assistant-message ul,
+.portfolio-assistant-message ol {
+    margin-top: 0.5rem;
+}
+
+.portfolio-assistant-message a {
+    color: var(--color-signal-strong);
+}
+
+.portfolio-assistant-empty,
+.portfolio-assistant-empty-state,
+.portfolio-assistant-sign-in {
+    display: grid;
+    justify-items: start;
+    gap: 0.65rem;
+    color: var(--color-text-muted);
+}
+
+.portfolio-assistant-composer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.45rem;
+    align-items: end;
+}
+
+.portfolio-assistant-composer textarea {
+    resize: vertical;
+    padding: 0.65rem;
+}
+
+.portfolio-assistant-status,
+.portfolio-assistant-muted {
+    color: var(--color-text-faint);
+    font-size: 0.78rem;
+}
+
+.portfolio-assistant-error {
+    margin: 0;
+    color: var(--color-danger);
+    font-size: 0.82rem;
+}
+
+.portfolio-assistant-compaction {
+    margin-bottom: 0.55rem;
+    border: 1px solid var(--color-line);
+    padding: 0.55rem;
+    color: var(--color-signal-strong);
+    font-size: 0.8rem;
+}
+
+.portfolio-assistant-compaction p {
+    margin-top: 0.25rem;
+    color: var(--color-text-faint);
+    font-size: 0.78rem;
+}
+
+.portfolio-assistant-turnstile {
+    display: grid;
+    gap: 0.6rem;
+    min-height: 12rem;
+    align-content: center;
+    justify-items: start;
+}
+
+.portfolio-assistant-fab {
+    display: inline-grid;
+    width: 3.25rem;
+    height: 3.25rem;
+    place-items: center;
+    border: 1px solid var(--color-line-strong);
+    border-radius: 50%;
+    background: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: var(--shadow-panel);
+    transition:
+        border-color var(--motion-feedback-duration) var(--motion-ease),
+        color var(--motion-feedback-duration) var(--motion-ease),
+        transform var(--motion-feedback-duration) var(--motion-ease);
+}
+
+.portfolio-assistant-fab:hover {
+    border-color: var(--color-signal);
+    color: var(--color-signal);
+    transform: translateY(-2px);
+}
+
+.portfolio-assistant-spin {
+    animation: portfolio-assistant-spin 1s linear infinite;
+}
+
+@keyframes portfolio-assistant-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 640px) {
+    .portfolio-assistant {
+        right: 1rem;
+        bottom: max(var(--floating-control-block-end), 1rem);
+    }
+
+    .portfolio-assistant-panel {
+        width: min(30rem, calc(100vw - 1rem));
+    }
+
+    .portfolio-assistant-body {
+        max-height: calc(100dvh - 8.5rem);
+    }
+
+    .portfolio-assistant-toolbar {
+        grid-template-columns: minmax(0, 1fr) repeat(4, 2.25rem);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .portfolio-assistant-fab,
+    .portfolio-assistant-spin {
+        animation: none;
+        transition: none;
+    }
+}
