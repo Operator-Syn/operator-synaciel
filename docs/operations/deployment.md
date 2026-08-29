@@ -12,27 +12,47 @@ role: runbook
 
 # Production Deployment
 
-This runbook deploys the three production surfaces in this repository:
+This runbook coordinates the five runtime surfaces in this repository:
 
 1. the React/Vite portfolio on Cloudflare Pages at https://syn-forge.com;
-2. the Hono portfolio API Worker at https://personal-portfolio.syn-forge.com; and
-3. the stateless public Portfolio MCP Worker at https://mcp.syn-forge.com/mcp.
+2. the Hono portfolio API Worker at https://personal-portfolio.syn-forge.com;
+3. the public-auth Worker at https://public-auth.syn-forge.com;
+4. the stateful portfolio-agent Worker at https://assistant.syn-forge.com; and
+5. the stateless public Portfolio MCP Worker at https://mcp.syn-forge.com/mcp.
 
 The repository is an npm monorepo. Use the surface-specific procedures below.
 
 ## Deployment topology
 
+This release spans five runtime surfaces plus their storage dependencies:
+
+1. the React/Vite portfolio on Cloudflare Pages at https://syn-forge.com;
+2. the Hono portfolio API Worker at https://personal-portfolio.syn-forge.com;
+3. the public-auth Worker at https://public-auth.syn-forge.com;
+4. the stateful portfolio-agent Worker at https://assistant.syn-forge.com; and
+5. the stateless public Portfolio MCP Worker at https://mcp.syn-forge.com/mcp.
+
 | Surface | Source | Production target | Deployment path |
 | --- | --- | --- | --- |
 | Portfolio web | apps/portfolio-web/ | Cloudflare Pages, syn-forge.com | Pages Git integration |
 | Portfolio API | workers/portfolio-api/ | Worker, personal-portfolio.syn-forge.com | GitHub Actions on main (Wrangler) |
+| Public auth | workers/portfolio-public-auth/ | Worker, public-auth.syn-forge.com | GitHub Actions on main (Wrangler) |
 | Portfolio MCP | workers/portfolio-mcp/ | Worker, mcp.syn-forge.com | GitHub Actions on main (Wrangler) |
-| Database | workers/portfolio-api/migrations/ | D1 database my-personal-portfolio | Explicit Wrangler migration command |
-| Media and snippets | Portfolio API BUCKET binding | R2 bucket personal-portfolio | Existing bucket binding |
+| Portfolio agent | workers/portfolio-agent/ | Worker, assistant.syn-forge.com | GitHub Actions on main (Wrangler) |
+| Portfolio data | workers/portfolio-api/migrations/ | D1 my-personal-portfolio + R2 personal-portfolio | Explicit, separately authorized operations |
+| Assistant state | workers/portfolio-public-auth/migrations/ | D1 portfolio-agent-auth + Durable Objects | Explicit D1 migration; DO schema ships with the agent |
 
-The API Worker must be available before the MCP Worker is deployed because the
-MCP Worker declares a PORTFOLIO_API Service Binding. The auth-worker target must
-also exist before the API Worker is deployed.
+The API Worker must be available before the MCP Worker because its service
+binding depends on that runtime surface. The portfolio agent is deployed after
+the MCP Worker, and public-auth follows the agent because its service binding
+targets `portfolio-agent`. Pages remains a separate Git-integrated deployment
+from the same main-branch push.
+
+Local assistant testing uses the `env.local` profiles in the public-auth and
+portfolio-agent Wrangler files plus explicit Vite `VITE_PUBLIC_AUTH_URL` and
+`VITE_PORTFOLIO_AGENT_URL` values. Those local values are not production
+deployment inputs; see [[operations/local-development|Local Development]] for
+the local D1, OAuth callback, and ignored `.dev.vars` setup.
 
 ## Before a production release
 
@@ -46,9 +66,8 @@ npx wrangler login
 npx wrangler whoami
 ~~~
 
-The repository currently pins Wrangler 4.125.0 in its workspace manifests.
-Run the commands from the repository root after installing dependencies with
-the lockfile:
+The repository pins Wrangler 4.125.0 in its workspace manifests. Run commands
+from the repository root after installing dependencies with the lockfile:
 
 ~~~bash
 npm ci
@@ -57,20 +76,27 @@ npm ci
 The following resources must already exist or be provisioned in the same
 Cloudflare account:
 
-- the syn-forge.com zone and its DNS/certificate eligibility;
-- the auth-worker Worker;
-- the my-personal-portfolio D1 database;
-- the personal-portfolio R2 bucket;
+- the syn-forge.com zone and DNS/certificate eligibility;
+- the separately managed auth-worker used by the portfolio API;
+- the my-personal-portfolio D1 database and personal-portfolio R2 bucket;
+- the portfolio-agent-auth D1 database for public-auth;
 - the Cloudflare Pages project for the web application; and
-- a Pages production branch selected in the dashboard.
+- the custom domains and service bindings declared by the four Worker
+  configurations.
 
 The checked-in Worker configurations are authoritative for names and bindings:
 
-- workers/portfolio-api/wrangler.toml declares portfolio-api, the DB binding,
-  the BUCKET binding, the AUTH_WORKER Service Binding, and the
+- workers/portfolio-api/wrangler.toml declares portfolio-api, the API DB/R2
+  bindings, the AUTH_WORKER service binding, and the
   personal-portfolio.syn-forge.com custom domain.
+- workers/portfolio-public-auth/wrangler.toml declares public-auth, the auth
+  D1 binding, the portfolio-agent service binding, and
+  public-auth.syn-forge.com.
 - workers/portfolio-mcp/wrangler.toml declares syn-forge-portfolio-mcp, the
-  PORTFOLIO_API Service Binding, and the mcp.syn-forge.com custom domain.
+  PORTFOLIO_API service binding, and mcp.syn-forge.com.
+- workers/portfolio-agent/wrangler.toml declares portfolio-agent, Workers AI,
+  the auth D1 binding, the PortfolioAgent Durable Object, and
+  assistant.syn-forge.com.
 
 ### API Worker secrets
 
@@ -110,63 +136,89 @@ workers/portfolio-api/wrangler.toml:
 Do not add the API secrets to the MCP Worker. The MCP Worker only needs its
 PORTFOLIO_API Service Binding in production.
 
+## Public-auth runtime provisioning
+
+Complete these steps once before the first public-auth deploy. They are
+manual, reviewed operations and are not performed by GitHub Actions.
+
+1. Create the D1 database named portfolio-agent-auth and record its
+   database ID in both the public-auth and portfolio-agent Wrangler
+   configurations.
+2. Review and apply workers/portfolio-public-auth/migrations/0000_portfolio_agent_auth.sql
+   through the separately authorized D1 migration workflow.
+3. Register the Google OAuth client with the exact callback
+   https://public-auth.syn-forge.com/oauth/google/callback and the scopes
+   openid, email, and profile.
+4. Create a Turnstile widget for syn-forge.com. If local Vite development will
+   use the production Workers, allow `localhost` in that widget's hostname
+   list; expose only its site key as the frontend build variable
+   VITE_TURNSTILE_SITE_KEY.
+5. Generate an ES256 JWK pair outside the repository. Store the private JWK in
+   public-auth, the public JWK in portfolio-agent, and rotate them together.
+6. Set the shared internal service-binding key in both Workers. Keep all
+   runtime values out of committed .env files, logs, and workflow YAML. The
+   production Wrangler variables also parameterize `BROWSER_ORIGINS` (including
+   the exact localhost development origin) and set
+   `SESSION_COOKIE_SAME_SITE = "None"` for credentialed local-Vite requests.
+
+The exact runtime key labels are listed as fragments in
+[[architecture/portfolio-public-auth|Public Portfolio Authentication]] so they
+remain readable without placing credential-like strings in source scans. Do
+not pass any of these runtime values through GitHub Actions; Wrangler deploys
+the already configured Worker bindings only.
+
 ## GitHub Actions Worker deployment
 
 The checked-in [production Worker workflow](../../.github/workflows/deploy-production-workers.yml)
-runs for every push to `main` and supports a manual `workflow_dispatch` recovery run from the Actions tab. Manual runs must select `main`; each job checks the ref so another branch cannot deploy. Its validation job installs the lockfile
-dependencies and runs the repository typecheck, lint, Biome, build, application
-tests, documentation check, repository MCP check, and public MCP check. After
-validation succeeds, the workflow dry-runs and deploys `portfolio-api`, then
-dry-runs and deploys `syn-forge-portfolio-mcp`.
+runs only for pushes to main. Its validation job installs the lockfile
+dependencies and runs typecheck, lint, Biome, the frontend/API/MCP/public-auth/
+agent test suites, deployment-path assertions, documentation validation, and
+both MCP configuration checks.
 
-To start a run manually, open the Actions tab, choose `Deploy production Workers`, select the `main` branch, and choose **Run workflow**.
+After validation succeeds, the jobs run in this order:
 
-The API deploy completes before the MCP deploy so the MCP Worker's
-`PORTFOLIO_API` Service Binding continues to target the available API Worker.
-The workflow uses Wrangler 4.125.0 and an account-scoped Cloudflare API token.
+1. portfolio-api;
+2. portfolio-mcp;
+3. portfolio-agent; and
+4. portfolio-public-auth after the agent exists for its service binding.
 
-### Configure GitHub Actions secrets
+Every Worker job uses actions/checkout@v6, actions/setup-node@v6 with Node 22,
+and cloudflare/wrangler-action@v3 pinned to Wrangler 4.125.0. Each Worker
+deploy explicitly selects the top-level production Wrangler environment with
+`--env=""`; the checked-in `env.local` profiles are never deployment targets.
+The workflow
+passes only the repository secrets CLOUDFLARE_API_TOKEN and
+CLOUDFLARE_ACCOUNT_ID. Use an account-scoped token based on Cloudflare's
+Edit Cloudflare Workers template and restrict it to this account.
 
-Add these GitHub repository secrets before pushing to `main`:
+The workflow does not upload Pages, deploy auth-worker, pass runtime Google/
+Turnstile/JWK/service-binding values, or apply any D1 migration. A dry run
+validates the selected Wrangler configuration; it is not live verification.
 
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
-
-Create the token from Cloudflare's [GitHub Actions deployment
-guidance](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/)
-using the account-scoped **Edit Cloudflare Workers** template, then restrict it
-to the account that owns these Workers. Never commit either secret value or
-hard-code it in a workflow file.
-
-The workflow passes only the deployment token and account ID to Wrangler. It does
-not pass the API Worker's runtime secrets (`ACCOUNT_ID`,
-`R2_ACCESS_KEY_ID`, or `R2_SECRET_ACCESS_KEY`), apply D1 migrations, or deploy
-the separately managed `auth-worker`.
-
-The frontend is intentionally not uploaded by this workflow. Cloudflare Pages
-continues to use its existing Git integration and starts its own production
-deployment for the same `main` push. Pages and Worker releases are therefore
-coordinated by the push but are not one atomic deployment.
+Cloudflare Pages remains on its existing Git integration and starts its own
+production build for the same main push. The Pages build and the Worker graph
+are coordinated by the commit but are not atomic.
 
 ## Preflight verification
 
-Run the repository checks before changing production:
+Run the same checks locally before changing production:
 
 ~~~bash
+npm ci
 npm run typecheck
 npm run lint
 npm run check:biome
 npm run build
+npm run test --workspace=@syn-forge/portfolio-web --
+npm run test --workspace=@syn-forge/portfolio-api --
+npm run public-auth:check
+npm run test:public-auth
+npm run portfolio-agent:check
+npm run test:portfolio-agent
+npm run test:portfolio-mcp
 npm run docs:check
 npm run mcp:check
-npm run skills:check
-npm run mcp:typecheck
-npm run test:mcp
 npm run mcp:portfolio:check
-npm run test:portfolio-mcp
-npm run test:media-presign
-npm run test:project-pagination
-npm run test:social-preview
 ~~~
 
 Review the complete diff and confirm that generated output, secrets, local
@@ -184,7 +236,7 @@ Refresh the code graph after source changes:
 pipenv run graphify update . --no-cluster
 ~~~
 
-Do not treat a successful build or dry run as proof that the deployed service is
+Do not treat a successful build or dry run as proof that a deployed service is
 live. Continue with the deployment and post-deployment checks below.
 
 ## Database migration release
@@ -260,6 +312,28 @@ npx wrangler deploy
 Confirm that the deployment reports the expected Worker and custom domain. A
 successful upload does not prove that D1, R2, the auth binding, or public routes
 work.
+
+## Deploy the public-auth Worker
+
+The public-auth Worker is deployed after the portfolio-agent Worker because its
+`AGENT_WORKER` Service Binding targets that Worker. Run the dry run first:
+
+~~~bash
+npx wrangler deploy --dry-run \
+  --env="" \
+  --config workers/portfolio-public-auth/wrangler.toml
+~~~
+
+The production deploy uses the same configuration:
+
+~~~bash
+npx wrangler deploy \
+  --env="" \
+  --config workers/portfolio-public-auth/wrangler.toml
+~~~
+
+Confirm the custom domain and the auth D1 binding in Wrangler output. This
+does not prove Google OAuth, Turnstile, or the service binding works live.
 
 ## Configure and deploy Cloudflare Pages
 
@@ -354,6 +428,24 @@ for six hours at the portfolio API transport boundary. Cache entries are local
 to the data center that fills them, and content updates may remain visible for
 up to six hours. Deployment does not purge already-warmed cache entries.
 
+## Deploy the portfolio agent Worker
+
+Deploy this Worker after portfolio-mcp and before public-auth:
+
+~~~bash
+npx wrangler deploy --dry-run \
+  --env="" \
+  --config workers/portfolio-agent/wrangler.toml
+npx wrangler deploy \
+  --env="" \
+  --config workers/portfolio-agent/wrangler.toml
+~~~
+
+The agent uses the Workers AI binding, the auth D1 binding, and the
+PortfolioAgent Durable Object migration declared in its Wrangler file. Do not
+apply the Durable Object migration manually. Confirm the assistant custom
+domain and binding names in the dry-run output before deploying.
+
 ## Post-deployment verification
 
 ### API smoke checks
@@ -418,7 +510,24 @@ npx wrangler tail syn-forge-portfolio-mcp
 The Worker configuration enables invocation logs. Do not log portfolio document
 contents or credentials.
 
-### Deployment records
+### Public-auth and agent checks
+
+Verify the public-auth health endpoint and the agent's protected boundary
+without copying cookies or tokens into logs:
+
+~~~bash
+curl --fail --silent --show-error https://public-auth.syn-forge.com/health
+curl --include --silent --request GET https://assistant.syn-forge.com/health
+~~~
+
+Then perform one interactive browser smoke flow: Google sign-in, one Turnstile
+verification, create/select a thread, ask a grounded portfolio question,
+observe a citation, export the sanitized transcript, create a new thread, and
+delete the old thread. Confirm an unrelated or unsafe request is refused and
+that the compaction notice recommends a new thread after the configured
+threshold. Record live results separately from source/build checks.
+
+## Deployment records
 
 Record the deployment version, commit, time, and verification result. Wrangler
 and the Cloudflare dashboard expose Worker versions and deployments. Pages
@@ -433,6 +542,8 @@ List recent deployments before selecting a target:
 ~~~bash
 npx wrangler deployments list --name portfolio-api
 npx wrangler deployments list --name syn-forge-portfolio-mcp
+npx wrangler deployments list --name portfolio-public-auth
+npx wrangler deployments list --name portfolio-agent
 ~~~
 
 Rollback the affected Worker using a reviewed version ID or the previous version:
@@ -440,6 +551,8 @@ Rollback the affected Worker using a reviewed version ID or the previous version
 ~~~bash
 npx wrangler rollback --name portfolio-api
 npx wrangler rollback --name syn-forge-portfolio-mcp
+npx wrangler rollback --name portfolio-public-auth
+npx wrangler rollback --name portfolio-agent
 ~~~
 
 A Worker rollback immediately creates a new deployment across its routes and
@@ -463,6 +576,8 @@ state.
 - [ ] auth-worker exists and is reachable through the API Worker binding.
 - [ ] D1 database and R2 bucket names match wrangler.toml.
 - [ ] API Worker secrets exist and are scoped appropriately.
+- [ ] Public-auth D1, Google OAuth, Turnstile, ES256 JWK, and internal key
+      provisioning is complete.
 - [ ] npm ci completed from the repository root.
 - [ ] GitHub Actions secrets are configured for Worker deployment.
 - [ ] The main-branch validation job passed before Worker deployment.
@@ -471,11 +586,16 @@ state.
       explicitly authorized before application.
 - [ ] portfolio-api dry run passed.
 - [ ] portfolio-api deployed before portfolio-mcp.
+- [ ] portfolio-mcp deployed before portfolio-agent.
+- [ ] portfolio-agent deployed before public-auth so its Service Binding target
+      exists.
 - [ ] Pages root, build command, output directory, production branch, and
       VITE_API_URL are correct.
 - [ ] Pages production deployment and custom domain verified.
 - [ ] portfolio-mcp dry run passed.
 - [ ] portfolio-mcp deployed with its Service Binding.
+- [ ] portfolio-agent deployed with Workers AI, auth D1, and Durable Object
+      bindings.
 - [ ] API, Pages, and MCP smoke checks passed.
 - [ ] Live logs were checked without exposing secrets or portfolio contents.
 - [ ] Deployment version and commit recorded.
@@ -486,6 +606,8 @@ state.
 Repository sources:
 
 - [Production Worker deployment workflow](../../.github/workflows/deploy-production-workers.yml)
+- [Portfolio agent architecture](../architecture/portfolio-agent.md)
+- [Public portfolio authentication](../architecture/portfolio-public-auth.md)
 - [Root scripts](../../package.json)
 - [Portfolio web manifest](../../apps/portfolio-web/package.json)
 - [Portfolio web Vite configuration](../../apps/portfolio-web/vite.config.ts)
@@ -496,6 +618,11 @@ Repository sources:
 - [Portfolio API bindings](../../workers/portfolio-api/src/bindings.ts)
 - [Portfolio MCP manifest](../../workers/portfolio-mcp/package.json)
 - [Portfolio MCP Wrangler configuration](../../workers/portfolio-mcp/wrangler.toml)
+- [Public-auth manifest](../../workers/portfolio-public-auth/package.json)
+- [Public-auth Wrangler configuration](../../workers/portfolio-public-auth/wrangler.toml)
+- [Public-auth migration](../../workers/portfolio-public-auth/migrations/0000_portfolio_agent_auth.sql)
+- [Portfolio agent manifest](../../workers/portfolio-agent/package.json)
+- [Portfolio agent Wrangler configuration](../../workers/portfolio-agent/wrangler.toml)
 - [D1 migration workflow](../database/migrations.md)
 - [Architecture overview](../architecture/overview.md)
 - [Public Portfolio MCP](../architecture/portfolio-mcp.md)
