@@ -14,12 +14,14 @@ import { withMutationLock } from "./mutation-lock.ts";
 import {
   atomicWrite,
   digestBytes,
+  isLikelyBinaryPath,
   MAX_FILE_BYTES,
   safeAbsolutePath,
   validateLocalProjectRoot,
   validateRelativeProjectPath,
 } from "./path.ts";
 import {
+  isProfilePathAllowed,
   MAX_PREPARED_FILES,
   MAX_RETAINED_REVIEW_BYTES,
   REPOSITORY_WRITE_PROFILES,
@@ -45,7 +47,7 @@ export type RepositoryChangeOperation = {
 };
 
 export type RepositoryChangeRequest = {
-  readonly taskType: "patch" | "app" | "docs" | "mcp" | "database" | "config";
+  readonly taskType: "patch" | "app" | "docs" | "mcp" | "database" | "config" | "repository";
   readonly description: string;
   readonly profile: RepositoryWriteProfile;
   readonly operations: readonly RepositoryChangeOperation[];
@@ -162,12 +164,6 @@ async function localFileState(path: string): Promise<FileState> {
   return { exists: true, sha256: digestBytes(bytes), content };
 }
 
-function profileAllowsPath(profile: RepositoryWriteProfile, path: string): boolean {
-  return REPOSITORY_WRITE_PROFILES[profile].prefixes.some((prefix) =>
-    prefix.endsWith("/") ? path.startsWith(prefix) : path === prefix,
-  );
-}
-
 function taskMatchesProfile(
   taskType: RepositoryChangeRequest["taskType"],
   profile: RepositoryWriteProfile,
@@ -177,10 +173,13 @@ function taskMatchesProfile(
 
 function validateWritePath(profile: RepositoryWriteProfile, input: string): string {
   const path = validateRelativeProjectPath(input, { allowRestrictedPaths: true });
-  if (!profileAllowsPath(profile, path))
+  if (!isProfilePathAllowed(profile, path))
     throw new Error(`Path is not allowed by the ${profile} write profile.`);
   if (path.split("/").some((part) => isSensitiveFileName(part))) {
     throw new Error("Sensitive environment and credential files cannot be changed.");
+  }
+  if (isLikelyBinaryPath(path)) {
+    throw new Error("Binary file paths cannot be changed through text repository changes.");
   }
   return path;
 }
