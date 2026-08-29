@@ -10,7 +10,7 @@ import {
 const nonEmptyString = z.string().min(1);
 const hashSchema = z.string().length(64);
 const pathSchema = z.string().min(1);
-const profileSchema = z.enum(["app", "docs", "mcp", "database", "config"]);
+const profileSchema = z.enum(["app", "docs", "mcp", "database", "config", "repository"]);
 const verificationProfileSchema = z.enum([
   "mcp-fast",
   "app",
@@ -18,6 +18,7 @@ const verificationProfileSchema = z.enum([
   "mcp",
   "database",
   "config",
+  "repository",
   "full",
 ]);
 
@@ -85,6 +86,14 @@ const verificationCheckSchema = z.strictObject({
     "mcp_config_check",
     "mcp_typecheck",
     "mcp_test",
+    "portfolio_mcp_typecheck",
+    "portfolio_mcp_test",
+    "api_typecheck",
+    "api_test",
+    "web_test",
+    "db_migration_check",
+    "skills_check",
+    "biome_check",
     "migration_list_local",
   ]),
   command: z.array(nonEmptyString).min(1),
