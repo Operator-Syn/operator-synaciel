@@ -8,7 +8,8 @@ role: concept
 # Architecture Overview
 
 Operator-Syn is an npm monorepo with separate frontend, API Worker, public
-Streamable HTTP MCP, and local repository-only stdio workspaces. The source of
+Streamable HTTP MCP, public-auth Worker, stateful portfolio-agent Worker, and
+local repository-only stdio workspaces. The source of
 truth for the frontend entrypoint
 is [`apps/portfolio-web/src/main.tsx`](../../apps/portfolio-web/src/main.tsx);
 the API Worker entrypoint is
@@ -26,8 +27,13 @@ the API Worker entrypoint is
 
 The route list includes the home, projects, certificates, snippets, AI and MCP,
 privacy, terms, NetBird, and Atelier pages. The snippets page also supports
-nested paths. The [[architecture/portfolio-mcp|Public Portfolio MCP (Streamable HTTP)]]
-note documents the separate agent-facing Worker and its deployment boundary;
+nested paths. The global `PortfolioAssistantFab` is mounted after the route
+shell so the authenticated assistant is available on every page. The
+[[architecture/portfolio-agent|Portfolio Assistant Agent]] and
+[[architecture/portfolio-public-auth|Public Portfolio Authentication]] notes
+document its separate Worker boundaries. The
+[[architecture/portfolio-mcp|Public Portfolio MCP (Streamable HTTP)]] note
+documents the read-only source boundary, while
 [[operations/repository-mcp|Local Repository MCP (stdio)]] documents the
 development-only repository tooling.
 
@@ -60,4 +66,6 @@ the request before allowing writes. See [[api/routes|API routes]] for the
 complete route grouping.
 
 The root Worker route redirects to `https://www.syn-forge.com`. The frontend
-deployment and Worker deployment are separate operations.
+Pages deployment remains Git-integrated and independent from the Worker
+workflow. The API, public-auth, MCP, and agent deployment ordering is recorded
+in [[operations/deployment|Production deployment]].
