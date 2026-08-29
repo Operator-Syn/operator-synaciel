@@ -525,7 +525,10 @@ verification, create/select a thread, ask a grounded portfolio question,
 observe a citation, export the sanitized transcript, create a new thread, and
 delete the old thread. Confirm an unrelated or unsafe request is refused and
 that the compaction notice recommends a new thread after the configured
-threshold. Record live results separately from source/build checks.
+threshold. Confirm the async `useAgent` connection shows its loading fallback,
+does not emit the React async-client-component crash, and contains a rejected
+token/WebSocket attempt inside the assistant panel with a retry action. Record
+live results separately from source/build checks.
 
 ## Deployment records
 
