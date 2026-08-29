@@ -80,6 +80,10 @@ test("keeps the legacy root GitHub Pages deployment retired", async () => {
     join(repositoryRoot, "docs/operations/deployment.md"),
     "utf8",
   );
+  const deploymentWorkflow = await readFile(
+    join(repositoryRoot, ".github/workflows/deploy-production-workers.yml"),
+    "utf8",
+  );
 
   assert.equal(rootPackage.homepage, undefined);
   assert.equal(rootPackage.scripts?.predeploy, undefined);
@@ -96,6 +100,61 @@ test("keeps the legacy root GitHub Pages deployment retired", async () => {
   assert.equal(mcpPackage.scripts?.deploy, 'wrangler deploy --config wrangler.toml --env=""');
   assert.match(deploymentDocumentation, /Cloudflare Pages Git integration/);
   assert.match(deploymentDocumentation, /wrangler pages deploy/);
+
+  assert.ok(deploymentWorkflow.includes("on:\n  push:\n    branches:\n      - main"));
+  assert.match(deploymentWorkflow, /group: production-deploy/);
+  assert.match(deploymentWorkflow, /cancel-in-progress: false/);
+  assert.match(deploymentWorkflow, /deploy-api:\n[\s\S]*?needs: validate/);
+  assert.match(deploymentWorkflow, /deploy-mcp:\n[\s\S]*?needs: deploy-api/);
+  assert.equal(deploymentWorkflow.match(/cloudflare\/wrangler-action@v3/g)?.length ?? 0, 2);
+  assert.ok(
+    deploymentWorkflow.includes("secrets.CLOUDFLARE_API_TOKEN"),
+    "Cloudflare API token secret is not configured",
+  );
+  assert.ok(
+    deploymentWorkflow.includes("secrets.CLOUDFLARE_ACCOUNT_ID"),
+    "Cloudflare account ID secret is not configured",
+  );
+  for (const command of [
+    "npm ci",
+    "npm run typecheck",
+    "npm run lint",
+    "npm run check:biome",
+    "npm run build",
+    "npm run test --workspace=@syn-forge/portfolio-web --",
+    "npm run test --workspace=@syn-forge/portfolio-api --",
+    "npm run test:portfolio-mcp",
+    "npm exec -- tsx --tsconfig tsconfig.tests.json --test tests/scripts/deployment-paths.test.ts",
+    "npm run docs:check",
+    "npm run mcp:check",
+    "npm run mcp:portfolio:check",
+  ]) {
+    assert.ok(deploymentWorkflow.includes(command), `Deployment workflow omits ${command}`);
+  }
+  assert.ok(
+    deploymentWorkflow.includes(
+      "npx wrangler deploy --dry-run --config workers/portfolio-api/wrangler.toml",
+    ),
+  );
+  assert.ok(
+    deploymentWorkflow.includes(
+      'npx wrangler deploy --dry-run --env="" --config workers/portfolio-mcp/wrangler.toml',
+    ),
+  );
+  assert.ok(
+    deploymentWorkflow.includes("command: deploy --config workers/portfolio-api/wrangler.toml"),
+  );
+  assert.ok(
+    deploymentWorkflow.includes(
+      'command: deploy --env="" --config workers/portfolio-mcp/wrangler.toml',
+    ),
+  );
+  assert.ok(deploymentWorkflow.includes('wranglerVersion: "4.125.0"'));
+  assert.doesNotMatch(deploymentWorkflow, /wrangler pages deploy/);
+  assert.doesNotMatch(deploymentWorkflow, /db:migrations:(?:apply|list)/);
+  assert.doesNotMatch(deploymentWorkflow, /auth-worker/);
+  assert.match(deploymentDocumentation, /deploy-production-workers\.yml/);
+  assert.match(deploymentDocumentation, /CLOUDFLARE_API_TOKEN/);
 
   const textFiles = await collectTextFiles(repositoryRoot);
   for (const file of textFiles) {
