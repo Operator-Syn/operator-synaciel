@@ -196,6 +196,10 @@ The local environment uses the public API hostname as a fallback when the
 Service Binding is not connected. Production uses the `PORTFOLIO_API` Service
 Binding declared in `workers/portfolio-mcp/wrangler.toml`.
 
+## Implementation plan
+
+The staged GitHub App rate-limit hardening plan is maintained in [[plans/portfolio-mcp-github-app/README|the Portfolio MCP GitHub App plan]]. It is preparatory documentation: App creation, secret upload, edge-rule changes, deployment, and live verification remain separate approval-gated operations.
+
 ## Deployment
 
 Before deploying, confirm all of the following:
@@ -240,6 +244,9 @@ the public discovery surfaces at [`/ai`](https://syn-forge.com/ai) and
 latency; do not log portfolio document contents.
 
 The frontend Pages deployment remains separate from this Worker deployment.
+The authenticated browser assistant consumes this public MCP through the
+[[architecture/portfolio-agent|Portfolio Assistant Agent]]; public MCP access
+itself remains unrestricted and stateless.
 
 ## References
 
