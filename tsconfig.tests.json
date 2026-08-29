@@ -24,6 +24,8 @@
     "apps/portfolio-web/src/**/*.tsx",
     "workers/portfolio-api/src/**/*.ts",
     "workers/portfolio-mcp/src/**/*.ts",
+    "workers/portfolio-public-auth/src/**/*.ts",
+    "workers/portfolio-agent/src/**/*.ts",
     "tools/repository-mcp/src/**/*.ts",
     "tests/**/*.ts",
     "tests/**/*.tsx",
