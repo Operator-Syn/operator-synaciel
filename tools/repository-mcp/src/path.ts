@@ -27,7 +27,7 @@ function discoverRoot(): string {
 }
 
 export const PROJECT_ROOT = discoverRoot();
-export const MAX_FILE_BYTES = 512_000;
+export const MAX_FILE_BYTES = 1_000_000;
 
 function hasRestrictedPart(path: string): boolean {
   return path.split("/").some((part) => CONSENTABLE_RESTRICTED_DIRS.has(part));
@@ -166,7 +166,8 @@ export async function pathExists(relativePath: string): Promise<boolean> {
 export async function readTextFile(relativePath: string): Promise<string | null> {
   const { absolutePath } = await safeAbsolutePath(relativePath);
   const info = await stat(absolutePath).catch(() => null);
-  if (!info?.isFile() || info.size > MAX_FILE_BYTES) return null;
+  if (!info?.isFile() || info.size > MAX_FILE_BYTES || isLikelyBinaryPath(relativePath))
+    return null;
   const content = await readFile(absolutePath, "utf8");
   return content.includes("\0") ? null : content;
 }
