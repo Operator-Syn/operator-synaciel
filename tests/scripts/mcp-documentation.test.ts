@@ -55,6 +55,7 @@ test("keeps public and local MCP documentation aligned with their boundaries", a
     localToolSource,
     localDocumentation,
     localPolicy,
+    localPath,
     localSessionHook,
     commitGate,
     documentationMap,
@@ -74,6 +75,7 @@ test("keeps public and local MCP documentation aligned with their boundaries", a
     readRepositoryFile("tools/repository-mcp/src/tools/repository.ts"),
     readRepositoryFile("docs/operations/repository-mcp.md"),
     readRepositoryFile("tools/repository-mcp/src/policy.ts"),
+    readRepositoryFile("tools/repository-mcp/src/path.ts"),
     readRepositoryFile(".codex/hooks/repository-session-start.sh"),
     readRepositoryFile(".codex/hooks/repository-commit-gate.mjs"),
     readRepositoryFile("docs/README.md"),
@@ -162,11 +164,21 @@ test("keeps public and local MCP documentation aligned with their boundaries", a
   assert.match(localDocumentation, /repository_workflow_status/);
   assert.match(localDocumentation, /verificationRequired/);
   assert.match(localDocumentation, /context-filter/);
+  assert.match(localDocumentation, /repository.*broadest/);
+  assert.match(localDocumentation, /workers\/portfolio-api\//);
+  assert.match(localDocumentation, /1,000,000 bytes/);
+  assert.match(localDocumentation, /binary/);
+  assert.match(localDocumentation, /api_typecheck/);
   assert.match(localToolSource, /read_repository_change_diff/);
   assert.match(localToolSource, /read_working_tree_diff/);
   assert.match(localToolSource, /read_repository_files/);
+  assert.match(localToolSource, /repository profile/);
   assert.match(localPolicy, /MAX_PREPARED_FILES = 20/);
   assert.match(localPolicy, /MAX_SOURCE_READ_RESPONSE_CHARACTERS/);
+  assert.match(localPolicy, /MAX_VERIFICATION_CHECKS = 20/);
+  assert.match(localPolicy, /repository:/);
+  assert.match(localPolicy, /api_typecheck/);
+  assert.match(localPath, /MAX_FILE_BYTES = 1_000_000/);
   assert.match(localPolicy, /mcp-fast/);
   assert.match(localSessionHook, /Start with repository_workflow_status/);
   assert.match(localSessionHook, /context_filter/);
