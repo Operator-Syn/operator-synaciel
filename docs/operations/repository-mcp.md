@@ -77,8 +77,13 @@ it in a `finally` path.
 
 For `prepare_repository_change`, each operation must contain the complete
 replacement content for its target text file. A single operation is limited to
-20 files and each profile keeps its existing byte budget. Do not use bounded
-terminal output as the replacement payload. To catch accidental truncation
+20 files and each profile keeps its existing aggregate byte budget. Do not use
+bounded terminal output as the replacement payload. The `repository` profile
+is the broad cross-workspace option for planned changes; it covers the current
+application, API Worker, public MCP Worker, local MCP, tools, tests, scripts,
+documentation, workflows, restricted developer directories, and root
+configuration files. Focused profiles remain available when a narrower
+boundary is preferable. To catch accidental truncation
 before any write, a shorter replacement for an existing file is rejected by
 default with a request to set `allowContentShortening: true`. Use that opt-in
 only after reviewing the complete diff for an intentional reduction. The
@@ -90,12 +95,17 @@ write fails.
 Diff previews are capped at 16,000 characters. The server reports the full
 character and UTF-8 byte totals, the next offset, and every path omitted from the
 preview. Reader requests accept offsets and up to 64,000 characters per chunk;
-review diffs larger than the 8,000,000-character storage ceiling are rejected
-with a request to split the change. `read_repository_files` reads up to 20
-profile-allowed text files in one bounded request, defaults to 16,000 characters
-per file, caps chunks at 64,000 characters, and caps the aggregate response at
-256,000 characters. Use `responseMode: "structured"` when the client already
-consumes `structuredContent`, avoiding duplicate JSON text.
+each file must be at most 1,000,000 bytes and the aggregate response is capped
+at 256,000 characters. Review diffs larger than the 8,000,000-character storage
+ceiling are rejected with a request to split the change. `read_repository_files`
+reads up to 20 profile-allowed text files in one bounded request, defaults to
+16,000 characters per file, and returns hashes, byte totals, completion state,
+and pagination offsets. The source reader and text-change flow reject binary
+extensions, NUL-containing content, ignored runtime directories, sensitive
+environment or credential names, and credential-like/private-key content even
+when the broad `repository` profile would otherwise match the path. Use
+`responseMode: "structured"` when the client already consumes
+`structuredContent`, avoiding duplicate JSON text.
 
 Prepared plans and commit operations expire after 30 minutes and are evicted
 under a 64 MiB retained-review budget. Verification results are cached for 30
@@ -162,17 +172,29 @@ the corresponding fixed check when the diagnostic tail is omitted.
 - `docs` covers the vault, root documentation, and design context.
 - `mcp-fast` covers only the fixed MCP configuration and MCP typecheck commands
   for rapid iteration; its successful results are cached briefly.
-- `mcp` covers `tools/repository-mcp/`, `workers/portfolio-mcp/`, tests,
-  scripts, hooks, MCP registrations, and tooling metadata.
-- `database` covers `workers/portfolio-api/` migrations, schema, seed,
-  Drizzle configuration, and API Wrangler configuration.
+- `repository` is the broadest source and planned-change profile. It covers
+  every current tracked workspace boundary: `apps/`, the entire
+  `workers/` tree (including `workers/portfolio-api/` and
+  `workers/portfolio-mcp/`), `tools/`, `tests/`, `scripts/`,
+  documentation, workflows, restricted developer directories, editor
+  configuration, and root manifests. Ignored runtime directories, binary source
+  files, sensitive names, and credential-like content remain denied.
+- `mcp` remains focused on local/public MCP implementation, tests, scripts,
+  hooks, workflows, docs, and MCP metadata.
+- `database` remains focused on API migrations, schema, seed, Drizzle, and
+  Wrangler configuration; the broad `repository` profile intentionally
+  includes the full API Worker for cross-boundary reviews.
 - `config` covers ordinary root and workspace configuration while keeping
   database artifacts on the dedicated database profile.
 - `full` runs the complete fixed local check set.
 
-Verification uses only repository-native npm scripts. The MCP never accepts
-arbitrary shell commands, deployment, remote Git operations, Cloudflare
-credentials, or local/remote D1 migration application.
+Verification uses only repository-native npm scripts. The broad `repository`
+verification profile runs documentation and skills checks, local and public MCP
+checks/tests, API typecheck/tests and web tests (api_typecheck, api_test, web_test),
+migration validation/listing, root typecheck,
+lint, Biome, and the production build. It does not deploy, contact remote Git,
+read Cloudflare credentials, or apply local/remote D1 migrations. The MCP never
+accepts arbitrary shell commands or deployment operations.
 
 ## Setup
 
