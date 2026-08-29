@@ -7,6 +7,8 @@
     "apps/portfolio-web",
     "workers/portfolio-api",
     "workers/portfolio-mcp",
+    "workers/portfolio-public-auth",
+    "workers/portfolio-agent",
     "tools/repository-mcp"
   ],
   "scripts": {
@@ -28,6 +30,10 @@
     "mcp:portfolio:check": "npm run check --workspace=@syn-forge/portfolio-mcp --",
     "mcp:portfolio:dev": "npm run dev --workspace=@syn-forge/portfolio-mcp --",
     "mcp:portfolio:deploy": "npm run deploy --workspace=@syn-forge/portfolio-mcp --",
+    "public-auth:dev": "npm run dev --workspace=@syn-forge/portfolio-public-auth --",
+    "public-auth:check": "npm run check --workspace=@syn-forge/portfolio-public-auth --",
+    "portfolio-agent:dev": "npm run dev --workspace=@syn-forge/portfolio-agent --",
+    "portfolio-agent:check": "npm run check --workspace=@syn-forge/portfolio-agent --",
     "skills:check": "node scripts/validate-skills.mjs",
     "mcp:typecheck": "npm run typecheck --workspace=@syn-forge/repository-mcp --",
     "test:mcp": "npm run test --workspace=@syn-forge/repository-mcp --",
@@ -35,6 +41,8 @@
     "test:project-pagination": "npm run test:project-pagination --workspace=@syn-forge/portfolio-api --",
     "test:social-preview": "npm run test:social-preview --workspace=@syn-forge/portfolio-web --",
     "test:portfolio-mcp": "npm run test --workspace=@syn-forge/portfolio-mcp --",
+    "test:public-auth": "npm run test --workspace=@syn-forge/portfolio-public-auth --",
+    "test:portfolio-agent": "npm run test --workspace=@syn-forge/portfolio-agent --",
     "setup:git-hooks": "tsx scripts/setup-git-hooks.ts",
     "validate:commit": "tsx scripts/validate-commit.ts",
     "check:one-file-history": "tsx scripts/audit-one-file-history.ts --range origin/main..HEAD",
