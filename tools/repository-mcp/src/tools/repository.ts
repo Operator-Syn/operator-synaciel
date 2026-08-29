@@ -13,6 +13,7 @@ import {
   MAX_DIFF_CHUNK_CHARACTERS,
   MAX_PREPARED_FILES,
   MAX_SOURCE_READ_CHUNK_CHARACTERS,
+  MAX_VERIFICATION_CHECKS,
   REPOSITORY_VERIFICATION_PROFILES,
   REPOSITORY_WRITE_PROFILES,
   type SafeVerificationCheck,
@@ -94,7 +95,7 @@ export function registerRepositoryTools(server: McpServer): void {
     {
       title: "Read bounded repository source snapshots",
       description:
-        "Read-only, profile-checked snapshots for up to 20 repository text files. Returns hashes, byte counts, and bounded per-file chunks; traversal, symlinks, sensitive files, binary content, and credential-like content are rejected.",
+        "Read-only, profile-checked snapshots for up to 20 repository text files. Use the repository profile for cross-workspace source; focused profiles keep narrower scopes. Returns hashes, byte counts, and bounded per-file chunks; traversal, symlinks, sensitive files, binary content, and credential-like content are rejected.",
       annotations: readOnlyAnnotations,
       inputSchema: {
         profile: z.enum(writeProfiles),
@@ -123,7 +124,7 @@ export function registerRepositoryTools(server: McpServer): void {
         "Read-only preparation for a bounded text-file change. Returns exact paths, hashes, a reviewable diff, and a one-time apply token without modifying the checkout. Full replacement content is required; shortening an existing file requires explicit allowContentShortening approval.",
       annotations: readOnlyAnnotations,
       inputSchema: {
-        taskType: z.enum(["patch", "app", "docs", "mcp", "database", "config"]),
+        taskType: z.enum(["patch", "app", "docs", "mcp", "database", "config", "repository"]),
         description: z.string().min(1).max(4_000),
         profile: z.enum(writeProfiles),
         operations: z
@@ -174,7 +175,7 @@ export function registerRepositoryTools(server: McpServer): void {
       annotations: readOnlyAnnotations,
       inputSchema: {
         profile: z.enum(verificationProfiles),
-        checks: z.array(z.enum(verificationChecks)).max(10).optional(),
+        checks: z.array(z.enum(verificationChecks)).max(MAX_VERIFICATION_CHECKS).optional(),
         responseMode: responseModeSchema,
       },
       outputSchema: verifyRepositoryChangeOutputSchema,
