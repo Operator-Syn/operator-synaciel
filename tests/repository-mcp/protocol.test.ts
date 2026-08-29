@@ -96,6 +96,11 @@ describe("repository MCP protocol", () => {
       .verificationProfiles as Record<string, unknown>;
     assert.equal(typeof verificationProfiles, "object");
     assert.ok("mcp-fast" in verificationProfiles);
+    assert.ok("repository" in verificationProfiles);
+    const writeProfiles = (statusPayload.capabilities as Record<string, unknown>)
+      .writeProfiles as string[];
+    assert.ok(writeProfiles.includes("repository"));
+    assert.ok((verificationProfiles.repository as string[]).includes("api_typecheck"));
 
     const cachedStatus = await server.call("tools/call", {
       name: "repository_workflow_status",
@@ -147,6 +152,42 @@ describe("repository MCP protocol", () => {
     assert.equal(sourceFiles[0]?.nextOffset, 4);
     assert.equal(sourceFiles[1]?.exists, false);
     assert.deepEqual(sourcePayload.omittedPaths, []);
+
+    const broadRead = await server.call("tools/call", {
+      name: "read_repository_files",
+      arguments: {
+        profile: "repository",
+        files: [
+          { path: "workers/portfolio-api/src/entrypoint.ts", offset: 0 },
+          { path: "apps/portfolio-web/src/one.ts", offset: 0 },
+        ],
+        maxChars: 8,
+      },
+    });
+    const broadPayload = assertStructuredResponse(broadRead);
+    assert.equal(broadPayload.profile, "repository");
+    const broadFiles = broadPayload.files as Array<Record<string, unknown>>;
+    assert.equal(broadFiles[0]?.exists, false);
+    assert.equal(broadFiles[0]?.content, "");
+    assert.equal(broadFiles[1]?.content, "one befo");
+
+    const broadPrepared = await server.call("tools/call", {
+      name: "prepare_repository_change",
+      arguments: {
+        taskType: "repository",
+        description: "exercise the broad repository profile",
+        profile: "repository",
+        operations: [
+          {
+            path: "workers/portfolio-api/src/entrypoint.ts",
+            content: "export const preparedApi = true;\n",
+          },
+        ],
+      },
+    });
+    const broadPreparedPayload = assertStructuredResponse(broadPrepared);
+    assert.equal(broadPreparedPayload.status, "prepared");
+    assert.deepEqual(broadPreparedPayload.files, ["workers/portfolio-api/src/entrypoint.ts"]);
 
     const diff = await server.call("tools/call", {
       name: "read_repository_change_diff",
@@ -234,6 +275,31 @@ describe("repository MCP protocol", () => {
       }),
     );
     assert.equal(invalidCheck.status, "rejected");
+  });
+
+  test("rejects binary planned changes even in the broad repository profile", async () => {
+    const repository = await createRepository();
+    repositories.push(repository);
+    const server = await startServer(repository);
+    servers.push(server);
+
+    const rejected = payload(
+      await server.call("tools/call", {
+        name: "prepare_repository_change",
+        arguments: {
+          taskType: "repository",
+          description: "reject binary text changes",
+          profile: "repository",
+          operations: [
+            {
+              path: "apps/portfolio-web/public/social-image.png",
+              content: "not a text source\n",
+            },
+          ],
+        },
+      }),
+    );
+    assert.equal(rejected.status, "rejected");
   });
 
   test("allows project directories through config while keeping protected boundaries scoped", async () => {
