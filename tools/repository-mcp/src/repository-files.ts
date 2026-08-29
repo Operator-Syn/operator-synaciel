@@ -2,6 +2,7 @@ import { lstat, readFile } from "node:fs/promises";
 
 import {
   digestBytes,
+  isLikelyBinaryPath,
   MAX_FILE_BYTES,
   safeAbsolutePath,
   validateLocalProjectRoot,
@@ -9,10 +10,10 @@ import {
 } from "./path.ts";
 import {
   DEFAULT_SOURCE_READ_CHUNK_CHARACTERS,
+  isProfilePathAllowed,
   MAX_PREPARED_FILES,
   MAX_SOURCE_READ_CHUNK_CHARACTERS,
   MAX_SOURCE_READ_RESPONSE_CHARACTERS,
-  REPOSITORY_WRITE_PROFILES,
   type RepositoryWriteProfile,
 } from "./policy.ts";
 import { isCredentialLikeContent, isSensitiveFileName } from "./redaction.ts";
@@ -43,19 +44,16 @@ export type RepositoryFileReadResult = {
   readonly returnedCharacters: number;
 };
 
-function profileAllowsPath(profile: RepositoryWriteProfile, path: string): boolean {
-  return REPOSITORY_WRITE_PROFILES[profile].prefixes.some((prefix) =>
-    prefix.endsWith("/") ? path.startsWith(prefix) : path === prefix,
-  );
-}
-
 function validateReadPath(profile: RepositoryWriteProfile, input: string): string {
   const path = validateRelativeProjectPath(input, { allowRestrictedPaths: true });
-  if (!profileAllowsPath(profile, path)) {
+  if (!isProfilePathAllowed(profile, path)) {
     throw new Error(`Path is not allowed by the ${profile} read profile.`);
   }
   if (path.split("/").some((part) => isSensitiveFileName(part))) {
     throw new Error("Sensitive environment and credential files cannot be read.");
+  }
+  if (isLikelyBinaryPath(path)) {
+    throw new Error("Binary file paths cannot be read through repository source snapshots.");
   }
   return path;
 }
