@@ -360,6 +360,10 @@ reconnect behavior, and the user-visible failure boundary.
       strings. A controlled production-browser check with mocked auth rendered
       the chat composer without the React crash and contained a rejected token
       inside the assistant panel.
+- [x] Post-deployment HTTP checks confirmed public-auth health, localhost
+      credentialed CORS (`204` preflight and `401 /session` with
+      `Access-Control-Allow-Origin: http://localhost:5173`), and the agent's
+      origin boundary (`401` for localhost, `403` for an untrusted origin).
 - [ ] Complete the operator-owned Google, Turnstile, real session, and real
       WebSocket smoke flow; the automation browser has no Google account
       session, so this evidence is intentionally not claimed as live auth.
