@@ -1,0 +1,22 @@
+{
+  "name": "@syn-forge/portfolio-public-auth",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --config wrangler.toml --env local --port 8787",
+    "check": "tsc -p tsconfig.json --pretty false --noEmit",
+    "test": "tsx --test ../../tests/portfolio-public-auth/*.test.ts"
+  },
+  "dependencies": {
+    "hono": "^4.13.5",
+    "jose": "^6.2.10",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260820.1",
+    "tsx": "^4.23.12",
+    "typescript": "~5.8.3",
+    "wrangler": "4.125.0"
+  }
+}
