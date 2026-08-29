@@ -326,3 +326,33 @@ localhost requests, and the selected local-development workflow.
 No production variable or Worker deployment was changed in this sweep. The
 operator must deploy the updated Worker configuration and ensure the production
 Turnstile widget permits localhost before browser testing.
+
+## Sweep 16 — async agent connection render guard
+
+**Date:** 2026-08-29
+**Scope:** authenticated frontend `useAgent` setup, token-query caching,
+reconnect behavior, and the user-visible failure boundary.
+
+- [x] Reproduced the reported blank-page crash with a mocked authenticated local
+      session. The exception was `An unknown Component is an async Client
+      Component` at `useAgent`; no WebSocket request was reached before the
+      render failure.
+- [x] Confirmed the installed Agents SDK resolves function-valued `query`
+      parameters with React `use()` and documents a `Suspense` boundary for
+      asynchronous setup.
+- [x] Wrapped the assistant chat in `Suspense` with an explicit loading state.
+- [x] Replaced the zero-duration query cache with a four-minute cache, memoized
+      the thread dependency list, and retained the SDK's disconnect invalidation
+      path so one-time five-minute tokens refresh on reconnect.
+- [x] Added an assistant-specific error boundary with a retry action for token
+      promise rejection and other connection setup failures.
+- [x] The regression test went red before the source fix and green afterward;
+      the browser repro now renders the composer without the React crash, while
+      a deliberately rejected token renders the retry state without blanking the
+      portfolio shell.
+- [x] Updated the architecture, local-development, and deployment notes with
+      the lifecycle contract and diagnostic interpretation.
+
+Production Pages must still serve this frontend fix before the authenticated
+browser smoke flow can be marked live. The source fix does not alter OAuth
+origins, cookies, token claims, Worker limits, or MCP scope.
