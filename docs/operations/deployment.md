@@ -113,11 +113,13 @@ PORTFOLIO_API Service Binding in production.
 ## GitHub Actions Worker deployment
 
 The checked-in [production Worker workflow](../../.github/workflows/deploy-production-workers.yml)
-runs for every push to `main`. Its validation job installs the lockfile
+runs for every push to `main` and supports a manual `workflow_dispatch` recovery run from the Actions tab. Manual runs must select `main`; each job checks the ref so another branch cannot deploy. Its validation job installs the lockfile
 dependencies and runs the repository typecheck, lint, Biome, build, application
 tests, documentation check, repository MCP check, and public MCP check. After
 validation succeeds, the workflow dry-runs and deploys `portfolio-api`, then
 dry-runs and deploys `syn-forge-portfolio-mcp`.
+
+To start a run manually, open the Actions tab, choose `Deploy production Workers`, select the `main` branch, and choose **Run workflow**.
 
 The API deploy completes before the MCP deploy so the MCP Worker's
 `PORTFOLIO_API` Service Binding continues to target the available API Worker.

@@ -102,6 +102,15 @@ test("keeps the legacy root GitHub Pages deployment retired", async () => {
   assert.match(deploymentDocumentation, /wrangler pages deploy/);
 
   assert.ok(deploymentWorkflow.includes("on:\n  push:\n    branches:\n      - main"));
+  assert.ok(
+    deploymentWorkflow.includes("workflow_dispatch:"),
+    "manual workflow trigger is not configured",
+  );
+  assert.equal(
+    deploymentWorkflow.match(/if: github\.ref == 'refs\/heads\/main'/g)?.length ?? 0,
+    3,
+    "all deployment jobs must be restricted to main",
+  );
   assert.match(deploymentWorkflow, /group: production-deploy/);
   assert.match(deploymentWorkflow, /cancel-in-progress: false/);
   assert.match(deploymentWorkflow, /deploy-api:\n[\s\S]*?needs: validate/);
