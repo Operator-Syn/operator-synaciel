@@ -29,10 +29,13 @@ from the global application shell. It connects to
 the configured `VITE_PORTFOLIO_AGENT_URL` only after the public-auth Worker has
 issued a one-time scoped token. Production has an explicit assistant origin;
 development requires a local endpoint override and never falls back to
-production. The frontend disables query caching for this token so closing and
-reopening the FAB cannot reuse a consumed credential. The token is passed in
-the WebSocket query because a browser WebSocket cannot set a custom
-Authorization header.
+production. The token query is resolved by `useAgent` under a `Suspense`
+boundary. Its four-minute cache is shorter than the five-minute token lifetime;
+the Agents SDK invalidates that cache when the WebSocket reconnects, so a
+one-time token is not reused for a new connection. An assistant-specific error
+boundary contains token failures and exposes a retry action without taking down
+the portfolio shell. The token is passed in the WebSocket query because a
+browser WebSocket cannot set a custom Authorization header.
 
 ## Grounding and scope
 
