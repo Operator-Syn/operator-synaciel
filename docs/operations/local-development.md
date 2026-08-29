@@ -68,6 +68,20 @@ the localhost return target. The production Turnstile widget must allow the
 production `TURNSTILE_SECRET_KEY`. Do not use Cloudflare's dummy test keys with
 the production Worker secret.
 
+### Assistant connection troubleshooting
+
+The Agents SDK resolves an asynchronous token query during the assistant
+connection. The chat component is intentionally rendered under `Suspense` and
+uses a short positive query cache so reconnects receive a fresh one-time token.
+If the browser reports `An unknown Component is an async Client Component` at
+`useAgent`, reload the current build and confirm the deployed Pages version
+contains the assistant connection boundary. A token or WebSocket failure should
+remain inside the assistant panel as `The assistant connection could not be
+opened`; use its retry action or start a new thread. Chrome's `Fetch finished
+loading` messages are informational; inspect the corresponding request status
+before treating them as errors. Never paste session cookies, agent tokens, or
+authorization headers into an issue or log.
+
 ### Optional: run isolated local Workers
 
 If you do not want local Vite requests to use production authentication and
