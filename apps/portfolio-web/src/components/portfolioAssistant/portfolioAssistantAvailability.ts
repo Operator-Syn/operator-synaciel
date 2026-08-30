@@ -1,7 +1,7 @@
 export type PortfolioAssistantAvailability = "teaser" | "active";
 
 /**
- * Main intentionally ships a coming-soon teaser. The agent-development branch
- * switches this release gate to active for continued assistant work.
+ * The agent-development branch keeps the authenticated assistant active for
+ * continued chat work; main pins this gate to the teaser state.
  */
-export const portfolioAssistantAvailability: PortfolioAssistantAvailability = "teaser";
+export const portfolioAssistantAvailability: PortfolioAssistantAvailability = "active";
