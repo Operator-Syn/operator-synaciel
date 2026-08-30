@@ -60,7 +60,7 @@ test("mounts the portfolio assistant globally with bounded authenticated chat co
   assert.doesNotMatch(apiSource, /localStorage|sessionStorage/);
 });
 
-test("ships main with an explicit coming-soon assistant gate", async () => {
+test("keeps agent-development with an explicit active assistant gate", async () => {
   const [availabilitySource, fabSource] = await Promise.all([
     readFile(availabilityPath, "utf8"),
     readFile(fabPath, "utf8"),
@@ -68,9 +68,8 @@ test("ships main with an explicit coming-soon assistant gate", async () => {
 
   assert.match(
     availabilitySource,
-    /portfolioAssistantAvailability: PortfolioAssistantAvailability = "teaser"/,
+    /portfolioAssistantAvailability: PortfolioAssistantAvailability = "active"/,
   );
   assert.match(fabSource, /portfolioAssistantAvailability === "teaser"/);
-  assert.match(fabSource, /Portfolio assistant coming soon\./);
-  assert.match(fabSource, /Open portfolio assistant \(coming soon\)/);
+  assert.match(fabSource, /"Open portfolio assistant"/);
 });
