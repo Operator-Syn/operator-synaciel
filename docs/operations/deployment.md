@@ -199,6 +199,13 @@ Cloudflare Pages remains on its existing Git integration and starts its own
 production build for the same main push. The Pages build and the Worker graph
 are coordinated by the commit but are not atomic.
 
+The current `main` release deliberately publishes the portfolio assistant as a
+coming-soon teaser. Continue active assistant development on the separate
+`agent-development` branch; the Worker workflow remains restricted to `main`,
+and the production Pages branch must not be changed to that development branch.
+If Pages preview builds are enabled for branches, treat them as development
+surfaces and verify their Vite endpoint variables before testing authentication.
+
 ## Preflight verification
 
 Run the same checks locally before changing production:
