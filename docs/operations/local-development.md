@@ -38,6 +38,11 @@ npm run preview
 
 ## Local portfolio assistant
 
+The `main` branch intentionally renders a coming-soon teaser and does not call
+the authentication or agent endpoints. Switch to the `agent-development`
+branch before exercising the active chat flow; that branch changes only the
+release gate, so the endpoint and security instructions below remain the same.
+
 Vite development requires explicit assistant endpoints. To use the deployed
 Workers from `npm run dev`, put these values in the ignored repository-root
 `.env.local` file (the Vite configuration uses that root as its `envDir`):
