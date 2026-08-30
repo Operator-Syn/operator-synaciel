@@ -13,6 +13,10 @@ const apiPath = resolve(
   repositoryRoot,
   "apps/portfolio-web/src/components/portfolioAssistant/portfolioAssistantApi.ts",
 );
+const availabilityPath = resolve(
+  repositoryRoot,
+  "apps/portfolio-web/src/components/portfolioAssistant/portfolioAssistantAvailability.ts",
+);
 const configPath = resolve(
   repositoryRoot,
   "apps/portfolio-web/src/components/portfolioAssistant/portfolioAssistantConfig.ts",
@@ -54,4 +58,19 @@ test("mounts the portfolio assistant globally with bounded authenticated chat co
   assert.match(cssSource, /prefers-reduced-motion/);
   assert.doesNotMatch(fabSource, /auth_token/);
   assert.doesNotMatch(apiSource, /localStorage|sessionStorage/);
+});
+
+test("ships main with an explicit coming-soon assistant gate", async () => {
+  const [availabilitySource, fabSource] = await Promise.all([
+    readFile(availabilityPath, "utf8"),
+    readFile(fabPath, "utf8"),
+  ]);
+
+  assert.match(
+    availabilitySource,
+    /portfolioAssistantAvailability: PortfolioAssistantAvailability = "teaser"/,
+  );
+  assert.match(fabSource, /portfolioAssistantAvailability === "teaser"/);
+  assert.match(fabSource, /Portfolio assistant coming soon\./);
+  assert.match(fabSource, /Open portfolio assistant \(coming soon\)/);
 });
