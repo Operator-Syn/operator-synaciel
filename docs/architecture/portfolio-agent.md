@@ -25,10 +25,14 @@ workspaces:
 
 The frontend mounts
 [`PortfolioAssistantFab`](../../apps/portfolio-web/src/components/portfolioAssistant/PortfolioAssistantFab.tsx)
-from the global application shell. It connects to
-the configured `VITE_PORTFOLIO_AGENT_URL` only after the public-auth Worker has
-issued a one-time scoped token. Production has an explicit assistant origin;
-development requires a local endpoint override and never falls back to
+from the global application shell. Main intentionally ships the FAB as a
+coming-soon teaser: the explicit availability gate in
+`portfolioAssistantAvailability.ts` returns before any session or token request.
+The `agent-development` branch switches that gate to `active` for continued
+chat work; it is not a production release branch. When active, the assistant
+connects to the configured `VITE_PORTFOLIO_AGENT_URL` only after the public-auth
+Worker has issued a one-time scoped token. Production has an explicit assistant
+origin; development requires a local endpoint override and never falls back to
 production. The token query is resolved by `useAgent` under a `Suspense`
 boundary. Its four-minute cache is shorter than the five-minute token lifetime;
 the Agents SDK invalidates that cache when the WebSocket reconnects, so a
