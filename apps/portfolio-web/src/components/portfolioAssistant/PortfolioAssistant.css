@@ -130,11 +130,24 @@
 
 .portfolio-assistant-empty,
 .portfolio-assistant-empty-state,
-.portfolio-assistant-sign-in {
+.portfolio-assistant-sign-in,
+.portfolio-assistant-coming-soon {
     display: grid;
     justify-items: start;
     gap: 0.65rem;
     color: var(--color-text-muted);
+}
+
+.portfolio-assistant-coming-soon {
+    min-height: 12rem;
+    align-content: center;
+}
+
+.portfolio-assistant-coming-soon h3 {
+    margin: 0;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-weight: 400;
 }
 
 .portfolio-assistant-composer {
