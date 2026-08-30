@@ -37,6 +37,7 @@ import {
   signOut,
   verifyTurnstile,
 } from "./portfolioAssistantApi.ts";
+import { portfolioAssistantAvailability } from "./portfolioAssistantAvailability.ts";
 import { portfolioAssistantConfig } from "./portfolioAssistantConfig.ts";
 
 declare global {
@@ -143,6 +144,23 @@ function TurnstileGate({ onVerified }: { onVerified: () => void }) {
       </p>
       {turnstileSiteKey ? <div ref={containerRef} /> : null}
       {error ? <p className="portfolio-assistant-error">{error}</p> : null}
+    </div>
+  );
+}
+
+function AssistantComingSoon() {
+  return (
+    <div className="portfolio-assistant-coming-soon">
+      <MessageCircle aria-hidden="true" size={28} />
+      <p className="eyebrow">In development</p>
+      <h3>Portfolio assistant coming soon.</h3>
+      <p>
+        We’re tuning a source-grounded guide to the work in this portfolio. It will answer with
+        evidence from the archive and decline unrelated requests.
+      </p>
+      <p className="portfolio-assistant-muted">
+        The assistant is being tested privately before it becomes part of the public release.
+      </p>
     </div>
   );
 }
@@ -458,6 +476,10 @@ export default function PortfolioAssistantFab() {
 
   const openAssistant = async () => {
     setIsOpen(true);
+    if (portfolioAssistantAvailability === "teaser") {
+      setSessionError(null);
+      return;
+    }
     if (configurationError) {
       setSessionError(configurationError);
       return;
@@ -483,7 +505,10 @@ export default function PortfolioAssistantFab() {
   const closeAssistant = () => setIsOpen(false);
 
   return (
-    <div className={`portfolio-assistant ${isOpen ? "is-open" : ""}`}>
+    <div
+      className={`portfolio-assistant ${isOpen ? "is-open" : ""}`}
+      data-availability={portfolioAssistantAvailability}
+    >
       {isOpen ? (
         <section
           aria-label="Portfolio assistant"
@@ -494,9 +519,13 @@ export default function PortfolioAssistantFab() {
           <header className="portfolio-assistant-header">
             <div>
               <p className="eyebrow">Syn-Forge assistant</p>
-              <h2>Ask the archive.</h2>
+              <h2>
+                {portfolioAssistantAvailability === "teaser" ? "Coming soon." : "Ask the archive."}
+              </h2>
               <p className="portfolio-assistant-muted">
-                Grounded in the portfolio MCP. No general-purpose work.
+                {portfolioAssistantAvailability === "teaser"
+                  ? "A source-grounded portfolio guide is in development."
+                  : "Grounded in the portfolio MCP. No general-purpose work."}
               </p>
             </div>
             <button
@@ -509,7 +538,9 @@ export default function PortfolioAssistantFab() {
             </button>
           </header>
           <div className="portfolio-assistant-body">
-            {configurationError ? (
+            {portfolioAssistantAvailability === "teaser" ? (
+              <AssistantComingSoon />
+            ) : configurationError ? (
               <div className="portfolio-assistant-sign-in">
                 <MessageCircle aria-hidden="true" size={28} />
                 <h3>Assistant is not configured for this environment.</h3>
@@ -550,10 +581,20 @@ export default function PortfolioAssistantFab() {
       <button
         aria-controls="portfolio-assistant-panel"
         aria-expanded={isOpen}
-        aria-label={isOpen ? "Close portfolio assistant" : "Open portfolio assistant"}
+        aria-label={
+          isOpen
+            ? "Close portfolio assistant"
+            : portfolioAssistantAvailability === "teaser"
+              ? "Open portfolio assistant (coming soon)"
+              : "Open portfolio assistant"
+        }
         className="portfolio-assistant-fab"
         onClick={() => (isOpen ? closeAssistant() : void openAssistant())}
-        title="Portfolio assistant"
+        title={
+          portfolioAssistantAvailability === "teaser"
+            ? "Portfolio assistant — coming soon"
+            : "Portfolio assistant"
+        }
         type="button"
       >
         {isOpen ? (
