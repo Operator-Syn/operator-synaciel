@@ -370,3 +370,21 @@ reconnect behavior, and the user-visible failure boundary.
 
 The source fix does not alter OAuth origins, cookies, token claims, Worker
 limits, or MCP scope.
+
+## Sweep 17 — main teaser release gate and agent-development branch
+
+**Date:** 2026-08-30
+**Scope:** public assistant release posture, branch separation, and production
+deployment safety.
+
+- [x] Added an explicit `teaser` availability gate to the main-branch FAB. The
+      coming-soon panel is still accessible across the site but returns before
+      session, Turnstile, or agent-token requests.
+- [x] Kept the authenticated chat implementation and its Suspense/error-boundary
+      fix intact behind the same gate for development work.
+- [x] Reserved `agent-development` as the only branch that switches the gate to
+      `active`; it is not a production deployment target.
+- [x] Updated the architecture, local-development, and deployment notes with
+      the main-versus-development surface boundary.
+- [ ] Keep the active branch out of the production Pages branch until the next
+      agent review, live smoke flow, and release decision are complete.
