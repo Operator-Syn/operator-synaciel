@@ -99,18 +99,27 @@ test("applies theme and explicit motion state to the document root", () => {
   assert.equal(root.dataset.reducedMotion, "on");
 });
 
-test("keeps the Home settings utility fixed and out of document flow", async () => {
+test("keeps the Home settings utility inside the shared floating dock", async () => {
   const repositoryRoot = resolve(import.meta.dirname, "../../apps/portfolio-web");
-  const [home, styles] = await Promise.all([
+  const [app, home, settings, styles] = await Promise.all([
+    readFile(resolve(repositoryRoot, "src/App.tsx"), "utf8"),
     readFile(resolve(repositoryRoot, "src/components/pages/homePage/Home.tsx"), "utf8"),
+    readFile(resolve(repositoryRoot, "src/components/homePage/HomeSettings.tsx"), "utf8"),
     readFile(resolve(repositoryRoot, "src/styles/home-settings.css"), "utf8"),
   ]);
 
-  assert.match(home, /<HomeSettings \/>/);
-  assert.match(styles, /\.home-settings\s*\{[\s\S]*position: fixed/);
+  assert.match(app, /<HomeSettings \/>/);
+  assert.doesNotMatch(home, /<HomeSettings \/>/);
+  assert.ok(settings.includes('location.pathname !== "/"'));
+  assert.match(styles, /\.home-settings\s*\{[\s\S]*position: relative/);
   assert.match(styles, /\.home-settings\s*\{[\s\S]*pointer-events: none/);
+  assert.match(styles, /\.home-settings-panel\s*\{[\s\S]*position: absolute/);
   assert.match(styles, /\.home-settings-panel\[data-state="open"\]/);
   assert.match(styles, /data-reduced-motion="on"/);
+  assert.match(
+    settings,
+    /Page wipes and animated feedback are disabled while reduced motion is active/,
+  );
 });
 
 test("exposes built-in alternate themes in Home Settings", async () => {
