@@ -78,6 +78,8 @@ the production Worker secret.
 The Agents SDK resolves an asynchronous token query during the assistant
 connection. The chat component is intentionally rendered under `Suspense` and
 uses a short positive query cache so reconnects receive a fresh one-time token.
+The per-user 1,000,000-token/1-hour budget is enforced after the WebSocket is
+authenticated, so a full rolling window does not hide the saved transcript.
 If the browser reports `An unknown Component is an async Client Component` at
 `useAgent`, reload the current build and confirm the deployed Pages version
 contains the assistant connection boundary. A token or WebSocket failure should
@@ -86,6 +88,16 @@ opened`; use its retry action or start a new thread. Chrome's `Fetch finished
 loading` messages are informational; inspect the corresponding request status
 before treating them as errors. Never paste session cookies, agent tokens, or
 authorization headers into an issue or log.
+
+### Agent diagnostics
+
+Server logs prefixed [portfolio-agent:diagnostic] contain allowlisted JSON events
+for MCP, quota, model, and settlement phases. Use the phase and outcome to
+separate a skipped/static turn, MCP discovery or grounding failure, provider
+stream failure, and completed settlement; question text, raw tool data, and
+credentials are intentionally absent. See
+[[plans/portfolio-agent/sweeps/33-structured-diagnostics|Sweep 33]] for the
+event contract.
 
 ### Optional: run isolated local Workers
 
