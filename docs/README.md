@@ -50,6 +50,7 @@ root. Topic notes live in focused folders.
 - [[plans/portfolio-agent/implementation-sweeps/README|Portfolio agent implementation ledger]] - historical implementation evidence and rollout gates.
 - [[operations/repository-mcp|Local Repository MCP (stdio)]] - guarded local
   changes, verification, one-file commits, and versioned Git hooks.
+- [[univsersal-repository-mcp-structure|Universal Repository MCP Structure blueprint]] - reusable, repository-agnostic implementation stages and evidence mapping.
 
 ## Vault rules
 
