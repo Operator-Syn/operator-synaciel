@@ -12,6 +12,8 @@ role: guide
 > Scope: this note documents the local repository-only MCP. It is launched as a
 > stdio subprocess and has no public HTTP endpoint, portfolio tools, or
 > portfolio resources. For the separate remote service, see [[architecture/portfolio-mcp|Public Portfolio MCP (Streamable HTTP)]].
+>
+> The reusable, repository-agnostic implementation blueprint is [[univsersal-repository-mcp-structure|Universal Repository MCP Structure Blueprint]].
 
 The local `operator-synaciel-repository` MCP is implemented in the
 `tools/repository-mcp/` workspace. It provides reviewable file changes, fixed
