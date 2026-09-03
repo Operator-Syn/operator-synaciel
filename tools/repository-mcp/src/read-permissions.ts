@@ -5,7 +5,7 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 import { isLikelyBinaryPath, PROJECT_ROOT, validateRelativeProjectPath } from "./path.ts";
 import { REPOSITORY_WRITE_PROFILES, type RepositoryWriteProfile } from "./policy.ts";
-import { isSensitiveFileName } from "./redaction.ts";
+import { isSensitivePath } from "./redaction.ts";
 
 export const READ_ALLOWLIST_ENV = "OPERATOR_SYNACIEL_MCP_READ_ALLOWLIST";
 export const READ_PERMISSION_TTL_MS = 15 * 60 * 1_000;
@@ -84,7 +84,7 @@ function safeAllowlistedPath(value: unknown): string | null {
   if (typeof value !== "string" || value.length === 0 || value.length > 512) return null;
   try {
     const path = validateRelativeProjectPath(value, { allowRestrictedPaths: true });
-    if (isLikelyBinaryPath(path) || path.split("/").some((part) => isSensitiveFileName(part))) {
+    if (isLikelyBinaryPath(path) || isSensitivePath(path)) {
       return null;
     }
     return path;
