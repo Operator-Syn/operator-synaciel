@@ -12,7 +12,11 @@ import {
   validateRelativeProjectPath,
 } from "./path.ts";
 import { isProfilePathAllowed, type RepositoryWriteProfile } from "./policy.ts";
-import { isCredentialLikeContent, isSensitiveFileName } from "./redaction.ts";
+import {
+  isCredentialLikeContent,
+  isSafeEnvironmentFileContent,
+  isSensitivePath,
+} from "./redaction.ts";
 
 export const MAX_SEARCH_RESULTS = 200;
 export const DEFAULT_SEARCH_RESULTS = 40;
@@ -172,7 +176,7 @@ export async function searchRepository(
       truncated = true;
       break;
     }
-    if (path.split("/").some((part) => isSensitiveFileName(part)) || isLikelyBinaryPath(path)) {
+    if (isSensitivePath(path) || isLikelyBinaryPath(path)) {
       continue;
     }
 
@@ -194,7 +198,8 @@ export async function searchRepository(
     if (
       content.includes("\0") ||
       !Buffer.from(content, "utf8").equals(bytes) ||
-      isCredentialLikeContent(content)
+      isCredentialLikeContent(content) ||
+      !isSafeEnvironmentFileContent(path, content)
     ) {
       continue;
     }
