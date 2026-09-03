@@ -1,5 +1,5 @@
 /* Pointer-state cursor mapping for fine pointers. */
-@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+@media (hover: hover) and (pointer: fine) {
     body {
         cursor:
             url("/cursors/operator-default.svg") 2 2,
@@ -167,28 +167,4 @@
     }
 }
 
-/* Visitor reduced-motion preference restores native pointer affordances. */
-html[data-reduced-motion="on"] body,
-html[data-reduced-motion="on"] [data-cursor] {
-    cursor: auto;
-}
-
-html[data-reduced-motion="on"] a,
-html[data-reduced-motion="on"] [role="link"],
-html[data-reduced-motion="on"] button,
-html[data-reduced-motion="on"] [role="button"],
-html[data-reduced-motion="on"] .cursor-pointer {
-    cursor: pointer;
-}
-
-html[data-reduced-motion="on"] input,
-html[data-reduced-motion="on"] textarea,
-html[data-reduced-motion="on"] select,
-html[data-reduced-motion="on"] [contenteditable="true"] {
-    cursor: text;
-}
-
-html[data-reduced-motion="on"] button:disabled,
-html[data-reduced-motion="on"] .cursor-not-allowed {
-    cursor: not-allowed;
-}
+/* Cursor glyphs are static affordances, so reduced motion does not remove them. */
