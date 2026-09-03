@@ -76,6 +76,8 @@ export async function checkMcpConfig() {
     errors.push("Codex repository MCP must default to writes approval.");
   if (!codex.includes("repository_workflow_status"))
     errors.push("Codex repository tool allowlist must include repository_workflow_status.");
+  if (!codex.includes("grant_repository_read_access"))
+    errors.push("Codex repository tool allowlist must include grant_repository_read_access.");
 
   const codexHooks = await read(".codex/hooks.json").catch((error) => {
     errors.push(
