@@ -111,8 +111,13 @@ test("rejects duplicate and out-of-profile source requests", async () => {
   );
 });
 
-test("allows the safe environment template while rejecting live variants", () => {
+test("allows safe environment files while rejecting live variants", async () => {
   assert.equal(validateRepositoryReadPath(".env.example"), ".env.example");
+  assert.equal(validateRepositoryReadPath(".envrc"), ".envrc");
+  assert.throws(
+    () => validateRepositoryReadPath("nested/.envrc"),
+    /sensitive environment or credential file/,
+  );
   for (const path of [".env", ".env.local", ".env.production", ".env.example.local"]) {
     assert.throws(
       () => validateRepositoryReadPath(path),
@@ -120,6 +125,13 @@ test("allows the safe environment template while rejecting live variants", () =>
       path,
     );
   }
+
+  const result = await readRepositoryFiles({
+    profile: "repository",
+    files: [{ path: ".envrc" }],
+    maxChars: 512,
+  });
+  assert.match(result.files[0]?.content ?? "", /use flake/);
 });
 
 test("uses a temporary exact-path permission once", async () => {
