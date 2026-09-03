@@ -25,7 +25,10 @@ export const PORTFOLIO_MCP_CLIENT_CONFIG = {
 
 export const PORTFOLIO_MCP_TOOLS = [
   ["get_portfolio_overview", "Identity, capabilities, home content, and public links."],
-  ["search_portfolio", "Search public profile, projects, certificates, and snippet metadata."],
+  [
+    "search_portfolio",
+    "Search public profile, projects, certificates, and snippet metadata with broad/all matching and provenance.",
+  ],
   ["list_projects", "List public projects with cursor pagination."],
   ["get_project", "Read one public project and its gallery media."],
   ["list_certificates", "List public certificates and training records."],
