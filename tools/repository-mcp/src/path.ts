@@ -76,6 +76,16 @@ export function isLikelyBinaryPath(path: string): boolean {
   return BINARY_EXTENSIONS.has(extname(path).toLowerCase());
 }
 
+export function isTrackedRepositoryPath(relativePath: string): boolean {
+  const result = spawnSync("git", ["ls-files", "--error-unmatch", "--", relativePath], {
+    cwd: PROJECT_ROOT,
+    encoding: "utf8",
+    timeout: 5_000,
+    shell: false,
+  });
+  return result.status === 0;
+}
+
 type RootValidationResult =
   | { readonly valid: true; readonly root: string }
   | { readonly valid: false; readonly reason: string };
