@@ -62,6 +62,58 @@ describe("approval-gated commit pipeline", () => {
     );
   });
 
+  test("commits the guarded root .envrc and rejects unsafe content", async () => {
+    const repository = await createRepository();
+    repositories.push(repository);
+    const safeContent = "if command -v nix >/dev/null 2>&1; then\n  use flake\nfi\n";
+    await writeFile(join(repository, ".envrc"), safeContent);
+    const server = await startServer(repository);
+    servers.push(server);
+
+    const prepared = payload(
+      await server.call("tools/call", {
+        name: "prepare_working_tree_commit",
+        arguments: {},
+      }),
+    );
+    assert.equal(prepared.status, "prepared");
+    assert.deepEqual(prepared.paths, [".envrc"]);
+
+    const committed = payload(
+      await server.call("tools/call", {
+        name: "git_commit_working_tree",
+        arguments: {
+          operationId: prepared.operationId,
+          approvalHash: prepared.approvalHash,
+          commits: [{ path: ".envrc", message: "Add the guarded repository shell entrypoint." }],
+        },
+      }),
+    );
+    assert.equal(committed.status, "committed");
+    assert.deepEqual(committed.filesPerCommit, [1]);
+    assert.equal(runGit(repository, ["status", "--short"]).stdout.trim(), "");
+
+    await writeFile(join(repository, ".envrc"), "use flake\n");
+    const unsafeWorkingTree = await server.call("tools/call", {
+      name: "prepare_working_tree_commit",
+      arguments: {},
+    });
+    assert.ok(unsafeWorkingTree.error || unsafeWorkingTree.result?.isError);
+
+    const unsafeChange = payload(
+      await server.call("tools/call", {
+        name: "prepare_repository_change",
+        arguments: {
+          description: "reject an unsafe repository shell entrypoint",
+          profile: "repository",
+          operations: [{ path: ".envrc", content: "use flake\n" }],
+        },
+      }),
+    );
+    assert.equal(unsafeChange.status, "rejected");
+    assert.match(String(unsafeChange.message), /Sensitive environment/);
+  });
+
   test("requires one-time consent for restricted paths without exposing the marker", async () => {
     const repository = await createRepository();
     repositories.push(repository);
