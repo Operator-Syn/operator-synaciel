@@ -1,8 +1,9 @@
 const deniedNames = new Set(["id_dsa", "id_ecdsa", "id_ed25519", "id_rsa"]);
+const safeEnvironmentTemplateNames = new Set([".env.example"]);
 
 export function isSensitiveFileName(name: string): boolean {
   return (
-    name.startsWith(".env") ||
+    (name.startsWith(".env") && !safeEnvironmentTemplateNames.has(name)) ||
     deniedNames.has(name) ||
     /\.(asc|cer|crt|key|p12|pem|pfx)$/i.test(name)
   );
