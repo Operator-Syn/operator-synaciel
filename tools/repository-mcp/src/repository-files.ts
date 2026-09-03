@@ -17,7 +17,11 @@ import {
   type RepositoryWriteProfile,
 } from "./policy.ts";
 import type { ReadPermissionScope, RepositoryReadPermissionStore } from "./read-permissions.ts";
-import { isCredentialLikeContent, isSensitiveFileName } from "./redaction.ts";
+import {
+  isCredentialLikeContent,
+  isSafeEnvironmentFileContent,
+  isSensitivePath,
+} from "./redaction.ts";
 
 export type RepositoryFileReadRequest = {
   readonly profile: RepositoryWriteProfile;
@@ -71,7 +75,7 @@ export function validateRepositoryReadPath(input: string): string {
     const reason = error instanceof Error ? error.message : String(error);
     throw new Error(`Path ${JSON.stringify(input)} cannot be read: ${reason}`);
   }
-  if (path.split("/").some((part) => isSensitiveFileName(part))) {
+  if (isSensitivePath(path)) {
     throw new Error(`Path ${JSON.stringify(path)} is a sensitive environment or credential file.`);
   }
   if (isLikelyBinaryPath(path)) {
@@ -186,6 +190,12 @@ async function readRepositoryFile(path: string): Promise<{
   }
   if (isCredentialLikeContent(content)) {
     throw new Error(`Credential-like content cannot be read: ${path}`);
+  }
+  if (!isSafeEnvironmentFileContent(path, content)) {
+    throw new RepositoryDomainError(
+      `Sensitive environment and credential content cannot be read: ${path}`,
+      "CONTENT_GUARD_REJECTED",
+    );
   }
   return { exists: true, content, sha256: digestBytes(bytes) };
 }
