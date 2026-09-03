@@ -16,7 +16,7 @@ import {
   CONSENTABLE_RESTRICTED_DIRS,
   MAX_RETAINED_REVIEW_BYTES,
 } from "./policy.ts";
-import { isCredentialLikeContent } from "./redaction.ts";
+import { isCredentialLikeContent, isSafeEnvironmentFileContent } from "./redaction.ts";
 import { clearVerificationCache } from "./verification.ts";
 import { invalidateWorkflowStatusCache } from "./workflow-status.ts";
 
@@ -267,6 +267,9 @@ async function fileSnapshot(
   const fullText = isText ? bytes.toString("utf8") : undefined;
   if (isText && isCredentialLikeContent(fullText ?? "")) {
     fail(`Credential-like content cannot be reviewed through the commit pipeline: ${path}`);
+  }
+  if (isText && !isSafeEnvironmentFileContent(path, fullText ?? "")) {
+    fail(`Sensitive environment and credential content cannot be reviewed: ${path}`);
   }
   return {
     hash: digestBytes(bytes),
