@@ -127,7 +127,7 @@ a requested path is outside the selected profile, the structured error names
 every attempted path and explains the explicit permission flow; no content is
 read before access is granted. The source reader and
 text-change flow reject binary extensions, NUL-containing content, ignored
-runtime directories, sensitive environment or credential names (except `.env.example`), and
+runtime directories, sensitive environment or credential names (except the safe-template `.env.example` and guarded root `.envrc` exceptions), and
 credential-like/private-key content even when the broad `repository` profile
 would otherwise match the path.
 
@@ -150,15 +150,18 @@ call as implicit consent.
   absolute path outside the checkout to choose another location.
 - The allowlist is owner-readable only, bound to the current canonical checkout
   and profile, and capped at 200 paths per profile. It never overrides
-  traversal, ignored-runtime, sensitive-name (except `.env.example`), binary,
+  traversal, ignored-runtime, sensitive-name (except safe-template `.env.example` and guarded root `.envrc`), binary,
   or credential-like content checks. No file contents or permission secrets are
   stored in it.
 
-The root `.env.example` is an explicit safe-template exception. The `config`
-and broad `repository` profiles may read or review that exact path, while
-real `.env` variants remain denied. Filename safety does not bypass the
-credential-like-content check, so a template containing a non-placeholder
-secret-like assignment is still rejected.
+The root `.env.example` is an explicit safe-template exception. The root
+`.envrc` is a separate exact safe exception only when its content is the
+guarded Nix entrypoint (`if command -v nix >/dev/null 2>&1; then`, followed by
+`use flake` and `fi`). The `config` and broad `repository` profiles may
+read or review those exact safe paths, while nested `.envrc` paths, unsafe
+`.envrc` content, and real `.env` variants remain denied. Filename safety
+does not bypass the credential-like-content check, so a template containing a
+non-placeholder secret-like assignment is still rejected.
 
 If the MCP client supports form elicitation, a denied `read_repository_files`
 call can ask the user inline and continue with the selected scope. Clients
@@ -250,7 +253,7 @@ the corresponding fixed check when the diagnostic tail is omitted.
   `workers/portfolio-mcp/`), `tools/`, `tests/`, `scripts/`,
   documentation, workflows, restricted developer directories, editor
   configuration, and root manifests. Ignored runtime directories, binary source
-  files, sensitive names (except `.env.example`), and credential-like content
+  files, sensitive names (except safe-template `.env.example` and guarded root `.envrc`), and credential-like content
   remain denied.
 - `mcp` remains focused on local/public MCP implementation, tests, scripts,
   hooks, workflows, docs, and MCP metadata.
