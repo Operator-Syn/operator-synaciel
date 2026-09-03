@@ -1,5 +1,5 @@
 import { z } from "zod";
-
+import { REPOSITORY_REASON_CODES } from "./errors.ts";
 import {
   MAX_DIFF_CHUNK_CHARACTERS,
   MAX_DIFF_PREVIEW_CHARACTERS,
@@ -10,6 +10,7 @@ import {
 const nonEmptyString = z.string().min(1);
 const hashSchema = z.string().length(64);
 const pathSchema = z.string().min(1);
+const reasonCodeSchema = z.enum(REPOSITORY_REASON_CODES);
 const profileSchema = z.enum(["app", "docs", "mcp", "database", "config", "repository"]);
 const verificationProfileSchema = z.enum([
   "mcp-fast",
@@ -22,12 +23,40 @@ const verificationProfileSchema = z.enum([
   "full",
 ]);
 
-const fileChangeSummarySchema = z.strictObject({
-  path: pathSchema,
-  oldSha256: hashSchema.or(z.null()),
-  newSha256: hashSchema,
-  newBytes: z.number().int().nonnegative(),
-});
+const fileChangeSummarySchema = z.union([
+  z.strictObject({
+    path: pathSchema,
+    action: z.literal("edit").optional(),
+    oldSha256: hashSchema.or(z.null()),
+    newSha256: hashSchema,
+    newBytes: z.number().int().nonnegative(),
+  }),
+  z.strictObject({
+    path: pathSchema,
+    action: z.literal("delete"),
+    oldSha256: hashSchema,
+    newSha256: z.null(),
+    newBytes: z.literal(0),
+  }),
+]);
+
+const recoveryFields = {
+  reasonCode: reasonCodeSchema.optional(),
+  retryable: z.boolean().optional(),
+  nextAction: z.strictObject({ tool: nonEmptyString }).optional(),
+  conflicts: z
+    .array(
+      z.strictObject({
+        path: pathSchema,
+        expectedSha256: hashSchema.or(z.null()).optional(),
+        currentSha256: hashSchema.or(z.null()).optional(),
+      }),
+    )
+    .optional(),
+  reviewHash: hashSchema.optional(),
+  instanceId: nonEmptyString.optional(),
+  expiresAt: nonEmptyString.optional(),
+};
 
 const diffPreviewFields = {
   diffTruncated: z.boolean(),
@@ -56,6 +85,7 @@ export const repositoryWorkflowStatusOutputSchema = z.strictObject({
   server: z.strictObject({
     name: nonEmptyString,
     version: nonEmptyString,
+    instanceId: nonEmptyString,
   }),
   files: z.record(z.string(), fileReadinessSchema),
   tooling: z.strictObject({
@@ -124,15 +154,21 @@ export const prepareRepositoryChangeOutputSchema = z.strictObject({
   totalBytes: z.number().int().nonnegative().optional(),
   diff: z.string().max(MAX_DIFF_PREVIEW_CHARACTERS).optional(),
   ...optionalDiffPreviewFields,
-  expectedFileHashes: z.record(z.string(), hashSchema.or(z.null())).optional(),
   applyToken: nonEmptyString.optional(),
+  ...recoveryFields,
 });
 
 export const applyRepositoryChangeOutputSchema = z.strictObject({
-  status: z.enum(["applied", "applied_with_verification_failures", "conflict", "failed"]),
+  status: z.enum([
+    "applied",
+    "applied_with_verification_failures",
+    "conflict",
+    "failed",
+    "rejected",
+  ]),
   auditId: nonEmptyString,
-  planId: nonEmptyString,
-  requestedBy: nonEmptyString,
+  planId: nonEmptyString.optional(),
+  requestedBy: nonEmptyString.optional(),
   profile: profileSchema.optional(),
   verificationProfile: verificationProfileSchema.optional(),
   verificationMode: z.enum(["deferred", "on_apply"]).optional(),
@@ -141,17 +177,18 @@ export const applyRepositoryChangeOutputSchema = z.strictObject({
   files: z.array(pathSchema).optional(),
   fileSummaries: z.array(fileChangeSummarySchema).max(MAX_PREPARED_FILES).optional(),
   totalBytes: z.number().int().nonnegative().optional(),
-  finalFileHashes: z.record(z.string(), hashSchema).optional(),
+  finalFileHashes: z.record(z.string(), hashSchema.or(z.null())).optional(),
   operationId: nonEmptyString.optional(),
   approvalHash: hashSchema.optional(),
   verification: verificationSummarySchema.optional(),
-  conflicts: z.array(pathSchema).optional(),
+  ...recoveryFields,
 });
 
 export const verifyRepositoryChangeOutputSchema = z.strictObject({
   status: z.enum(["verified", "failed", "rejected"]),
   auditId: nonEmptyString,
   message: nonEmptyString,
+  ...recoveryFields,
   verification: verificationSummarySchema.optional(),
 });
 
@@ -271,6 +308,10 @@ const repositoryFileReadSchema = z.strictObject({
   totalCharacters: z.number().int().nonnegative(),
   totalBytes: z.number().int().nonnegative(),
   complete: z.boolean(),
+  startLine: z.number().int().positive().optional(),
+  endLine: z.number().int().positive().optional(),
+  nextLine: z.number().int().positive().nullable().optional(),
+  totalLines: z.number().int().nonnegative().optional(),
 });
 
 export const readRepositoryFilesOutputSchema = z.strictObject({
@@ -279,4 +320,38 @@ export const readRepositoryFilesOutputSchema = z.strictObject({
   files: z.array(repositoryFileReadSchema).max(MAX_PREPARED_FILES),
   omittedPaths: z.array(pathSchema),
   returnedCharacters: z.number().int().nonnegative(),
+});
+
+export const grantRepositoryReadAccessOutputSchema = z.strictObject({
+  status: z.enum(["granted", "already_allowed"]),
+  kind: z.literal("repository-read-permission"),
+  profile: profileSchema,
+  scope: z.enum(["temporary", "permanent"]),
+  paths: z.array(pathSchema).max(MAX_PREPARED_FILES),
+  permissionToken: nonEmptyString.optional(),
+  expiresAt: nonEmptyString.optional(),
+  message: nonEmptyString,
+});
+
+const searchMatchSchema = z.strictObject({
+  path: pathSchema,
+  line: z.number().int().positive(),
+  column: z.number().int().positive(),
+  preview: z.string().max(512),
+  sha256: hashSchema,
+});
+
+export const searchRepositoryOutputSchema = z.strictObject({
+  status: z.literal("ok"),
+  profile: profileSchema,
+  query: nonEmptyString,
+  matches: z.array(searchMatchSchema).max(200),
+  offset: z.number().int().nonnegative(),
+  nextOffset: z.number().int().nonnegative().nullable(),
+  truncated: z.boolean(),
+  scannedFiles: z.number().int().nonnegative(),
+  scannedBytes: z.number().int().nonnegative(),
+  omittedPaths: z.array(pathSchema),
+  reasonCode: reasonCodeSchema.optional(),
+  retryable: z.boolean().optional(),
 });
