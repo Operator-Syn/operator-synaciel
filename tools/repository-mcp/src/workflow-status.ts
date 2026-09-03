@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { stat } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
+import { REPOSITORY_MCP_INSTANCE_ID } from "./instance.ts";
 import { PROJECT_ROOT, validateLocalProjectRoot } from "./path.ts";
 import {
   MCP_SERVER_NAME,
@@ -21,6 +22,7 @@ export type RepositoryWorkflowStatus = {
   readonly server: {
     readonly name: string;
     readonly version: string;
+    readonly instanceId: string;
   };
   readonly files: Readonly<Record<string, FileReadiness>>;
   readonly tooling: {
@@ -111,7 +113,11 @@ export async function getRepositoryWorkflowStatus(
     const value: RepositoryWorkflowStatus = {
       status: "blocked",
       projectRoot: PROJECT_ROOT,
-      server: { name: MCP_SERVER_NAME, version: MCP_SERVER_VERSION },
+      server: {
+        name: MCP_SERVER_NAME,
+        version: MCP_SERVER_VERSION,
+        instanceId: REPOSITORY_MCP_INSTANCE_ID,
+      },
       files: {},
       tooling: { npm: false, tsx: false, pipenv: false, graph: false },
       git: { hooksPath: null, hooksActive: false },
@@ -180,7 +186,11 @@ export async function getRepositoryWorkflowStatus(
   const value: RepositoryWorkflowStatus = {
     status: warnings.length === 0 ? "ready" : "attention",
     projectRoot: PROJECT_ROOT,
-    server: { name: MCP_SERVER_NAME, version: MCP_SERVER_VERSION },
+    server: {
+      name: MCP_SERVER_NAME,
+      version: MCP_SERVER_VERSION,
+      instanceId: REPOSITORY_MCP_INSTANCE_ID,
+    },
     files,
     tooling,
     git: { hooksPath, hooksActive: hooksAreActive(hooksPath, files) },
