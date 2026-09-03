@@ -94,12 +94,13 @@ The installed `@modelcontextprotocol/server` 2.0.0 API supports native `outputSc
 The schemas are strict and discriminated where a tool has more than one success shape:
 
 - Overview returns `site`, `profile`, and `sections` with only the documented public fields.
+- Overview sections retain public social/contact `target_url` values; `search_portfolio` indexes those targets for matching, while `get_portfolio_overview` remains the complete link-bearing response.
 - Project and certificate collections return `data` plus bounded `pagination`; detail tools return the record, media, and collection `canonical_url`.
-- Search returns the trimmed `query` and discriminated profile, project, certificate, or snippet results without internal ranking scores.
+- Search returns the trimmed `query` and discriminated profile, project, certificate, or snippet results without internal ranking scores. Each result includes `matched_terms` and `matched_fields`; the optional `match_mode` input selects broad candidate discovery (the compatibility default) or all-term matching within one record.
 - Snippet listing returns public metadata only. Markdown reads return a bounded chunk with offsets; PDF reads return metadata and canonical links with `content_available: false`.
 - GitHub project tools return normalized repository metadata, root `README.md` chunks, bounded `main` commit pages, and changed-file summaries without patches or arbitrary repository paths.
 
-The adapter reconstructs settings, profile, section, project, certificate, media, and snippet objects from explicit field allowlists before they reach a tool result. Database identifiers remain only where they are needed to retrieve or relate public records; storage paths, unknown upstream fields, and presentation-only fields from profile or section-item rows are omitted.
+The adapter reconstructs settings, profile, section, project, certificate, media, and snippet objects from explicit field allowlists before they reach a tool result. Database identifiers remain only where they are needed to retrieve or relate public records; storage paths, unknown upstream fields, and presentation-only fields from profile or section-item rows are omitted. Numeric record and relationship IDs are internal lookup handles for tool chaining; consuming agents should omit them from user-facing summaries unless a user explicitly requests an ID.
 
 The current D1 schema has no draft or visibility column. Records returned by the existing public API routes are therefore treated as published portfolio records; introducing non-public records would require a separate publication boundary in the API.
 
@@ -115,8 +116,8 @@ The server is intentionally read-only. It exposes no create, update, delete, upl
 
 | Tool | Inputs | Success output |
 | --- | --- | --- |
-| `get_portfolio_overview` | None | `{ site, profile, sections }` with public identity, capabilities, home content, and links |
-| `search_portfolio` | `query` (1–200 characters), optional `limit` (1–20) | `{ query, results[] }`; each result has a documented `kind` and public evidence fields |
+| `get_portfolio_overview` | None | `{ site, profile, sections }` with public identity, capabilities, home content, and public/social/contact links |
+| `search_portfolio` | `query` (1–21,600 characters), optional `limit` (1–200), optional `match_mode` (`broad` or `all`) | `{ query, results[] }`; each result carries `matched_terms` and `matched_fields`, profile matching includes public section labels, content, and `target_url` values, and complete links come from the overview tool |
 | `list_projects` | Optional `limit` (1–12) and cursor (1–512 characters) | `{ data: project[], pagination }` |
 | `get_project` | Positive safe integer `id` | `{ project, gallery, canonical_url }` |
 | `list_certificates` | Optional `limit` (1–12) and cursor (1–512 characters) | `{ data: certificate[], pagination }` |
@@ -130,12 +131,24 @@ The server is intentionally read-only. It exposes no create, update, delete, upl
 
 The output schemas are advertised in `tools/list` and validated by the MCP SDK before successful results are returned.
 
+### Search and provenance
+
+`search_portfolio` performs only generic Unicode, case, punctuation, whitespace,
+and duplicate-term normalization. It has no stop-word list, record-kind aliases,
+technology vocabulary, precision patterns, or intent triggers. Every remaining
+caller-provided term participates in matching: `broad` mode accepts any supplied
+term, while `all` mode requires every supplied term to match the same record.
+Collection-wide requests belong to the list tools, and record-specific claims
+belong to the detail/read tools. The response preserves the terms and field
+names that matched so a consumer can distinguish a candidate from a verified
+record.
+
 ## Resources
 
 The stable resources are `portfolio://overview`, `portfolio://projects`,
 `portfolio://certificates`, and `portfolio://snippets`. They expose public JSON
 records and canonical links without cursor pagination. Project and certificate
-list tools cap each requested page at 12 records, search returns at most 20
+list tools cap each requested page at 12 records, search returns at most 200
 results, and a Markdown response chunk is capped at 32,000 characters.
 GitHub commit pages are capped at 12 records, README chunks at 32,000
 characters, commit messages at 2,000 characters, and changed-file summaries
