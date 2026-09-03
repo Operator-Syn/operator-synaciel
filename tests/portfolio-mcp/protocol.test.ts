@@ -2,17 +2,25 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { PORTFOLIO_MCP_INSTRUCTIONS } from "../../workers/portfolio-mcp/src/config.ts";
 import {
   createPortfolioMcpHandler,
   createPortfolioMcpServer,
+  MAX_SEARCH_QUERY_CHARACTERS,
+  MAX_SEARCH_RESULTS,
   MAX_SNIPPET_OFFSET,
   PORTFOLIO_MCP_CACHE_TTL_SECONDS,
 } from "../../workers/portfolio-mcp/src/index.ts";
+import {
+  buildSearchResults,
+  parseSearchTerms,
+} from "../../workers/portfolio-mcp/src/mcp/search.ts";
 import {
   createPortfolioApiClient,
   createPortfolioApiTransport,
   flattenSnippetTree,
   getSnippetPageUrl,
+  type PortfolioApiClient,
   type PortfolioApiEnvironment,
   slugifySnippetName,
 } from "../../workers/portfolio-mcp/src/portfolioApi.ts";
@@ -319,6 +327,212 @@ function readStructuredContent(result: unknown): Record<string, unknown> {
   return structuredContent as Record<string, unknown>;
 }
 
+test("indexes public social-link targets for portfolio search", async () => {
+  const results = await buildSearchResults(
+    {
+      getOverview: async () => ({
+        site: {},
+        profile: [],
+        sections: [
+          {
+            id: 8,
+            title: "Social Links",
+            section_type: "social",
+            items: [
+              {
+                label: "Instagram",
+                content: null,
+                image_url: null,
+                target_url: "https://www.instagram.com/rohn_rohnann",
+              },
+            ],
+          },
+        ],
+      }),
+      getAllProjects: async () => [],
+      getAllCertificates: async () => [],
+      getSnippetTree: async () => [],
+    } as unknown as PortfolioApiClient,
+    "rohn_rohnann",
+    10,
+  );
+
+  assert.deepEqual(results, [
+    {
+      kind: "profile",
+      title: "Syn-Forge portfolio overview",
+      summary: "Identity, capabilities, home content, and public links from the portfolio.",
+      url: "https://syn-forge.com/",
+      matched_terms: ["rohn_rohnann"],
+      matched_fields: ["section.item.target_url"],
+    },
+  ]);
+});
+
+test("returns search provenance and applies match_mode to caller-provided terms", async () => {
+  const api = {
+    getOverview: async () => ({
+      site: {},
+      profile: [{ label: "Framework", value: "Flask" }],
+      sections: [],
+    }),
+    getAllProjects: async () => [
+      {
+        id: 5,
+        title: "The Hootline",
+        type: "video" as const,
+        url: "https://example.com/hootline.mp4",
+        short_description: "React-Flask P2P mentorship ecosystem",
+        long_description: "A school-centered mentorship platform.",
+        project_link: "https://github.com/Operator-Syn/peer-tutoring-platform",
+        display_order: 1,
+        created_at: "2026-08-27T00:00:00.000Z",
+      },
+      {
+        id: 8,
+        title: "BAI Finance Website",
+        type: "image" as const,
+        url: "https://example.com/bai-finance.png",
+        short_description: "A financial services platform",
+        long_description: "The project delivers calculators and customer inquiry support.",
+        project_link: "https://www.baifinance.com.au/",
+        display_order: 2,
+        created_at: "2026-08-27T00:00:00.000Z",
+      },
+    ],
+    getAllCertificates: async () => [
+      {
+        id: 9,
+        title: "BAI Finance Virtual Services Internship",
+        type: "image" as const,
+        url: "https://example.com/bai-certificate.png",
+        short_description: "Produced three deployed projects for BAI Finance.",
+        long_description: "The internship focused on practical web solutions.",
+        certificate_link: null,
+        display_order: 1,
+        created_at: "2026-08-27T00:00:00.000Z",
+      },
+    ],
+    getSnippetTree: async () => [],
+  } as unknown as PortfolioApiClient;
+
+  const exact = await buildSearchResults(api, "React Flask", 10, "all");
+  assert.deepEqual(
+    exact.map((result) => [result.kind, result.title]),
+    [["project", "The Hootline"]],
+  );
+  assert.deepEqual(exact[0], {
+    kind: "project",
+    id: 5,
+    title: "The Hootline",
+    summary: "React-Flask P2P mentorship ecosystem",
+    url: "https://syn-forge.com/projects",
+    project_link: "https://github.com/Operator-Syn/peer-tutoring-platform",
+    matched_terms: ["react", "flask"],
+    matched_fields: ["short_description"],
+  });
+
+  const broad = await buildSearchResults(api, "BAI Finance Flask", 10);
+  const baiProject = broad.find((result) => result.kind === "project" && result.id === 8);
+  assert.deepEqual(baiProject && "matched_terms" in baiProject ? baiProject.matched_terms : [], [
+    "bai",
+    "finance",
+  ]);
+  assert.equal((await buildSearchResults(api, "BAI Finance Flask", 10, "all")).length, 0);
+});
+
+test("uses only generic normalization and does not treat record words as kind filters", async () => {
+  const api = {
+    getOverview: async () => ({ site: {}, profile: [], sections: [] }),
+    getAllProjects: async () => [
+      {
+        id: 1,
+        title: "Project One",
+        type: "image" as const,
+        url: "https://example.com/project.png",
+        short_description: "A project",
+        long_description: "A project description.",
+        project_link: "https://example.com/project",
+        display_order: 1,
+        created_at: "2026-08-27T00:00:00.000Z",
+      },
+    ],
+    getAllCertificates: async () => [
+      {
+        id: 2,
+        title: "Project Certificate",
+        type: "image" as const,
+        url: "https://example.com/certificate.png",
+        short_description: "A certificate about projects",
+        long_description: "Training for project work.",
+        certificate_link: null,
+        display_order: 1,
+        created_at: "2026-08-27T00:00:00.000Z",
+      },
+    ],
+    getSnippetTree: async () => [],
+  } as unknown as PortfolioApiClient;
+
+  assert.deepEqual(parseSearchTerms("  CAFE\u0301 / C++...  "), ["café", "c++"]);
+
+  const results = await buildSearchResults(api, "project", 10);
+  assert.deepEqual(
+    results.map((result) => result.kind),
+    ["certificate", "project"],
+  );
+
+  assert.equal((await buildSearchResults(api, "show me project", 10, "all")).length, 0);
+});
+
+test("allows the public search ceiling of 200 results", async () => {
+  assert.equal(MAX_SEARCH_RESULTS, 200);
+  const server = createPortfolioMcpServer(createFakeEnvironment());
+  const client = new Client({ name: "portfolio-mcp-search-limit-test", version: "1.0.0" });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+
+  await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+  const accepted = await client.callTool({
+    name: "search_portfolio",
+    arguments: { query: "software", limit: MAX_SEARCH_RESULTS },
+  });
+  assert.equal(accepted.isError, undefined);
+
+  const rejected = await client.callTool({
+    name: "search_portfolio",
+    arguments: { query: "software", limit: MAX_SEARCH_RESULTS + 1 },
+  });
+  assert.equal(rejected.isError, true);
+  assert.match(readToolText(rejected), /Input validation error/);
+
+  await client.close();
+  await server.close();
+});
+test("allows search queries up to 21600 characters", async () => {
+  assert.equal(MAX_SEARCH_QUERY_CHARACTERS, 21_600);
+  const server = createPortfolioMcpServer(createFakeEnvironment());
+  const client = new Client({ name: "portfolio-mcp-query-limit-test", version: "1.0.0" });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+
+  await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+  const accepted = await client.callTool({
+    name: "search_portfolio",
+    arguments: { query: "x".repeat(MAX_SEARCH_QUERY_CHARACTERS) },
+  });
+  assert.equal(accepted.isError, undefined);
+  assert.equal(readStructuredContent(accepted).query, "x".repeat(MAX_SEARCH_QUERY_CHARACTERS));
+
+  const rejected = await client.callTool({
+    name: "search_portfolio",
+    arguments: { query: "x".repeat(MAX_SEARCH_QUERY_CHARACTERS + 1) },
+  });
+  assert.equal(rejected.isError, true);
+  assert.match(readToolText(rejected), /Input validation error/);
+
+  await client.close();
+  await server.close();
+});
 test("keeps snippet links stable and flattens only files", () => {
   assert.equal(slugifySnippetName("Agent Notes.md"), "agent-notes.md");
   assert.equal(
@@ -529,6 +743,21 @@ test("advertises strict output schemas and returns structured public results", a
     (search.results as Array<Record<string, unknown>>).some((result) => "score" in result),
     false,
   );
+  const preciseSearch = await client.callTool({
+    name: "search_portfolio",
+    arguments: { query: "portfolio description", match_mode: "all" },
+  });
+  assert.equal(preciseSearch.isError, undefined);
+  const preciseResults = readStructuredContent(preciseSearch).results as Array<
+    Record<string, unknown>
+  >;
+  assert.equal(preciseResults.length, 1);
+  assert.deepEqual(preciseResults[0]?.matched_terms, ["portfolio", "description"]);
+  assert.deepEqual(preciseResults[0]?.matched_fields, [
+    "title",
+    "short_description",
+    "long_description",
+  ]);
 
   const project = readStructuredContent(results[3]);
   assert.equal("internal_note" in (project.project as Record<string, unknown>), false);
@@ -607,6 +836,9 @@ test("exposes the read-only portfolio contract through MCP tools and resources",
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
 
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+
+  assert.match(PORTFOLIO_MCP_INSTRUCTIONS, /internal lookup handles/);
+  assert.match(PORTFOLIO_MCP_INSTRUCTIONS, /omit them from user-facing summaries/);
 
   const tools = await client.listTools();
   const resources = await client.listResources();
