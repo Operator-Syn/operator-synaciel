@@ -4,13 +4,14 @@ import { setCookie } from "hono/cookie";
 import { cors } from "hono/cors";
 import {
   type AgentControlRow,
-  DAILY_TURN_LIMIT,
   getConfigString,
   getSessionCookieSameSite,
   OAUTH_STATE_COOKIE,
   OAUTH_STATE_MAX_AGE_SECONDS,
   type OAuthStateRow,
   type PublicAuthEnvironment,
+  ROLLING_TOKEN_BUDGET,
+  ROLLING_TOKEN_WINDOW_SECONDS,
   SESSION_COOKIE,
   SESSION_MAX_AGE_SECONDS,
   type SessionContext,
@@ -18,7 +19,6 @@ import {
   THREAD_RETENTION_SECONDS,
   type ThreadRow,
   type UserRow,
-  WORKERS_AI_AUTO_PAUSE_LIMIT,
 } from "./config.ts";
 import {
   issueAgentAccessToken,
@@ -34,10 +34,14 @@ import {
   parseBrowserOrigins,
   readString,
   safeDisplayName,
+  safeGoogleProfilePictureUrl,
   sanitizeReturnTo,
 } from "./validation.ts";
 
 const app = new Hono<{ Bindings: PublicAuthEnvironment }>();
+
+const DEFAULT_THREAD_MESSAGE_PAGE_SIZE = 24;
+const MAX_THREAD_MESSAGE_PAGE_SIZE = 50;
 
 app.use("*", (c, next) => {
   const allowedOrigins = parseBrowserOrigins(c.env.BROWSER_ORIGINS);
@@ -105,7 +109,7 @@ async function getSession(
     .first<SessionRow>();
   if (!session) return null;
   const user = await environment.AUTH_DB.prepare(
-    "SELECT sub, email, display_name, quota_epoch, disabled_at FROM users WHERE sub = ?1 AND disabled_at IS NULL",
+    "SELECT sub, email, display_name, picture_url, quota_epoch, disabled_at FROM users WHERE sub = ?1 AND disabled_at IS NULL",
   )
     .bind(session.sub)
     .first<UserRow>();
@@ -114,6 +118,40 @@ async function getSession(
     .bind(now, idHash)
     .run();
   return { rawSessionId, session, user };
+}
+
+type RollingUsageRow = {
+  used_tokens: number | null;
+  oldest_created_at: number | null;
+};
+
+async function readRollingQuota(
+  environment: PublicAuthEnvironment,
+  sub: string,
+  now = Date.now(),
+): Promise<{
+  usedTokens: number;
+  budgetTokens: number;
+  remainingTokens: number;
+  resetAt: number | null;
+}> {
+  const cutoff = now - ROLLING_TOKEN_WINDOW_SECONDS * 1_000;
+  const usage = await environment.AUTH_DB.prepare(
+    "SELECT COALESCE(SUM(CASE WHEN actual_input_tokens IS NOT NULL AND actual_output_tokens IS NOT NULL THEN actual_input_tokens + actual_output_tokens ELSE estimated_tokens END), 0) AS used_tokens, MIN(created_at) AS oldest_created_at FROM rolling_token_usage WHERE sub = ?1 AND created_at > ?2",
+  )
+    .bind(sub, cutoff)
+    .first<RollingUsageRow>();
+  const usedTokens = Math.max(0, Number(usage?.used_tokens ?? 0));
+  const oldestCreatedAt = usage?.oldest_created_at;
+  return {
+    usedTokens,
+    budgetTokens: ROLLING_TOKEN_BUDGET,
+    remainingTokens: Math.max(0, ROLLING_TOKEN_BUDGET - usedTokens),
+    resetAt:
+      typeof oldestCreatedAt === "number"
+        ? oldestCreatedAt + ROLLING_TOKEN_WINDOW_SECONDS * 1_000
+        : null,
+  };
 }
 
 function setSessionCookie(
@@ -209,6 +247,54 @@ async function callAgentInternal(
   return response as unknown as Response;
 }
 
+const MAX_EMPTY_THREAD_CHECKS = 8;
+
+type EmptyThreadCheck =
+  | { status: "clear" }
+  | { status: "empty"; threadId: string }
+  | { status: "unavailable" };
+
+async function readThreadHasMessages(
+  environment: PublicAuthEnvironment,
+  threadId: string,
+): Promise<boolean | null> {
+  try {
+    const response = await callAgentInternal(
+      environment,
+      `/internal/threads/${encodeURIComponent(threadId)}/messages?limit=1`,
+      "GET",
+    );
+    if (!response.ok) return null;
+    const payload = asRecord(await response.json());
+    return Array.isArray(payload?.messages) ? payload.messages.length > 0 : null;
+  } catch {
+    return null;
+  }
+}
+
+async function findEmptyThread(
+  environment: PublicAuthEnvironment,
+  sub: string,
+): Promise<EmptyThreadCheck> {
+  try {
+    const result = await environment.AUTH_DB.prepare(
+      `SELECT id FROM threads WHERE sub = ?1 AND deleted_at IS NULL AND (title IS NULL OR title = '') ORDER BY updated_at DESC LIMIT ${MAX_EMPTY_THREAD_CHECKS}`,
+    )
+      .bind(sub)
+      .all<{ id: string }>();
+
+    for (const candidate of result.results) {
+      if (!candidate || typeof candidate.id !== "string") return { status: "unavailable" };
+      const hasMessages = await readThreadHasMessages(environment, candidate.id);
+      if (hasMessages === null) return { status: "unavailable" };
+      if (!hasMessages) return { status: "empty", threadId: candidate.id };
+    }
+    return { status: "clear" };
+  } catch {
+    return { status: "unavailable" };
+  }
+}
+
 async function isAdmin(request: Request, environment: PublicAuthEnvironment): Promise<boolean> {
   const cookie = request.headers.get("Cookie");
   if (!cookie) return false;
@@ -226,6 +312,17 @@ async function loadControl(environment: PublicAuthEnvironment): Promise<AgentCon
   return environment.AUTH_DB.prepare(
     "SELECT paused, pause_reason, estimated_neurons, utc_day FROM agent_control WHERE id = 1",
   ).first<AgentControlRow>();
+}
+
+async function clearLegacyAutomaticPause(environment: PublicAuthEnvironment): Promise<void> {
+  // The old estimated-neuron counter was only a local approximation and can
+  // disagree with the Workers AI usage dashboard. It must not block token
+  // issuance; administrator pauses use the control row's other reasons.
+  await environment.AUTH_DB.prepare(
+    "UPDATE agent_control SET estimated_neurons = 0, paused = 0, pause_reason = NULL, updated_at = ?1 WHERE id = 1 AND pause_reason = 'daily-neuron-budget'",
+  )
+    .bind(Date.now())
+    .run();
 }
 
 app.get("/health", (c) => c.json({ ok: true, service: "portfolio-public-auth" }));
@@ -307,9 +404,15 @@ app.get("/oauth/google/callback", async (c) => {
     const identity = await verifyGoogleIdToken(idToken, c.env, stateRow.nonce);
     const now = Date.now();
     await c.env.AUTH_DB.prepare(
-      "INSERT INTO users (sub, email, display_name, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?4) ON CONFLICT(sub) DO UPDATE SET email = excluded.email, display_name = excluded.display_name, updated_at = excluded.updated_at",
+      "INSERT INTO users (sub, email, display_name, picture_url, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5) ON CONFLICT(sub) DO UPDATE SET email = excluded.email, display_name = excluded.display_name, picture_url = excluded.picture_url, updated_at = excluded.updated_at",
     )
-      .bind(identity.sub, identity.email, safeDisplayName(identity.displayName), now)
+      .bind(
+        identity.sub,
+        identity.email,
+        safeDisplayName(identity.displayName),
+        safeGoogleProfilePictureUrl(identity.pictureUrl),
+        now,
+      )
       .run();
     const rawSessionId = randomToken(32);
     await c.env.AUTH_DB.prepare(
@@ -341,10 +444,22 @@ app.get("/session", async (c) => {
       sub: session.user.sub,
       email: session.user.email,
       displayName: session.user.display_name,
+      pictureUrl: safeGoogleProfilePictureUrl(session.user.picture_url),
     },
     sessionExpiresAt: session.session.expires_at,
     turnstileVerified: session.session.turnstile_verified_at !== null,
   });
+});
+
+app.get("/quota", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const session = await getSession(c.req.raw, c.env);
+  if (!session) return c.json({ error: { code: "AUTH_REQUIRED", message: "Sign in first." } }, 401);
+  try {
+    return c.json(await readRollingQuota(c.env, session.user.sub));
+  } catch {
+    return jsonError("QUOTA_UNAVAILABLE", "The assistant budget is temporarily unavailable.", 503);
+  }
 });
 
 app.post("/logout", async (c) => {
@@ -409,12 +524,104 @@ app.get("/threads", async (c) => {
   });
 });
 
+app.get("/threads/:id/messages", async (c) => {
+  const session = await getSession(c.req.raw, c.env);
+  if (!session) return c.json({ error: { code: "AUTH_REQUIRED", message: "Sign in first." } }, 401);
+  const threadId = c.req.param("id");
+  const thread = await ownedThread(c.env, session.user.sub, threadId);
+  if (!thread)
+    return c.json(
+      { error: { code: "THREAD_NOT_FOUND", message: "That thread is not available." } },
+      404,
+    );
+
+  const requestUrl = new URL(c.req.url);
+  const limitParam = requestUrl.searchParams.get("limit");
+  const beforeParam = requestUrl.searchParams.get("before");
+  const paged = limitParam !== null || beforeParam !== null;
+  let pageSize = DEFAULT_THREAD_MESSAGE_PAGE_SIZE;
+  let before: string | undefined;
+  if (paged) {
+    pageSize = limitParam === null ? DEFAULT_THREAD_MESSAGE_PAGE_SIZE : Number(limitParam);
+    before = beforeParam?.trim() || undefined;
+    if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > MAX_THREAD_MESSAGE_PAGE_SIZE) {
+      return jsonError("INVALID_MESSAGE_CURSOR", "That history page is not valid.", 400);
+    }
+    if (beforeParam !== null && (!before || before.length > 256)) {
+      return jsonError("INVALID_MESSAGE_CURSOR", "That history position is not valid.", 400);
+    }
+  }
+
+  const internalParams = new URLSearchParams();
+  if (paged) {
+    internalParams.set("limit", String(pageSize));
+    if (before) internalParams.set("before", before);
+  }
+  const internalQuery = internalParams.toString();
+  const response = await callAgentInternal(
+    c.env,
+    `/internal/threads/${encodeURIComponent(threadId)}/messages${internalQuery ? `?${internalQuery}` : ""}`,
+    "GET",
+  );
+  if (!response.ok) {
+    if (paged && response.status === 400) {
+      return jsonError(
+        "INVALID_MESSAGE_CURSOR",
+        "That history position is no longer available.",
+        400,
+      );
+    }
+    return jsonError("AGENT_UNAVAILABLE", "Thread history is temporarily unavailable.", 502);
+  }
+  let payload: unknown = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+  const record = asRecord(payload);
+  const messages = record?.messages;
+  if (!Array.isArray(messages))
+    return jsonError("AGENT_UNAVAILABLE", "Thread history is temporarily unavailable.", 502);
+  if (!paged) return c.json({ messages });
+
+  const nextCursor = record?.nextCursor;
+  const hasMore = record?.hasMore;
+  if ((nextCursor !== null && typeof nextCursor !== "string") || typeof hasMore !== "boolean") {
+    return jsonError("AGENT_UNAVAILABLE", "Thread history is temporarily unavailable.", 502);
+  }
+  return c.json({ messages, nextCursor: nextCursor ?? null, hasMore });
+});
+
 app.post("/threads", async (c) => {
   if (!sameOrigin(c.req.raw, c.env)) return c.body(null, 403);
   const session = await getSession(c.req.raw, c.env);
   if (!session) return c.json({ error: { code: "AUTH_REQUIRED", message: "Sign in first." } }, 401);
+  const emptyThread = await findEmptyThread(c.env, session.user.sub);
+  if (emptyThread.status === "unavailable") {
+    return jsonError(
+      "THREAD_STATE_UNAVAILABLE",
+      "The current thread state could not be checked. Please try again.",
+      503,
+    );
+  }
+  if (emptyThread.status === "empty") {
+    return jsonError(
+      "EMPTY_THREAD_ACTIVE",
+      "Ask a question in your current thread before creating another thread.",
+      409,
+    );
+  }
   const thread = await createThread(c.env, session.user.sub);
-  return c.json({ id: thread.id, createdAt: thread.created_at, updatedAt: thread.updated_at }, 201);
+  return c.json(
+    {
+      id: thread.id,
+      createdAt: thread.created_at,
+      updatedAt: thread.updated_at,
+      title: thread.title,
+    },
+    201,
+  );
 });
 
 app.post("/agent/token", async (c) => {
@@ -427,17 +634,18 @@ app.post("/agent/token", async (c) => {
       403,
     );
   }
+  await clearLegacyAutomaticPause(c.env);
   const control = await loadControl(c.env);
-  const currentDay = new Date().toISOString().slice(0, 10);
-  const staleAutomaticPause =
-    control?.pause_reason === "daily-neuron-budget" && control.utc_day !== currentDay;
-  if (
-    !control ||
-    (!staleAutomaticPause && control.paused !== 0) ||
-    (!staleAutomaticPause && control.estimated_neurons >= WORKERS_AI_AUTO_PAUSE_LIMIT)
-  ) {
+  if (!control || control.paused !== 0) {
     return c.json(
-      { error: { code: "AGENT_PAUSED", message: "The assistant is temporarily paused." } },
+      {
+        error: {
+          code: "AGENT_PAUSED",
+          message: control
+            ? "The shared Workers AI capacity is paused by an administrator. This is separate from each user's rolling 1-hour quota-unit budget."
+            : "The shared Workers AI capacity control is unavailable. Please try again later.",
+        },
+      },
       503,
     );
   }
@@ -451,22 +659,6 @@ app.post("/agent/token", async (c) => {
       { error: { code: "THREAD_NOT_FOUND", message: "That thread is not available." } },
       404,
     );
-  const usage = await c.env.AUTH_DB.prepare(
-    "SELECT turns FROM usage_windows WHERE sub = ?1 AND utc_day = ?2",
-  )
-    .bind(session.user.sub, new Date().toISOString().slice(0, 10))
-    .first<{ turns: number }>();
-  if ((usage?.turns ?? 0) >= DAILY_TURN_LIMIT) {
-    return c.json(
-      {
-        error: {
-          code: "DAILY_LIMIT",
-          message: "Your daily assistant limit has been reached. Ask an administrator to reset it.",
-        },
-      },
-      429,
-    );
-  }
   const issued = await issueAgentAccessToken(c.env, {
     sub: session.user.sub,
     sid: session.session.id_hash,
@@ -548,7 +740,7 @@ app.post("/admin/reset", async (c) => {
   const sub = readString(body, "sub", 256);
   const now = Date.now();
   if (sub) {
-    await c.env.AUTH_DB.prepare("DELETE FROM usage_windows WHERE sub = ?1").bind(sub).run();
+    await c.env.AUTH_DB.prepare("DELETE FROM rolling_token_usage WHERE sub = ?1").bind(sub).run();
     await c.env.AUTH_DB.prepare(
       "UPDATE users SET quota_epoch = quota_epoch + 1, updated_at = ?1 WHERE sub = ?2",
     )
@@ -565,7 +757,7 @@ app.post("/admin/reset", async (c) => {
       .bind(now, sub)
       .run();
   } else {
-    await c.env.AUTH_DB.prepare("DELETE FROM usage_windows").run();
+    await c.env.AUTH_DB.prepare("DELETE FROM rolling_token_usage").run();
     await c.env.AUTH_DB.prepare("UPDATE users SET quota_epoch = quota_epoch + 1, updated_at = ?1")
       .bind(now)
       .run();
@@ -617,8 +809,8 @@ async function cleanupExpired(environment: PublicAuthEnvironment): Promise<void>
   )
     .bind(now)
     .run();
-  await environment.AUTH_DB.prepare("DELETE FROM usage_windows WHERE utc_day < ?1")
-    .bind(new Date(now - 2 * 86_400_000).toISOString().slice(0, 10))
+  await environment.AUTH_DB.prepare("DELETE FROM rolling_token_usage WHERE created_at <= ?1")
+    .bind(now - ROLLING_TOKEN_WINDOW_SECONDS * 1_000)
     .run();
   const cutoff = now - THREAD_RETENTION_SECONDS * 1000;
   const stale = await environment.AUTH_DB.prepare(
