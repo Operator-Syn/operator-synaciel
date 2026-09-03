@@ -1,9 +1,19 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { isCredentialLikeContent } from "../../tools/repository-mcp/src/redaction.ts";
+import {
+  isCredentialLikeContent,
+  isSensitiveFileName,
+} from "../../tools/repository-mcp/src/redaction.ts";
 
-describe("credential-like content detection", () => {
+describe("repository path redaction", () => {
+  test("allows only the safe environment template name", () => {
+    assert.equal(isSensitiveFileName(".env.example"), false);
+    for (const name of [".env", ".env.local", ".env.production", ".env.example.local"]) {
+      assert.equal(isSensitiveFileName(name), true, name);
+    }
+  });
+
   test("does not flag TypeScript binding type declarations", () => {
     const bindingName = ["R2", "SECRET", "ACCESS", "KEY"].join("_");
     assert.equal(isCredentialLikeContent(`${bindingName}: string;`), false);
