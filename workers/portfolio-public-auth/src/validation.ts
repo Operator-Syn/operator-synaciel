@@ -18,6 +18,27 @@ export function safeDisplayName(value: string): string {
     .slice(0, 120);
 }
 
+export function safeGoogleProfilePictureUrl(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed || trimmed.length > 2_048) return null;
+  try {
+    const parsed = new URL(trimmed);
+    const hostname = parsed.hostname.toLowerCase();
+    if (
+      parsed.protocol !== "https:" ||
+      parsed.username ||
+      parsed.password ||
+      parsed.port ||
+      (hostname !== "googleusercontent.com" && !hostname.endsWith(".googleusercontent.com"))
+    ) {
+      return null;
+    }
+    return parsed.href;
+  } catch {
+    return null;
+  }
+}
+
 export function parseBrowserOrigins(value: string | undefined): ReadonlySet<string> {
   const origins = new Set<string>();
   for (const candidate of value?.split(",") ?? []) {
