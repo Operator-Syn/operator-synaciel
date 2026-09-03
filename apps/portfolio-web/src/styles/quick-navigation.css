@@ -1,22 +1,21 @@
-/* Fixed quick-navigation utility and its compact navigation shell. */
+/* Quick-navigation disclosure inside the shared floating-control dock. */
 .quick-navigation {
+    position: relative;
+    display: grid;
+    justify-items: end;
+    gap: var(--floating-control-gap);
     pointer-events: none;
-    top: auto;
-    inset-inline-end: var(--floating-control-inline-end);
-    inset-block-end: var(--floating-control-block-end);
 }
 
 .quick-navigation-toggle {
     pointer-events: auto;
 }
 
-.navigation-shell {
-    transition:
-        box-shadow var(--motion-feedback-duration) var(--motion-ease),
-        transform var(--motion-feedback-duration) var(--motion-ease);
-}
-
 .quick-navigation-panel {
+    position: absolute;
+    inset-inline-end: 0;
+    inset-block-end: calc(100% + var(--floating-control-gap));
+    width: min(22rem, calc(100vw - 2rem));
     pointer-events: none;
     opacity: 0;
     transform: translateY(0.5rem) scale(0.985);
@@ -101,24 +100,5 @@
 
     .navigation-shell[data-navigation-hidden="true"]:focus-within {
         transform: translateY(0);
-    }
-
-    .quick-navigation.is-open {
-        top: auto;
-        inset-inline-end: var(--floating-control-inline-end);
-        inset-block-end: var(--floating-control-block-end);
-        width: calc(
-            100vw -
-            var(--floating-control-inline-end) -
-            var(--floating-control-inline-end)
-        );
-    }
-
-    .quick-navigation-panel {
-        width: 100%;
-    }
-
-    .quick-navigation.is-open .quick-navigation-toggle {
-        justify-self: end;
     }
 }
