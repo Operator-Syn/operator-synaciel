@@ -25,6 +25,7 @@ export type GoogleIdentity = {
   sub: string;
   email: string;
   displayName: string;
+  pictureUrl: string | null;
 };
 
 export async function verifyGoogleIdToken(
@@ -53,6 +54,10 @@ export async function verifyGoogleIdToken(
       typeof payload.name === "string" && payload.name.trim().length > 0
         ? payload.name.trim().slice(0, 120)
         : payload.email,
+    pictureUrl:
+      typeof payload.picture === "string" && payload.picture.trim().length > 0
+        ? payload.picture.trim().slice(0, 2_048)
+        : null,
   };
 }
 
