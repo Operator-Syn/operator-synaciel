@@ -1,0 +1,132 @@
+/* Shared accessible modal shell for confirmations and future task dialogs. */
+@keyframes app-modal-backdrop-enter {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes app-modal-dialog-enter {
+    from {
+        opacity: 0;
+        transform: translateY(0.5rem) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.app-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: grid;
+    place-items: center;
+    padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+        max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+    background: var(--color-canvas-overlay, rgb(16 17 17 / 92%));
+    animation: app-modal-backdrop-enter var(--motion-overlay-enter-duration) var(--motion-ease) both;
+}
+
+.app-modal {
+    display: flex;
+    width: min(30rem, 100%);
+    max-height: min(38rem, 100%);
+    flex-direction: column;
+    overflow: auto;
+    border: 1px solid var(--color-line-strong);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-panel);
+    animation: app-modal-dialog-enter var(--motion-overlay-enter-duration) var(--motion-ease) both;
+}
+
+.app-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid var(--color-line);
+    padding: 1rem;
+}
+
+.app-modal-header > div {
+    min-width: 0;
+}
+
+.app-modal-header h2 {
+    margin: 0.2rem 0 0;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: var(--text-panel-title);
+    font-weight: 400;
+    line-height: 1.05;
+}
+
+.app-modal-close {
+    display: inline-grid;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid var(--color-line-strong);
+    background: transparent;
+    color: var(--color-text-muted);
+}
+
+.app-modal-close:hover {
+    border-color: var(--color-signal);
+    color: var(--color-signal);
+}
+
+.app-modal-description,
+.app-modal-body {
+    color: var(--color-text-muted);
+}
+
+.app-modal-description {
+    margin: 0;
+    padding: 1rem 1rem 0;
+}
+
+.app-modal-body {
+    padding: 1rem;
+}
+
+.app-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    border-top: 1px solid var(--color-line);
+    padding: 1rem;
+}
+
+.app-modal-danger {
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+}
+
+.app-modal-danger:hover {
+    background: var(--color-danger);
+    color: var(--color-canvas);
+}
+
+@media (max-width: 400px) {
+    .app-modal-footer {
+        align-items: stretch;
+        flex-direction: column-reverse;
+    }
+
+    .app-modal-footer > * {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-modal-backdrop,
+    .app-modal {
+        animation: none;
+    }
+}
