@@ -38,4 +38,7 @@ test("focused profiles remain bounded while repository spans refactored boundari
   assert.equal(isProfilePathAllowed("repository", "workers/portfolio-api/src/entrypoint.ts"), true);
   assert.equal(isProfilePathAllowed("repository", "graphify-out/graph.json"), false);
   assert.equal(isProfilePathAllowed("repository", ".env"), false);
+  assert.equal(isProfilePathAllowed("config", ".env.example"), true);
+  assert.equal(isProfilePathAllowed("repository", ".env.example"), true);
+  assert.equal(isProfilePathAllowed("mcp", ".env.example"), false);
 });
