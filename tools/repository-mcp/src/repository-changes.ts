@@ -32,7 +32,11 @@ import {
   type RepositoryVerificationProfile,
   type RepositoryWriteProfile,
 } from "./policy.ts";
-import { isCredentialLikeContent, isSensitiveFileName } from "./redaction.ts";
+import {
+  isCredentialLikeContent,
+  isSafeEnvironmentFileContent,
+  isSensitivePath,
+} from "./redaction.ts";
 import { applyExactReplacements, type ExactReplacement } from "./text-edits.ts";
 import {
   clearVerificationCache,
@@ -254,6 +258,12 @@ async function localFileState(path: string): Promise<FileState> {
   }
   if (isCredentialLikeContent(content))
     throw new Error(`Credential-like content cannot be reviewed: ${path}`);
+  if (!isSafeEnvironmentFileContent(path, content)) {
+    throw new RepositoryDomainError(
+      `Sensitive environment and credential content cannot be reviewed: ${path}`,
+      "CONTENT_GUARD_REJECTED",
+    );
+  }
   return { exists: true, sha256: digestBytes(bytes), content };
 }
 
@@ -270,7 +280,7 @@ function validateWritePath(profile: RepositoryWriteProfile, input: string): stri
       `Path ${JSON.stringify(path)} is not allowed by the ${profile} write profile. Write access is not widened by read permissions; retry with an explicitly approved broader write profile if appropriate.`,
     );
   }
-  if (path.split("/").some((part) => isSensitiveFileName(part))) {
+  if (isSensitivePath(path)) {
     throw new Error(`Path ${JSON.stringify(path)} is a sensitive environment or credential file.`);
   }
   if (isLikelyBinaryPath(path)) {
@@ -390,6 +400,12 @@ export async function prepareRepositoryChange(
       if (isCredentialLikeContent(operation.content)) {
         throw new Error(`Credential-like content is not accepted: ${path}`);
       }
+      if (!isSafeEnvironmentFileContent(path, operation.content)) {
+        throw new RepositoryDomainError(
+          `Sensitive environment and credential content is not accepted: ${path}`,
+          "CONTENT_GUARD_REJECTED",
+        );
+      }
       if (operation.content.includes("\0")) {
         throw new Error(`Binary file content is not allowed: ${path}`);
       }
@@ -454,7 +470,11 @@ export async function prepareRepositoryChange(
           });
         }
         const content = edited.content;
-        if (isCredentialLikeContent(content) || content.includes("\0")) {
+        if (
+          isCredentialLikeContent(content) ||
+          !isSafeEnvironmentFileContent(path, content) ||
+          content.includes("\0")
+        ) {
           throw new RepositoryDomainError(
             `The computed edit result is not safe to write: ${path}`,
             "CONTENT_GUARD_REJECTED",
