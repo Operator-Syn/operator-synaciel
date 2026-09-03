@@ -39,6 +39,13 @@ test("focused profiles remain bounded while repository spans refactored boundari
   assert.equal(isProfilePathAllowed("repository", "graphify-out/graph.json"), false);
   assert.equal(isProfilePathAllowed("repository", ".env"), false);
   assert.equal(isProfilePathAllowed("config", ".env.example"), true);
+  assert.equal(isProfilePathAllowed("config", ".envrc"), true);
+  assert.equal(isProfilePathAllowed("config", "flake.nix"), true);
+  assert.equal(isProfilePathAllowed("config", "flake.lock"), true);
   assert.equal(isProfilePathAllowed("repository", ".env.example"), true);
+  assert.equal(isProfilePathAllowed("repository", ".envrc"), true);
+  assert.equal(isProfilePathAllowed("repository", "flake.nix"), true);
+  assert.equal(isProfilePathAllowed("repository", "flake.lock"), true);
   assert.equal(isProfilePathAllowed("mcp", ".env.example"), false);
+  assert.equal(isProfilePathAllowed("mcp", ".envrc"), false);
 });
