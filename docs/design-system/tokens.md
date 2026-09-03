@@ -38,9 +38,7 @@ Both are part of the [[design-system/README|Design System]] contract.
 
 ## Visitor preferences
 
-The Home route exposes a fixed settings utility; it does not add layout flow.
-Home Settings and Quick Navigation share the same safe-area-aware viewport edge
-tokens so their triggers keep a consistent inline/block anchor across routes.
+The Home route exposes a settings utility inside the shared floating-control dock; it does not add layout flow. The assistant, Home Settings, and Quick Navigation use the same safe-area-aware inline/block anchor and `--floating-control-gap` token. Closed triggers remain a horizontal dock, while an open panel temporarily yields the inactive trigger so the active surface owns the edge without overlap.
 Dalan is the default theme. Of Times Old is an opt-in pastel blue-hour palette
 newly composed from the prior portfolio's blue as visual reference only. It
 remaps semantic color roles without restoring former spacing, type, imagery, or
@@ -48,7 +46,9 @@ component structure. Its structural roles stay monochrome blue; danger and
 success retain distinct softened hues so status is not color-ambiguous. Theme
 and explicit reduced-motion choices are stored in browser-local storage.
 Turning reduced motion off removes the explicit override but still honors the
-operating system preference.
+operating system preference. Page wipes and nonessential motion honor either
+reduced-motion source; static custom cursor glyphs remain available on fine
+pointers because they provide pointer affordance rather than movement.
 
 Its current palette is intentionally lighter and more muted than the legacy
 surface:
@@ -172,6 +172,11 @@ remain recognizable without decorative texture or diagram marks.
 - `--font-display` is used for hero, page, and project titles.
 - `--font-body` is used for reading text and controls.
 - `--font-mono` is used for indexes, paths, dates, media types, and code.
+- `--text-panel-title` is the bounded Newsreader title size used by compact
+  panels and dialogs.
+- `--text-body-compact`, `--text-status`, and `--text-note` are the supporting
+  sizes for assistant status copy, bounded notices, and compact metadata; they
+  are semantic tokens rather than page-local literals.
 - `--radius-control` is `2px`; `--radius-panel` is `4px`.
 - `--focus-ring` uses `--color-signal-strong` with a visible offset.
 - Shadows are reserved for dialogs, selected media, and their viewer controls;
