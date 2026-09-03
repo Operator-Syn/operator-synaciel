@@ -144,8 +144,16 @@ manual, reviewed operations and are not performed by GitHub Actions.
 1. Create the D1 database named portfolio-agent-auth and record its
    database ID in both the public-auth and portfolio-agent Wrangler
    configurations.
-2. Review and apply workers/portfolio-public-auth/migrations/0000_portfolio_agent_auth.sql
-   through the separately authorized D1 migration workflow.
+2. Review workers/portfolio-public-auth/migrations/0000_portfolio_agent_auth.sql,
+   workers/portfolio-public-auth/migrations/0001_add_rolling_token_usage.sql,
+   workers/portfolio-public-auth/migrations/0002_add_actual_token_usage.sql, and
+   workers/portfolio-public-auth/migrations/0003_add_google_profile_picture.sql.
+   Before the first deploy, run npm run migrate:public-auth; it applies pending
+   remote auth migrations with one affirmative Wrangler prompt response and stops
+   on failure. All migrations through 0003 must be applied before deploying
+   the assistant Workers: the agent settles actual input plus output usage for
+   the 1,000,000-token budget, and public-auth returns the validated profile
+   image URL.
 3. Register the Google OAuth client with the exact callback
    https://public-auth.syn-forge.com/oauth/google/callback and the scopes
    openid, email, and profile.
@@ -206,6 +214,34 @@ and the production Pages branch must not be changed to that development branch.
 If Pages preview builds are enabled for branches, treat them as development
 surfaces and verify their Vite endpoint variables before testing authentication.
 
+### Root npm script for the assistant Workers
+
+From the repository root, the assistant-only script runs both production dry
+runs first, applies pending public-auth migrations, then deploys
+`portfolio-agent` before `portfolio-public-auth`:
+
+~~~bash
+npm run deploy:portfolio-assistant
+~~~
+
+The script is equivalent to the explicit commands below, with `--env=""`
+selecting each top-level production configuration:
+
+~~~bash
+npm run deploy:portfolio-agent -- --dry-run
+npm run deploy:public-auth -- --dry-run
+npm run migrate:public-auth
+npm run deploy:portfolio-agent
+npm run deploy:public-auth -- --skip-migration
+~~~
+
+A direct `npm run deploy:public-auth` also applies pending remote auth
+migrations before deploying. Its `--dry-run` mode skips migration, and
+`--skip-migration` is intended only when an earlier command in the same
+release already applied it. The wrapper supplies Wrangler's confirmation input;
+Wrangler 4.125.0 does not provide a `-y` flag. It does not deploy Pages or pass
+runtime secrets.
+
 ## Preflight verification
 
 Run the same checks locally before changing production:
@@ -248,8 +284,11 @@ live. Continue with the deployment and post-deployment checks below.
 
 ## Database migration release
 
-A Worker deployment never applies D1 migrations. If the release contains a
-schema change, review and apply the migration separately.
+A raw Worker deployment command never applies D1 migrations. The public-auth
+release wrapper is an explicit exception: it applies pending migrations for the
+portfolio-agent-auth database before the public-auth deploy, unless `--dry-run`
+or `--skip-migration` is supplied. Generic portfolio-API migration commands
+remain separately reviewed and operator-authorized.
 
 Generate a migration only after changing the Drizzle schema:
 
@@ -287,8 +326,10 @@ npm run db:migrations:apply:remote
 Do not replay Initial-Seed.sql as migration history. Do not edit an applied
 migration or files under migrations/meta/; use a new forward migration for
 corrections. If there are no pending migrations, record that the remote list was
-checked and continue. Migration application is a production-data operation and
-is not performed by this runbook automatically.
+checked and continue. Migration application is a production-data operation:
+the generic API workflow and GitHub Actions do not perform it automatically,
+while the public-auth wrapper applies only the reviewed auth migration set when
+an operator explicitly invokes the release command.
 
 ## Deploy the portfolio API Worker
 
@@ -453,6 +494,93 @@ PortfolioAgent Durable Object migration declared in its Wrangler file. Do not
 apply the Durable Object migration manually. Confirm the assistant custom
 domain and binding names in the dry-run output before deploying.
 
+The agent treats the portfolio MCP as an evidence dependency rather than a
+WebSocket prerequisite. On startup it removes and retries one persisted failed
+MCP connection; if recovery still fails, the authenticated socket remains
+available and the next turn returns a bounded evidence-unavailable response.
+This prevents an upstream MCP outage from surfacing as a socket that closes
+before establishment or from locking a thread. The helper logs only
+the failure type. After deploying an agent fix, inspect the Worker version and
+logs without copying tokens, cookies, model prompts, or MCP payloads.
+
+The history endpoint may initialize a thread before its first WebSocket
+connection. The agent release therefore includes a Worker-only identity
+handoff on authenticated WebSocket connect; this repopulates the verified
+thread identity instead of returning repeated `This assistant session is not
+authenticated.` messages for an otherwise valid session.
+
+## Deploy the persisted-thread and rolling-budget fix
+
+The selected-thread history fix spans both assistant Workers. The rolling
+budget uses the reviewed public-auth D1 migrations
+`workers/portfolio-public-auth/migrations/0001_add_rolling_token_usage.sql` and
+`workers/portfolio-public-auth/migrations/0002_add_actual_token_usage.sql`;
+the current public-auth identity payload also requires
+`workers/portfolio-public-auth/migrations/0003_add_google_profile_picture.sql`.
+Apply migrations through 0003 before deploying the assistant Workers. The
+agent version settles actual input plus output usage. `portfolio-agent` reads
+the Durable Object's persisted
+`AIChatAgent` UI messages through its private
+`/internal/threads/:id/messages` action. `portfolio-public-auth` checks the
+session and D1 thread ownership, then proxies
+`/threads/:id/messages` over the service binding. Deploy both Workers as one
+reviewed release; deploying only one side leaves the browser with a stale
+contract.
+
+The preferred production path is a reviewed commit merged or pushed to `main`.
+The workflow validates the repository, then deploys
+`portfolio-api → portfolio-mcp → portfolio-agent → portfolio-public-auth`.
+Pages starts its own Git-integrated deployment from the same push. The current
+`main` branch intentionally keeps the assistant as a teaser, while
+`agent-development` enables the active frontend; inspect that release gate
+before merging a development branch into production.
+
+If the API and MCP are already healthy and an explicitly authorized Worker-only
+hotfix is needed, run these commands from the repository root after the
+preflight checks. The empty environment selector targets the top-level
+production configuration; do not use `env.local` for this release:
+
+~~~bash
+npx wrangler deploy --dry-run --env="" \
+  --config workers/portfolio-agent/wrangler.toml
+npx wrangler deploy --env="" \
+  --config workers/portfolio-agent/wrangler.toml
+
+npx wrangler deploy --dry-run --env="" \
+  --config workers/portfolio-public-auth/wrangler.toml
+npx wrangler deploy --env="" \
+  --config workers/portfolio-public-auth/wrangler.toml
+~~~
+
+The former fixed 8,000-neuron estimate is not a provider usage meter and is no
+longer an admission gate. The deployed auth Worker clears its legacy
+`daily-neuron-budget` marker once before issuing a token; an
+`AGENT_PAUSED` response now means an explicit administrator pause or missing
+control configuration. If Workers AI itself reports out-of-capacity, the agent
+returns: **The model is at its maximum daily capacity. Please try again at
+00:00 UTC.**
+
+Do not pass runtime secrets on the command line. Wrangler uses the secrets and
+variables already provisioned on each Worker. The history route itself remains
+read-only and independent of the one-time WebSocket token; the rolling
+reservations are only written when an agent model turn starts.
+
+Check the route boundary before opening an authenticated browser session:
+
+~~~bash
+curl --include --silent --show-error \
+  -H 'Origin: http://localhost:5173' \
+  https://public-auth.syn-forge.com/threads/<owned-thread-id>/messages
+~~~
+
+Without a session cookie, `401 AUTH_REQUIRED` confirms that the new route is
+deployed. A generic `404 NOT_FOUND` means public-auth is still on the old
+version. A `502 AGENT_UNAVAILABLE` means public-auth is updated but the agent
+action or service binding is not. With a valid browser session, select an
+existing thread from local Vite or production Pages and confirm its persisted
+messages render before sending a new message. Keep cookies, tokens, and
+transcript contents out of shell history and logs.
+
 ## Post-deployment verification
 
 ### API smoke checks
@@ -529,10 +657,12 @@ curl --include --silent --request GET https://assistant.syn-forge.com/health
 
 Then perform one interactive browser smoke flow: Google sign-in, one Turnstile
 verification, create/select a thread, ask a grounded portfolio question,
-observe a citation, export the sanitized transcript, create a new thread, and
-delete the old thread. Confirm an unrelated or unsafe request is refused and
-that the compaction notice recommends a new thread after the configured
-threshold. Confirm the async `useAgent` connection shows its loading fallback,
+observe a citation, export the sanitized transcript (including the bounded
+public reasoning trace and tool-call audit), create a new thread, and
+delete the old thread. Confirm an unrelated or unsafe request is refused, the
+automatic context compaction is not applied, and a full rolling
+1-hour budget leaves the full thread readable while deferring only
+the next model turn. Confirm the async `useAgent` connection shows its loading fallback,
 does not emit the React async-client-component crash, and contains a rejected
 token/WebSocket attempt inside the assistant panel with a retry action. Record
 live results separately from source/build checks.
@@ -630,7 +760,10 @@ Repository sources:
 - [Portfolio MCP Wrangler configuration](../../workers/portfolio-mcp/wrangler.toml)
 - [Public-auth manifest](../../workers/portfolio-public-auth/package.json)
 - [Public-auth Wrangler configuration](../../workers/portfolio-public-auth/wrangler.toml)
-- [Public-auth migration](../../workers/portfolio-public-auth/migrations/0000_portfolio_agent_auth.sql)
+- [Public-auth base migration](../../workers/portfolio-public-auth/migrations/0000_portfolio_agent_auth.sql)
+- [Public-auth rolling-usage migration](../../workers/portfolio-public-auth/migrations/0001_add_rolling_token_usage.sql)
+- [Public-auth actual-token-usage migration](../../workers/portfolio-public-auth/migrations/0002_add_actual_token_usage.sql)
+- [Public-auth Google profile migration](../../workers/portfolio-public-auth/migrations/0003_add_google_profile_picture.sql)
 - [Portfolio agent manifest](../../workers/portfolio-agent/package.json)
 - [Portfolio agent Wrangler configuration](../../workers/portfolio-agent/wrangler.toml)
 - [D1 migration workflow](../database/migrations.md)
