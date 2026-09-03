@@ -89,8 +89,8 @@ type WorkingTreeConsentChallenge = {
 
 type AppliedFile = {
   readonly path: string;
-  readonly action: "create" | "update";
-  readonly hash: string;
+  readonly action: "create" | "update" | "delete";
+  readonly hash: string | null;
 };
 
 type AppliedOperation = {
@@ -473,7 +473,7 @@ function validateCommitMessage(message: string, path: string): void {
     fail("Commit messages require a one-sentence subject ending with a period.");
   }
   const pathName = path.split("/").pop() ?? path;
-  for (const verb of ["Add", "Create", "Delete", "Update"]) {
+  for (const verb of ["Add", "Create", "Delete", "Remove", "Update"]) {
     if (subject === `${verb} ${path}.` || subject === `${verb} ${pathName}.`) {
       fail(`The commit subject must describe the change, not only the path: ${path}`);
     }
@@ -813,7 +813,9 @@ export async function prepareCommits(
       message:
         file.action === "create"
           ? `Add the reviewed file ${file.path}.`
-          : `Update the reviewed file ${file.path}.`,
+          : file.action === "delete"
+            ? `Remove the reviewed file ${file.path}.`
+            : `Update the reviewed file ${file.path}.`,
     })),
     message: "Review and edit each suggested subject before committing.",
   };
@@ -857,7 +859,7 @@ export async function commitAppliedFiles(
         fail(`A previously committed or unrelated path changed during the commit loop: ${path}`);
       if (!currentEntries.some((entry) => entry.path === path))
         fail(`The applied file is no longer dirty: ${path}`);
-      stagePath(path);
+      stagePath(path, file.action === "delete");
       const staged = stagedPaths();
       if (staged.length !== 1 || staged[0] !== path)
         fail(`The commit stage must contain exactly one reviewed path: ${path}`);
