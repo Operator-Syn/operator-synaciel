@@ -4,84 +4,106 @@ import {
   createUIMessageStream,
   createUIMessageStreamResponse,
   type ModelMessage,
-  stepCountIs,
   streamText,
-  type ToolSet,
+  toUIMessageStream,
+  type UIMessage,
 } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
 import {
   type AgentIdentityRow,
   type AgentProps,
-  COMPACTION_RETAINED_MESSAGES,
-  MAX_MODEL_PASSES,
-  MAX_PERSISTED_MESSAGES,
-  MAX_QUESTION_CHARS,
+  MCP_CONNECTION_MAX_ATTEMPTS,
+  MCP_CONNECTION_RETRY_BASE_DELAY_MS,
+  MCP_CONNECTION_RETRY_MAX_DELAY_MS,
+  MCP_DISCOVERY_TIMEOUT_MS,
   MCP_SERVER_NAME,
+  MODEL_CAPACITY_MESSAGE,
   MODEL_ID,
   type PortfolioAgentEnvironment,
-  THREAD_BURST_LIMIT,
-  THREAD_BURST_WINDOW_MS,
+  ROLLING_TOKEN_BUDGET,
 } from "./config.ts";
+import {
+  defaultPortfolioAgentDiagnosticSink,
+  emitPortfolioAgentDiagnostic,
+} from "./diagnostics.ts";
+import { isModelCapacityError } from "./errors.ts";
+import {
+  createPortfolioEvidenceState,
+  hasCompletePortfolioToolCatalog,
+  portfolioToolChoice,
+  recordPortfolioToolResult,
+  selectPortfolioTools,
+  shouldStopPortfolioToolLoop,
+} from "./evidence.ts";
+import { collectExportToolCalls, sanitizeExportMessage } from "./export.ts";
+import { AGENT_IDENTITY_HEADER, parseAgentIdentity } from "./identity.ts";
 import {
   asToolSet,
   buildSystemPrompt,
-  compactModelMessages,
-  filterToolSet,
-  findTool,
-  hasSearchEvidence,
+  estimateModelTokens,
+  firstUserQuestion,
+  formatThreadTitle,
   isUnsafeQuestion,
   latestUserQuestion,
-  McpCallBudget,
   type McpTool,
-  requiresGitHubContext,
-  summarizeEvidence,
-  wrapMcpTools,
+  mergeAdjacentUserMessages,
+  stripAssistantReasoning,
 } from "./limits.ts";
-import { consumeDailyQuota } from "./quota.ts";
+import {
+  ensurePortfolioMcpConnection,
+  type PortfolioMcpEnsureOptions,
+  type PortfolioMcpManager,
+  rediscoverPortfolioMcpCatalog,
+  remainingMcpDiscoveryTimeout,
+} from "./mcp.ts";
+import {
+  checkRollingQuotaAvailability,
+  consumeRollingQuota,
+  estimateQuotaUnits,
+  PROVISIONAL_OUTPUT_TOKEN_ALLOWANCE,
+  settleRollingTokenUsage,
+} from "./quota.ts";
+import { boundPortfolioAnswerStream, coalesceToolInputDeltas } from "./stream.ts";
 
-function asIdentity(value: AgentIdentityRow | undefined): AgentProps | null {
-  if (!value || !value.sub || !value.sid || !value.tid || typeof value.q !== "number") return null;
-  return { sub: value.sub, sid: value.sid, tid: value.tid, q: value.q };
-}
+export type PortfolioAgentMessagePageOptions = {
+  before?: string;
+  limit?: number;
+};
 
-function sanitizeExportMessage(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object") return null;
-  const message = value as Record<string, unknown>;
-  const parts = Array.isArray(message.parts)
-    ? message.parts
-        .map((part) => {
-          if (!part || typeof part !== "object") return null;
-          const candidate = part as Record<string, unknown>;
-          if (candidate.type === "text" && typeof candidate.text === "string") {
-            return { type: "text", text: candidate.text.slice(0, 8_000) };
-          }
-          if (candidate.type === "data-compaction" || candidate.type === "data-citation") {
-            return { type: candidate.type, data: candidate.data ?? null };
-          }
-          return null;
-        })
-        .filter((part) => part !== null)
-    : [];
-  return {
-    id: typeof message.id === "string" ? message.id : null,
-    role: message.role === "user" || message.role === "assistant" ? message.role : "assistant",
-    parts,
-    timestamp:
-      typeof (message.metadata as Record<string, unknown> | undefined)?.timestamp === "string"
-        ? (message.metadata as Record<string, unknown>).timestamp
-        : null,
-  };
+export type PortfolioAgentMessagePage = {
+  messages: UIMessage[];
+  nextCursor: string | null;
+  hasMore: boolean;
+};
+
+const DEFAULT_THREAD_MESSAGE_PAGE_SIZE = 24;
+const MAX_THREAD_MESSAGE_PAGE_SIZE = 50;
+
+type PortfolioCatalog =
+  | {
+      tools: Record<string, McpTool>;
+    }
+  | {
+      failure: "unavailable";
+    };
+
+function modelStreamError(error: unknown): string {
+  const errorType = error instanceof Error ? error.name : typeof error;
+  console.error(`[portfolio-agent] model stream failed (${errorType})`);
+  if (isModelCapacityError(error)) return MODEL_CAPACITY_MESSAGE;
+  return "The assistant could not complete this response. Please try again.";
 }
 
 export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unknown, AgentProps> {
   static options = { sendIdentityOnConnect: false };
-  maxPersistedMessages = MAX_PERSISTED_MESSAGES;
-  messageConcurrency = "drop" as const;
-  waitForMcpConnections = { timeout: 5_000 };
+  messageConcurrency = "queue" as const;
+  // Catalog readiness owns the single bounded wait so a timeout is not paid twice.
+  waitForMcpConnections = false;
   chatStreamStallTimeoutMs = 60_000;
 
   private identity: AgentProps | null = null;
   private readonly environment: PortfolioAgentEnvironment;
+  private readonly diagnosticSink = defaultPortfolioAgentDiagnosticSink;
 
   constructor(
     ctx: ConstructorParameters<typeof AIChatAgent>[0],
@@ -91,61 +113,99 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
     this.environment = environment;
   }
 
+  private emitDiagnostic(input: unknown): void {
+    emitPortfolioAgentDiagnostic(this.diagnosticSink, input);
+  }
+
+  private persistIdentity(identity: AgentProps): void {
+    this.identity = identity;
+    this.sql(["DELETE FROM portfolio_agent_identity"] as unknown as TemplateStringsArray);
+    this.sql(
+      [
+        "INSERT INTO portfolio_agent_identity (sub, sid, tid, q) VALUES (",
+        ", ",
+        ", ",
+        ", ",
+        ")",
+      ] as unknown as TemplateStringsArray,
+      identity.sub,
+      identity.sid,
+      identity.tid,
+      identity.q,
+    );
+  }
+
+  private portfolioMcpManager(): PortfolioMcpManager {
+    return {
+      add: () =>
+        this.addMcpServer(MCP_SERVER_NAME, this.environment.PORTFOLIO_MCP_URL, {
+          transport: { type: "streamable-http" },
+          retry: {
+            maxAttempts: MCP_CONNECTION_MAX_ATTEMPTS,
+            baseDelayMs: MCP_CONNECTION_RETRY_BASE_DELAY_MS,
+            maxDelayMs: MCP_CONNECTION_RETRY_MAX_DELAY_MS,
+          },
+        }),
+      getState: () => this.getMcpServers(),
+      remove: (id) => this.removeMcpServer(id),
+      discover: (id, options) => this.mcp.discoverIfConnected(id, options),
+    };
+  }
+
+  private ensureMcpConnection(options?: PortfolioMcpEnsureOptions): Promise<boolean> {
+    return ensurePortfolioMcpConnection(this.portfolioMcpManager(), undefined, {
+      ...options,
+      diagnostics: {
+        ...options?.diagnostics,
+        sink: this.diagnosticSink,
+      },
+    });
+  }
+
   async onStart(props?: AgentProps): Promise<void> {
-    this.sql([
-      "CREATE TABLE IF NOT EXISTS portfolio_turn_events (created_at INTEGER NOT NULL)",
-    ] as unknown as TemplateStringsArray);
     this.sql([
       "CREATE TABLE IF NOT EXISTS portfolio_agent_identity (sub TEXT NOT NULL, sid TEXT NOT NULL, tid TEXT NOT NULL, q INTEGER NOT NULL)",
     ] as unknown as TemplateStringsArray);
     if (props) {
-      this.identity = props;
-      this.sql(["DELETE FROM portfolio_agent_identity"] as unknown as TemplateStringsArray);
-      this.sql(
-        [
-          "INSERT INTO portfolio_agent_identity (sub, sid, tid, q) VALUES (",
-          ", ",
-          ", ",
-          ", ",
-          ")",
-        ] as unknown as TemplateStringsArray,
-        props.sub,
-        props.sid,
-        props.tid,
-        props.q,
-      );
+      this.persistIdentity(props);
     }
     const stored = this.sql<AgentIdentityRow>([
       "SELECT sub, sid, tid, q FROM portfolio_agent_identity LIMIT 1",
     ] as unknown as TemplateStringsArray)[0];
-    if (!this.identity) this.identity = asIdentity(stored);
-    await this.addMcpServer(MCP_SERVER_NAME, this.environment.PORTFOLIO_MCP_URL, {
-      transport: { type: "streamable-http" },
-      retry: { maxAttempts: 2, baseDelayMs: 250, maxDelayMs: 2_000 },
-    });
+    if (!this.identity && stored) {
+      this.identity = parseAgentIdentity(JSON.stringify(stored), this.name);
+    }
+    await this.ensureMcpConnection();
   }
 
-  private threadBurstAvailable(now = Date.now()): boolean {
-    this.sql(
-      [
-        "DELETE FROM portfolio_turn_events WHERE created_at < ",
-        "",
-      ] as unknown as TemplateStringsArray,
-      now - THREAD_BURST_WINDOW_MS,
+  onConnect(
+    _connection: Parameters<AIChatAgent<PortfolioAgentEnvironment>["onConnect"]>[0],
+    context: Parameters<AIChatAgent<PortfolioAgentEnvironment>["onConnect"]>[1],
+  ): void {
+    const identity = parseAgentIdentity(
+      context.request.headers.get(AGENT_IDENTITY_HEADER),
+      this.name,
     );
-    const count =
-      this.sql<{ count: number }>([
-        "SELECT COUNT(*) AS count FROM portfolio_turn_events",
-      ] as unknown as TemplateStringsArray)[0]?.count ?? 0;
-    if (count >= THREAD_BURST_LIMIT) return false;
-    this.sql(
-      [
-        "INSERT INTO portfolio_turn_events (created_at) VALUES (",
-        ")",
-      ] as unknown as TemplateStringsArray,
-      now,
-    );
-    return true;
+    if (identity) this.persistIdentity(identity);
+  }
+
+  private async persistInitialThreadTitle(): Promise<void> {
+    const identity = this.identity;
+    if (!identity) return;
+
+    const title = formatThreadTitle(firstUserQuestion(this.messages));
+    if (!title) return;
+
+    try {
+      await this.environment.AUTH_DB.prepare(
+        "UPDATE threads SET title = ?1, updated_at = ?2 WHERE id = ?3 AND sub = ?4 AND deleted_at IS NULL AND (title IS NULL OR title = '')",
+      )
+        .bind(title, Date.now(), identity.tid, identity.sub)
+        .run();
+    } catch (error) {
+      const errorType = error instanceof Error ? error.name : typeof error;
+      console.error(`[portfolio-agent] thread title update failed (${errorType})`);
+    }
   }
 
   private staticResponse(message: string): Response {
@@ -166,28 +226,90 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
 
   private limitResponse(message: string): Response {
     return this.staticResponse(
-      `${message}\n\nStart a new thread to continue. Your transcript remains available for export.`,
+      `${message}\n\nYour conversation remains available to read. Try again after some usage rolls off the rolling window.`,
     );
   }
 
-  private async preflight(
-    question: string,
-    budget: McpCallBudget,
-    options?: OnChatMessageOptions,
-  ): Promise<{ evidence: unknown; tools: Record<string, McpTool> } | null> {
-    const rawTools = this.mcp.getAITools() as Record<string, McpTool>;
-    const search = findTool(rawTools, "search_portfolio");
-    if (!search || !budget.reserve()) return null;
-    try {
-      const evidence = await search[1].execute(
-        { query: question, limit: 8 },
-        { abortSignal: options?.abortSignal },
+  private quotaFailureResponse(reason: "paused" | "rolling-limit" | "configuration"): Response {
+    if (reason === "paused") {
+      return this.staticResponse(
+        `The assistant is paused by an administrator. This is separate from your rolling 1-hour ${ROLLING_TOKEN_BUDGET.toLocaleString()}-unit allowance. Try again later; your thread remains available to read.`,
       );
-      if (!hasSearchEvidence(evidence)) return null;
-      return { evidence, tools: rawTools };
-    } catch {
-      return null;
     }
+    if (reason === "rolling-limit") {
+      return this.limitResponse(
+        `Your rolling 1-hour assistant budget is full (${ROLLING_TOKEN_BUDGET.toLocaleString()} quota units).`,
+      );
+    }
+    return this.staticResponse("The portfolio assistant is not configured for this session.");
+  }
+
+  private async loadPortfolioCatalog(options?: OnChatMessageOptions): Promise<PortfolioCatalog> {
+    const requestId = options?.requestId;
+    const startedAt = Date.now();
+    this.emitDiagnostic({
+      phase: "mcp-catalog",
+      outcome: "started",
+      requestId,
+    });
+    const discoveryDeadline = Date.now() + MCP_DISCOVERY_TIMEOUT_MS;
+    try {
+      await this.mcp.waitForConnections({ timeout: MCP_DISCOVERY_TIMEOUT_MS });
+    } catch {
+      this.emitDiagnostic({
+        phase: "mcp-catalog",
+        outcome: "failed",
+        reason: "timeout",
+        elapsedMs: Date.now() - startedAt,
+        requestId,
+      });
+      return { failure: "unavailable" };
+    }
+    let rawTools = this.mcp.getAITools() as Record<string, McpTool>;
+    let selectedTools = selectPortfolioTools(rawTools);
+    if (!hasCompletePortfolioToolCatalog(selectedTools)) {
+      // A restored discovery failure can leave the transport connected with an
+      // empty catalog; refresh it in place before using destructive recovery.
+      const remainingTimeoutMs = remainingMcpDiscoveryTimeout(discoveryDeadline);
+      const rediscovered =
+        remainingTimeoutMs > 0
+          ? await rediscoverPortfolioMcpCatalog(
+              this.portfolioMcpManager(),
+              undefined,
+              remainingTimeoutMs,
+              { requestId, sink: this.diagnosticSink },
+            )
+          : false;
+      if (!rediscovered && remainingMcpDiscoveryTimeout(discoveryDeadline) > 0) {
+        await this.ensureMcpConnection({
+          deadlineMs: discoveryDeadline,
+          forceReconnect: true,
+          diagnostics: { requestId },
+        });
+      }
+      rawTools = this.mcp.getAITools() as Record<string, McpTool>;
+      selectedTools = selectPortfolioTools(rawTools);
+    }
+    if (!hasCompletePortfolioToolCatalog(selectedTools)) {
+      this.emitDiagnostic({
+        phase: "mcp-catalog",
+        outcome: "failed",
+        reason: remainingMcpDiscoveryTimeout(discoveryDeadline) === 0 ? "timeout" : "no-connection",
+        toolCount: Object.keys(selectedTools).length,
+        elapsedMs: Date.now() - startedAt,
+        requestId,
+      });
+      return { failure: "unavailable" };
+    }
+
+    this.emitDiagnostic({
+      phase: "mcp-catalog",
+      outcome: "succeeded",
+      toolCount: Object.keys(selectedTools).length,
+      elapsedMs: Date.now() - startedAt,
+      requestId,
+    });
+    return { tools: selectedTools };
   }
 
   async onChatMessage(
@@ -195,102 +317,267 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
     options?: OnChatMessageOptions,
   ): Promise<Response> {
     const identity = this.identity;
-    const originalMessages = this.messages;
     if (!identity) return this.staticResponse("This assistant session is not authenticated.");
     const question = latestUserQuestion(this.messages);
     if (!question) return this.staticResponse("Please ask a portfolio question.");
-    if (question.length > MAX_QUESTION_CHARS) {
-      return this.staticResponse("Please keep each portfolio question under 2,000 characters.");
-    }
+    await this.persistInitialThreadTitle();
     if (isUnsafeQuestion(question)) {
       return this.staticResponse(
         "I can only help with this portfolio and its linked project evidence.",
       );
     }
-    if (!this.threadBurstAvailable()) {
-      return this.limitResponse(
-        "This thread has reached its short-term allocation of five turns in ten minutes.",
-      );
+    const quotaAvailability = await checkRollingQuotaAvailability(
+      this.environment.AUTH_DB,
+      identity.sub,
+    );
+    if (quotaAvailability !== "available") {
+      this.emitDiagnostic({
+        phase: "quota",
+        outcome: "rejected",
+        quotaDecision: quotaAvailability,
+        reason: quotaAvailability,
+        requestId: options?.requestId,
+      });
+      return this.quotaFailureResponse(quotaAvailability);
     }
-    const quota = await consumeDailyQuota(this.environment.AUTH_DB, identity.sub);
-    if (!quota.allowed) {
-      if (quota.reason === "daily-limit") {
-        return this.limitResponse("Your daily allocation of twenty turns has been reached.");
-      }
-      if (quota.reason === "paused") {
-        return this.staticResponse("The portfolio assistant is temporarily paused.");
-      }
-      return this.staticResponse("The portfolio assistant is not configured for this session.");
-    }
-
-    const budget = new McpCallBudget();
-    const preflight = await this.preflight(question, budget, options);
-    if (!preflight) {
+    this.emitDiagnostic({
+      phase: "quota",
+      outcome: "succeeded",
+      quotaDecision: "available",
+      requestId: options?.requestId,
+    });
+    const catalog = await this.loadPortfolioCatalog(options);
+    if ("failure" in catalog) {
       return this.staticResponse(
-        "I could not find portfolio evidence for that request. I can answer questions about the site, projects, certificates, snippets, or explicitly linked GitHub context.",
+        "I could not reach the public portfolio evidence service. Please try again.",
       );
     }
 
-    const githubEnabled = requiresGitHubContext(question);
-    const wrapped = wrapMcpTools(preflight.tools, budget);
-    const selected = filterToolSet(wrapped, githubEnabled);
-    const selectedTools = asToolSet(selected.tools);
-    const converted = await convertToModelMessages(this.messages, {
+    const selectedTools = asToolSet(catalog.tools);
+    const modelInputMessages = stripAssistantReasoning(this.messages);
+    const converted = await convertToModelMessages(modelInputMessages, {
       tools: selectedTools,
       ignoreIncompleteToolCalls: true,
     });
-    const compacted = compactModelMessages(converted as ModelMessage[]);
+    const modelMessages = mergeAdjacentUserMessages(converted as ModelMessage[]);
+    const systemPrompt = buildSystemPrompt();
+    const provisionalTokens = estimateQuotaUnits(
+      estimateModelTokens(systemPrompt, modelMessages),
+      PROVISIONAL_OUTPUT_TOKEN_ALLOWANCE,
+    );
+    const quota = await consumeRollingQuota(
+      this.environment.AUTH_DB,
+      identity.sub,
+      provisionalTokens,
+    );
+    if (!quota.allowed) {
+      this.emitDiagnostic({
+        phase: "quota",
+        outcome: "rejected",
+        quotaDecision: quota.reason,
+        reason: quota.reason,
+        requestId: options?.requestId,
+      });
+      return this.quotaFailureResponse(quota.reason);
+    }
+    this.emitDiagnostic({
+      phase: "quota",
+      outcome: "succeeded",
+      quotaDecision: "reserved",
+      requestId: options?.requestId,
+    });
+    const modelStartedAt = Date.now();
+    this.emitDiagnostic({
+      phase: "model",
+      outcome: "started",
+      requestId: options?.requestId,
+    });
     const workersai = createWorkersAI({ binding: this.environment.AI as never });
+    let evidenceState = createPortfolioEvidenceState();
     const result = streamText({
       model: workersai(MODEL_ID, { sessionAffinity: this.sessionAffinity }),
-      system: buildSystemPrompt(
-        summarizeEvidence(preflight.evidence),
-        githubEnabled,
-        compacted.summary,
-      ),
-      messages: compacted.messages,
-      tools: selectedTools as ToolSet,
-      stopWhen: [stepCountIs(MAX_MODEL_PASSES), () => budget.exhausted],
-      maxOutputTokens: 700,
-      maxRetries: 0,
+      system: systemPrompt,
+      messages: modelMessages,
+      tools: selectedTools,
+      prepareStep: () => ({ toolChoice: portfolioToolChoice(evidenceState) }),
+      stopWhen: () => shouldStopPortfolioToolLoop(evidenceState),
       abortSignal: options?.abortSignal,
-      onEnd: async () => {
-        await this.environment.AUTH_DB.prepare(
-          "UPDATE threads SET updated_at = ?1 WHERE id = ?2 AND sub = ?3",
-        )
-          .bind(Date.now(), identity.tid, identity.sub)
-          .run();
+      onToolExecutionStart: () => {
+        this.emitDiagnostic({
+          phase: "mcp-tool",
+          outcome: "started",
+          toolCount: 1,
+          requestId: options?.requestId,
+        });
+      },
+      onToolExecutionEnd: ({ toolCall, toolOutput }) => {
+        const previousSuccesses = evidenceState.successfulResults;
+        evidenceState = recordPortfolioToolResult(evidenceState, toolCall.toolName, toolOutput);
+        const usable = evidenceState.successfulResults > previousSuccesses;
+        this.emitDiagnostic({
+          phase: "mcp-tool",
+          outcome: usable ? "succeeded" : "failed",
+          reason: usable ? undefined : "unusable-result",
+          toolCount: 1,
+          requestId: options?.requestId,
+        });
+      },
+      onEnd: async ({ usage, finishReason }) => {
+        const modelSucceeded = finishReason !== "error" && evidenceState.successfulResults > 0;
+        this.emitDiagnostic({
+          phase: "model",
+          outcome: modelSucceeded ? "succeeded" : "failed",
+          reason: modelSucceeded
+            ? undefined
+            : finishReason === "error"
+              ? "provider-error"
+              : "unusable-result",
+          elapsedMs: Date.now() - modelStartedAt,
+          requestId: options?.requestId,
+        });
+        this.emitDiagnostic({
+          phase: "settlement",
+          outcome: "started",
+          requestId: options?.requestId,
+        });
+        if (quota.allowed) {
+          try {
+            const settled = await settleRollingTokenUsage(
+              this.environment.AUTH_DB,
+              quota.reservationId,
+              usage,
+            );
+            if (!settled) {
+              this.emitDiagnostic({
+                phase: "settlement",
+                outcome: "failed",
+                quotaDecision: "settlement-failed",
+                reason: "settlement-failed",
+                requestId: options?.requestId,
+              });
+              console.error(
+                "[portfolio-agent] actual token usage settlement did not update reservation",
+              );
+            } else {
+              this.emitDiagnostic({
+                phase: "settlement",
+                outcome: "succeeded",
+                quotaDecision: "settled",
+                requestId: options?.requestId,
+              });
+            }
+          } catch (error) {
+            this.emitDiagnostic({
+              phase: "settlement",
+              outcome: "failed",
+              quotaDecision: "settlement-failed",
+              reason: "settlement-failed",
+              requestId: options?.requestId,
+            });
+            const errorType = error instanceof Error ? error.name : typeof error;
+            console.error(`[portfolio-agent] actual token usage settlement failed (${errorType})`);
+          }
+        }
+        try {
+          await this.environment.AUTH_DB.prepare(
+            "UPDATE threads SET updated_at = ?1 WHERE id = ?2 AND sub = ?3",
+          )
+            .bind(Date.now(), identity.tid, identity.sub)
+            .run();
+        } catch (error) {
+          const errorType = error instanceof Error ? error.name : typeof error;
+          console.error(`[portfolio-agent] turn metadata update failed (${errorType})`);
+        }
         console.log("[portfolio-agent] aggregate turn completed");
       },
     });
-    if (!compacted.summary) return result.toUIMessageStreamResponse();
 
     const stream = createUIMessageStream({
-      originalMessages,
+      originalMessages: this.messages,
       execute: ({ writer }) => {
-        writer.write({
-          type: "data-compaction",
-          id: "compaction",
-          data: {
-            summary: compacted.summary,
-            retainedMessages: COMPACTION_RETAINED_MESSAGES,
-          },
-        } as never);
-        writer.merge(result.toUIMessageStream());
+        writer.write({ type: "start" });
+        writer.merge(
+          boundPortfolioAnswerStream(
+            coalesceToolInputDeltas(
+              toUIMessageStream({
+                stream: result.stream,
+                tools: selectedTools,
+                sendReasoning: true,
+                sendSources: false,
+                sendStart: false,
+                sendFinish: false,
+                onError: (error) => modelStreamError(error),
+              }),
+            ),
+            {
+              hasEvidence: () => evidenceState.successfulResults > 0,
+              sources: () => evidenceState.sources,
+              fallbackMessage:
+                "I couldn't verify that from the public portfolio evidence. Try asking about another part of the portfolio.",
+            },
+          ),
+        );
       },
     });
     return createUIMessageStreamResponse({ stream });
   }
 
+  async persistMessages(
+    messages: UIMessage[],
+    excludeBroadcastIds?: string[],
+    options?: { _deleteStaleRows?: boolean },
+  ): Promise<void> {
+    // A regenerate request can contain only the visible window. Keep the
+    // Durable Object's unseen rows unless the request is effectively complete.
+    const shouldPreserveUnseenHistory =
+      options?._deleteStaleRows === true &&
+      this.messages.length > messages.length + 1 &&
+      messages.every((message) => this.messages.some((current) => current.id === message.id));
+    await super.persistMessages(
+      messages,
+      excludeBroadcastIds,
+      shouldPreserveUnseenHistory ? { ...options, _deleteStaleRows: false } : options,
+    );
+  }
+
+  async getThreadMessages(
+    options?: PortfolioAgentMessagePageOptions,
+  ): Promise<UIMessage[] | PortfolioAgentMessagePage> {
+    await this.waitUntilStable({ timeout: 5_000 });
+    if (!options) return this.messages;
+
+    const requestedLimit = Number.isFinite(options.limit)
+      ? Math.trunc(options.limit ?? DEFAULT_THREAD_MESSAGE_PAGE_SIZE)
+      : DEFAULT_THREAD_MESSAGE_PAGE_SIZE;
+    const limit = Math.min(MAX_THREAD_MESSAGE_PAGE_SIZE, Math.max(1, requestedLimit));
+    const end = options.before
+      ? this.messages.findIndex((message) => message.id === options.before)
+      : this.messages.length;
+    if (options.before && end < 0) {
+      throw new Error("Invalid thread message cursor.");
+    }
+
+    const start = Math.max(0, end - limit);
+    const messages = this.messages.slice(start, end);
+    return {
+      messages,
+      nextCursor: start > 0 ? (messages[0]?.id ?? null) : null,
+      hasMore: start > 0,
+    };
+  }
+
   async exportThread(): Promise<Record<string, unknown>> {
     await this.waitUntilStable({ timeout: 5_000 });
+    const messages = this.messages
+      .map(sanitizeExportMessage)
+      .filter((message): message is Record<string, unknown> => message !== null);
     return {
+      formatVersion: 2,
       threadId: this.identity?.tid ?? null,
       exportedAt: new Date().toISOString(),
-      messages: this.messages
-        .map(sanitizeExportMessage)
-        .filter((message): message is Record<string, unknown> => message !== null),
-      note: "Tool inputs and raw MCP payloads are omitted; only text, compacted summaries, citations, and available message timestamps are exported.",
+      messages,
+      toolCalls: collectExportToolCalls(messages),
+      note: "Public reasoning traces and sanitized model tool activity are included for audit. Tool arguments, raw MCP payloads, provider metadata, upstream errors, and credentials are omitted.",
     };
   }
 
@@ -298,7 +585,6 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
     this.resetTurnState();
     this.messages = [];
     await this.persistMessages([], [], { _deleteStaleRows: true });
-    this.sql(["DELETE FROM portfolio_turn_events"] as unknown as TemplateStringsArray);
     return { deleted: true };
   }
 }
