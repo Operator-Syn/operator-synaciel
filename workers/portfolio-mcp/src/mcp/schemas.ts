@@ -4,6 +4,7 @@ import {
   GITHUB_COMMIT_MESSAGE_MAX_CHARACTERS,
   GITHUB_README_MAX_CHARACTERS,
   MAX_LIST_LIMIT,
+  MAX_SEARCH_QUERY_CHARACTERS,
   MAX_SEARCH_RESULTS,
   MAX_SNIPPET_CHUNK_CHARACTERS,
   MAX_SNIPPET_OFFSET,
@@ -195,7 +196,13 @@ export const certificateDetailsOutputSchema = z.strictObject({
   canonical_url: z.string(),
 });
 
+const searchMatchFields = {
+  matched_terms: z.array(z.string().min(1).max(128)).max(32),
+  matched_fields: z.array(z.string().min(1).max(128)).max(32),
+};
+
 const profileSearchResultSchema = z.strictObject({
+  ...searchMatchFields,
   kind: z.literal("profile"),
   title: z.string(),
   summary: z.string(),
@@ -203,6 +210,7 @@ const profileSearchResultSchema = z.strictObject({
 });
 
 const projectSearchResultSchema = z.strictObject({
+  ...searchMatchFields,
   kind: z.literal("project"),
   id: z.number().int().positive(),
   title: z.string(),
@@ -212,6 +220,7 @@ const projectSearchResultSchema = z.strictObject({
 });
 
 const certificateSearchResultSchema = z.strictObject({
+  ...searchMatchFields,
   kind: z.literal("certificate"),
   id: z.number().int().positive(),
   title: z.string(),
@@ -221,6 +230,7 @@ const certificateSearchResultSchema = z.strictObject({
 });
 
 const snippetSearchResultSchema = z.strictObject({
+  ...searchMatchFields,
   kind: z.literal("snippet"),
   id: z.number().int().positive(),
   name: z.string(),
@@ -242,7 +252,7 @@ export const searchResultSchema = z.discriminatedUnion("kind", [
 ]);
 
 export const searchPortfolioOutputSchema = z.strictObject({
-  query: z.string().min(1).max(200),
+  query: z.string().min(1).max(MAX_SEARCH_QUERY_CHARACTERS),
   results: z.array(searchResultSchema).max(MAX_SEARCH_RESULTS),
 });
 
