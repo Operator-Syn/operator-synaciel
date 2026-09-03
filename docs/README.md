@@ -31,7 +31,7 @@ root. Topic notes live in focused folders.
 - [[architecture/portfolio-mcp|Public Portfolio MCP (Streamable HTTP)]] - remote
   read-only agent access, API boundary, and Worker workflow.
 - [[architecture/portfolio-agent|Portfolio Assistant Agent]] - bounded,
-  authenticated Workers AI chat, MCP grounding, compaction, and quotas.
+  authenticated Workers AI chat, MCP grounding, full-thread context, and quotas.
 - [[architecture/portfolio-public-auth|Public Portfolio Authentication]] -
   Google OIDC, Turnstile, sessions, thread ownership, and admin controls.
 - [[architecture/portfolio-mcp-modules|Public Portfolio MCP module structure]] -
@@ -46,8 +46,8 @@ root. Topic notes live in focused folders.
 - [[operations/local-development|Local development]] - install, check, build,
   Graphify, and database commands.
 - [[operations/deployment|Production deployment]] - production prerequisites, deployment order, smoke checks, and rollback.
-- [[plans/portfolio-agent/implementation-sweeps|Portfolio agent implementation sweeps]] -
-  bounded implementation evidence and remaining rollout gates.
+- [[plans/portfolio-agent/README|Portfolio agent reliability plan]] - staged audit and current sweep routing.
+- [[plans/portfolio-agent/implementation-sweeps/README|Portfolio agent implementation ledger]] - historical implementation evidence and rollout gates.
 - [[operations/repository-mcp|Local Repository MCP (stdio)]] - guarded local
   changes, verification, one-file commits, and versioned Git hooks.
 
