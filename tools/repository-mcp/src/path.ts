@@ -10,7 +10,7 @@ import {
   IGNORED_DIRS,
   ROOT_VALIDATION_CACHE_TTL_MS,
 } from "./policy.ts";
-import { isSensitiveFileName } from "./redaction.ts";
+import { isSafeEnvironmentFileContent, isSensitivePath } from "./redaction.ts";
 
 const serverRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -162,8 +162,7 @@ export async function safeAbsolutePath(
     if (info?.isSymbolicLink()) throw new Error(`Symbolic-link paths are denied: ${relativePath}`);
   }
 
-  const basename = relativePath.split("/").pop() ?? "";
-  if (isSensitiveFileName(basename))
+  if (isSensitivePath(relativePath))
     throw new Error("Sensitive environment and credential files are denied.");
   return { relativePath, absolutePath: resolve(PROJECT_ROOT, relativePath) };
 }
@@ -179,7 +178,10 @@ export async function readTextFile(relativePath: string): Promise<string | null>
   if (!info?.isFile() || info.size > MAX_FILE_BYTES || isLikelyBinaryPath(relativePath))
     return null;
   const content = await readFile(absolutePath, "utf8");
-  return content.includes("\0") ? null : content;
+  if (content.includes("\0") || !isSafeEnvironmentFileContent(relativePath, content)) {
+    return null;
+  }
+  return content;
 }
 
 export function digestBytes(bytes: Uint8Array): string {
@@ -192,6 +194,9 @@ export async function atomicWrite(
   token: string,
 ): Promise<void> {
   const { absolutePath } = await safeAbsolutePath(relativePath);
+  if (!isSafeEnvironmentFileContent(relativePath, content)) {
+    throw new Error("Sensitive environment and credential content is denied.");
+  }
   await mkdir(dirname(absolutePath), { recursive: true });
   const temporaryPath = `${absolutePath}.${token}.tmp`;
   try {
