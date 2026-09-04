@@ -20,12 +20,7 @@ import {
   type ThreadRow,
   type UserRow,
 } from "./config.ts";
-import {
-  issueAgentAccessToken,
-  randomToken,
-  sha256Base64Url,
-  verifyGoogleIdToken,
-} from "./crypto.ts";
+import { randomToken, sha256Base64Url, verifyGoogleIdToken } from "./crypto.ts";
 import {
   asRecord,
   createOpaqueId,
@@ -730,68 +725,6 @@ app.post("/threads", async (c) => {
     },
     201,
   );
-});
-
-app.post("/agent/token", async (c) => {
-  if (!sameOrigin(c.req.raw, c.env)) return c.body(null, 403);
-  const session = await getSession(c.req.raw, c.env);
-  if (!session) return c.json({ error: { code: "AUTH_REQUIRED", message: "Sign in first." } }, 401);
-  if (session.session.turnstile_verified_at === null) {
-    return c.json(
-      { error: { code: "TURNSTILE_REQUIRED", message: "Complete bot verification first." } },
-      403,
-    );
-  }
-  await clearLegacyAutomaticPause(c.env);
-  const control = await loadControl(c.env);
-  if (!control || control.paused !== 0) {
-    return c.json(
-      {
-        error: {
-          code: "AGENT_PAUSED",
-          message: control
-            ? "The shared Workers AI capacity is paused by an administrator. This is separate from each user's rolling 1-hour quota-unit budget."
-            : "The shared Workers AI capacity control is unavailable. Please try again later.",
-        },
-      },
-      503,
-    );
-  }
-  const body = await readBody(c.req.raw);
-  const requestedThreadId = readString(body, "threadId", 64);
-  const thread = requestedThreadId
-    ? await ownedThread(c.env, session.user.sub, requestedThreadId)
-    : await createThread(c.env, session.user.sub);
-  if (!thread)
-    return c.json(
-      { error: { code: "THREAD_NOT_FOUND", message: "That thread is not available." } },
-      404,
-    );
-  const issued = await issueAgentAccessToken(c.env, {
-    sub: session.user.sub,
-    sid: session.session.id_hash,
-    tid: thread.id,
-    quotaEpoch: session.user.quota_epoch,
-  });
-  await c.env.AUTH_DB.prepare(
-    "INSERT INTO agent_tokens (jti_hash, sub, session_id_hash, thread_id, quota_epoch, issued_at, expires_at, consumed_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL)",
-  )
-    .bind(
-      await sha256Base64Url(issued.jti),
-      session.user.sub,
-      session.session.id_hash,
-      thread.id,
-      session.user.quota_epoch,
-      Date.now(),
-      issued.expiresAt * 1000,
-    )
-    .run();
-  return c.json({
-    token: issued.token,
-    expiresAt: issued.expiresAt * 1000,
-    threadId: thread.id,
-    agentUrl: `${c.env.AGENT_ORIGIN}/agents/portfolio-agent/${thread.id}`,
-  });
 });
 
 app.post("/agent/prepare", async (c) => {
