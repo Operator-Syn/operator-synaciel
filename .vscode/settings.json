@@ -1,8 +1,8 @@
 {
   "biome.enabled": true,
   "biome.requireConfiguration": true,
-  "biome.configurationPath": "${workspaceFolder}/biome.json",
-  "biome.lsp.bin": "${workspaceFolder}/node_modules/.bin/biome",
+  "biome.configurationPath": "biome.json",
+  "biome.lsp.bin": "node_modules/.bin/biome",
   "biome.suggestInstallingGlobally": false,
   "typescript.tsdk": "${workspaceFolder}/node_modules/typescript/lib",
   "css.customData": [
