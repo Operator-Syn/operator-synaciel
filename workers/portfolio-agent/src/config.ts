@@ -25,8 +25,6 @@ export type PortfolioAgentEnvironment = {
   AUTH_DB: D1Database;
   PortfolioAgent: DurableObjectNamespace;
   PORTFOLIO_MCP_URL: string;
-  PUBLIC_AUTH_ORIGIN: string;
-  AGENT_AUDIENCE: string;
   BROWSER_ORIGINS: string;
   [name: string]: unknown;
 };
