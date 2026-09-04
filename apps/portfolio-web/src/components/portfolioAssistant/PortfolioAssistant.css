@@ -317,7 +317,7 @@
 .portfolio-assistant-thread-select-trigger {
     display: flex;
     width: 100%;
-    min-height: 2.5rem;
+    min-height: 2.75rem;
     overflow: hidden;
     align-items: center;
     justify-content: space-between;
@@ -385,6 +385,7 @@
 
 .portfolio-assistant-thread-select-option {
     display: flex;
+    min-height: 2.75rem;
     min-width: 0;
     align-items: center;
     justify-content: space-between;
@@ -432,8 +433,8 @@
 .portfolio-assistant-icon,
 .portfolio-assistant-send {
     display: inline-grid;
-    min-height: 2.5rem;
-    min-width: 2.5rem;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
     place-items: center;
     border: 1px solid var(--color-line-strong);
     background: transparent;
@@ -1065,7 +1066,7 @@
 
 .portfolio-assistant-starter-prompt {
     min-width: 0;
-    min-height: 2.65rem;
+    min-height: 2.75rem;
     border: 1px solid var(--color-line-strong);
     border-radius: var(--radius-control);
     background: transparent;
@@ -1527,14 +1528,14 @@
 }
 
 .portfolio-assistant-quota-footer {
-    min-height: 2.5rem;
+    min-height: 2.75rem;
 }
 
 .portfolio-assistant-quota-refresh {
     display: inline-grid;
     flex: 0 0 auto;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 2.75rem;
+    height: 2.75rem;
     place-items: center;
     border: 1px solid var(--color-line-strong);
     background: transparent;
@@ -1684,6 +1685,9 @@
 }
 
 .portfolio-assistant-reasoning summary {
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
     cursor: pointer;
     color: var(--color-text-muted);
     font-family: var(--font-mono);
@@ -1963,7 +1967,7 @@
     }
 
     .portfolio-assistant-header h2 {
-        font-size: 1.5rem;
+        font-size: var(--text-panel-title);
         line-height: 1;
     }
 
@@ -2152,7 +2156,7 @@
 
 .portfolio-assistant-actions-item {
     display: flex;
-    min-height: 2.5rem;
+    min-height: 2.75rem;
     align-items: center;
     gap: 0.55rem;
     border: 1px solid transparent;
@@ -2189,7 +2193,7 @@
 
 .portfolio-assistant-history-pagination {
     display: flex;
-    min-height: 2.25rem;
+    min-height: 2.75rem;
     align-items: center;
     justify-content: center;
     gap: 0.65rem;
@@ -2202,7 +2206,7 @@
 }
 
 .portfolio-assistant-history-pagination button {
-    min-height: 2.25rem;
+    min-height: 2.75rem;
     border: 1px solid var(--color-line-strong);
     background: transparent;
     padding: 0.45rem 0.7rem;
@@ -2459,7 +2463,7 @@
 
 .portfolio-assistant-source-disclosure > summary {
     display: flex;
-    min-height: 2.5rem;
+    min-height: 2.75rem;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
@@ -2500,7 +2504,7 @@
     display: grid;
     grid-template-columns: minmax(0, auto) minmax(4rem, 1fr) auto;
     min-width: 0;
-    min-height: 2.25rem;
+    min-height: 2.75rem;
     align-items: center;
     gap: 0.75rem;
     cursor: pointer;
@@ -2547,7 +2551,7 @@
 }
 
 .portfolio-assistant-quota-details .portfolio-assistant-quota-footer {
-    min-height: 2.25rem;
+    min-height: 2.75rem;
 }
 
 .portfolio-assistant-status {
@@ -2584,6 +2588,227 @@
 
     .portfolio-assistant-actions-popover {
         max-width: calc(100vw - 2rem);
+    }
+}
+
+/* Phone and short-window modal contract: the transcript owns the available height. */
+.portfolio-assistant[data-assistant-dialog="true"] {
+    pointer-events: auto;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-panel {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    min-width: 0;
+    min-height: 100dvh;
+    max-width: none;
+    max-height: none;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    padding-block: env(safe-area-inset-top) env(safe-area-inset-bottom);
+    padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+    transform-origin: center;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-header {
+    gap: 0.6rem;
+    padding: 0.65rem 0.75rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-header h2 {
+    margin-block: 0.1rem 0.2rem;
+    font-size: var(--text-panel-title);
+    line-height: 1;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"]
+    .portfolio-assistant-panel[data-chat-state="active"]
+    .portfolio-assistant-header
+    .portfolio-assistant-muted {
+    display: none;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-header-actions {
+    gap: 0.35rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"]
+    .portfolio-assistant-header-actions
+    .portfolio-assistant-icon,
+.portfolio-assistant[data-assistant-mobile-modal="true"]
+    .portfolio-assistant-toolbar
+    .portfolio-assistant-icon,
+.portfolio-assistant[data-assistant-mobile-modal="true"]
+    .portfolio-assistant-composer
+    .portfolio-assistant-send {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-body {
+    max-height: none;
+    min-height: 0;
+    padding: 0;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"]
+    .portfolio-assistant-body[data-chat-state="active"] {
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-session {
+    --assistant-session-inline-pad: 0.75rem;
+    min-height: 0;
+    padding: 0 0.75rem 0.75rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-toolbar {
+    display: grid;
+    min-height: 3.25rem;
+    grid-template-columns: minmax(0, 1fr) 2.75rem 2.75rem;
+    gap: 0.35rem;
+    margin-inline: 0;
+    padding: 0.25rem 0;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-thread-select {
+    width: auto;
+    min-width: 0;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"]
+    .portfolio-assistant-thread-select-trigger {
+    min-height: 2.75rem;
+    padding-inline-start: 0.65rem;
+    padding-inline-end: 2.5rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-actions-menu {
+    min-width: 0;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-actions-popover {
+    inset-inline-end: 0;
+    max-width: calc(100vw - 1.5rem);
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-transcript-shell {
+    min-height: 0;
+    margin-inline: 0;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-transcript {
+    min-height: 0;
+    padding: 0.65rem 0 0.9rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-message-list {
+    min-height: 0;
+    gap: 0.75rem;
+    padding: 0.25rem 0 0.75rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-message.user {
+    width: fit-content;
+    max-width: min(88%, 42rem);
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-composer {
+    min-height: 0;
+    margin-inline: 0;
+    padding: 0.5rem 0 0.35rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-composer textarea {
+    min-height: 2.75rem;
+    padding: 0.65rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-quota {
+    flex: 0 0 auto;
+    margin-inline: 0;
+    padding: 0.35rem 0 0.4rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-quota-summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 2.5rem;
+    gap: 0.5rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"]
+    .portfolio-assistant-quota-summary
+    .portfolio-assistant-quota-heading {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.65rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"]
+    .portfolio-assistant-quota-summary
+    .portfolio-assistant-quota-heading
+    strong {
+    white-space: nowrap;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-quota-summary-meter {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-top: -0.1rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-quota-summary::after {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-status {
+    flex: 0 0 auto;
+    min-height: 1.5rem;
+    padding-block: 0.3rem 0;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] button {
+    min-height: 2.75rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-thread-select-option,
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-actions-item,
+.portfolio-assistant[data-assistant-mobile-modal="true"]
+    .portfolio-assistant-history-pagination
+    button,
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-quota-refresh {
+    min-height: 2.75rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-quota-refresh {
+    min-width: 2.75rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"]
+    .portfolio-assistant-source-disclosure
+    > summary,
+.portfolio-assistant[data-assistant-mobile-modal="true"]
+    .portfolio-assistant-message.assistant
+    .portfolio-assistant-reasoning
+    > summary {
+    min-height: 2.75rem;
+}
+
+@media (max-height: 560px) and (min-width: 641px) {
+    .portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-header {
+        padding-block: 0.45rem;
+    }
+
+    .portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-session {
+        padding-bottom: 0.5rem;
     }
 }
 
