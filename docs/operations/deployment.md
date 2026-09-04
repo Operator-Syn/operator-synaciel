@@ -49,10 +49,12 @@ targets `portfolio-agent`. For the cookie-authenticated WebSocket gateway, keep
 that order: agent (internal route and hibernation behavior), public-auth (cookie
 and service-binding gateway), then Pages (browser host and connection query).
 Pages remains a separate Git-integrated deployment from the same main-branch
-push. The legacy `/agent/token` retirement patch is prepared after the
-authenticated smoke and CP5 soak, but the production Workers still expose the
-pre-retirement path until a separately authorized deployment. Rollback to a
-pre-gateway release is a separately authorized compatibility action.
+push. CP5 retirement is deployed: portfolio-agent version
+`dcab1312-ae9b-4f0b-ac70-c16ef69b6b7c` is followed by public-auth version
+`31f80f41-efe2-4be1-875b-5d9c98cdf9b0`; `/agent/token` and the direct public
+agent route return `404`, while unauthenticated `/agent/prepare` returns `401`.
+Rollback to a pre-gateway release is a separately authorized compatibility
+action.
 
 Local assistant testing uses the `env.local` profiles in the public-auth and
 portfolio-agent Wrangler files plus the explicit Vite `VITE_PUBLIC_AUTH_URL`
@@ -567,9 +569,9 @@ npx wrangler deploy --env="" \
 The former fixed 8,000-neuron estimate is not a provider usage meter and is no
 longer an admission gate. The auth Worker clears its legacy
 `daily-neuron-budget` marker once before authorizing an assistant connection;
-the pre-retirement production version also performs that cleanup before its
-legacy token route. An `AGENT_PAUSED` response now means an explicit
-administrator pause or missing control configuration. If Workers AI itself reports out-of-capacity, the agent
+the marker is not a provider meter or an independent access block. An
+`AGENT_PAUSED` response now means an explicit administrator pause or missing
+control configuration. If Workers AI itself reports out-of-capacity, the agent
 returns: **The model is at its maximum daily capacity. Please try again at
 00:00 UTC.**
 
