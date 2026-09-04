@@ -74,7 +74,7 @@ import {
   assistantUserLabel,
   canStartAnotherThread,
   collapseDuplicateAssistantSourceMessages,
-  formatAssistantThreadTitle,
+  formatAssistantThreadOptions,
   hasThreadActivity,
   hasVisibleMessageContent,
   latestCompactionNotice,
@@ -118,8 +118,30 @@ const ASSISTANT_HISTORY_PAGE_SIZE = 24;
 const ASSISTANT_HISTORY_TOP_THRESHOLD_PX = 96;
 const ASSISTANT_SCROLL_BOTTOM_THRESHOLD_PX = 64;
 const ASSISTANT_STREAM_COMMIT_DELAY_MS = 48;
+const ASSISTANT_RESPONSIVE_DIALOG_QUERY = "(max-width: 640px), (max-height: 560px)";
 const ASSISTANT_FOCUSABLE_SELECTOR =
   "a[href], button:not(:disabled), textarea:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex='-1'])";
+
+function useAssistantResponsiveDialog(): boolean {
+  const [matches, setMatches] = useState(
+    () =>
+      typeof window !== "undefined" && window.matchMedia(ASSISTANT_RESPONSIVE_DIALOG_QUERY).matches,
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(ASSISTANT_RESPONSIVE_DIALOG_QUERY);
+    const handleChange = () => setMatches(mediaQuery.matches);
+    handleChange();
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+    mediaQuery.addListener(handleChange);
+    return () => mediaQuery.removeListener(handleChange);
+  }, []);
+
+  return matches;
+}
 
 function safeGoogleProfilePictureUrl(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? "";
@@ -413,10 +435,7 @@ function AssistantThreadSelect({
   const threadOptions = useMemo(
     () => [
       ...(!activeThread ? [{ id: "", label: "Preparing thread…" }] : []),
-      ...threads.map((thread) => ({
-        id: thread.id,
-        label: thread.title ?? `Thread ${thread.id.slice(0, 6)}`,
-      })),
+      ...formatAssistantThreadOptions(threads),
     ],
     [activeThread, threads],
   );
@@ -1764,7 +1783,6 @@ function AssistantChat({
   threadId,
   onConnectionError,
   onThreadActivityChange,
-  onThreadTitlePreview,
   onThreadTitleSettled,
   shouldNameThread,
   userDisplayName,
@@ -1779,7 +1797,6 @@ function AssistantChat({
   threadId: string;
   onConnectionError: (message: string) => void;
   onThreadActivityChange: (threadId: string, hasActivity: boolean) => void;
-  onThreadTitlePreview: (title: string) => void;
   onThreadTitleSettled: () => void;
   shouldNameThread: boolean;
   userDisplayName: string;
@@ -2020,19 +2037,12 @@ function AssistantChat({
     setIsTranscriptPinnedToBottom(true);
     setDraft("");
 
-    const firstExistingUserMessage = messages.find(
-      (message) => message.role === "user" && messageText(message).trim(),
-    );
-    const titleSource = firstExistingUserMessage ? messageText(firstExistingUserMessage) : value;
-    const titleCandidate = shouldNameThread ? formatAssistantThreadTitle(titleSource) : null;
-    if (titleCandidate) onThreadTitlePreview(titleCandidate);
-
     void sendMessage({ text: value })
       .catch(() => undefined)
       .finally(() => {
         submitPendingRef.current = false;
         setIsSubmitting(false);
-        if (titleCandidate) onThreadTitleSettled();
+        if (shouldNameThread) onThreadTitleSettled();
         void refreshQuota();
       });
   };
@@ -2166,7 +2176,6 @@ function AssistantChat({
 
 function AssistantChatBoundary({
   onThreadActivityChange,
-  onThreadTitlePreview,
   onThreadTitleSettled,
   shouldNameThread,
   threadId,
@@ -2175,7 +2184,6 @@ function AssistantChatBoundary({
   userPictureUrl,
 }: {
   onThreadActivityChange: (threadId: string, hasActivity: boolean) => void;
-  onThreadTitlePreview: (title: string) => void;
   onThreadTitleSettled: () => void;
   shouldNameThread: boolean;
   threadId: string;
@@ -2245,7 +2253,6 @@ function AssistantChatBoundary({
           olderError={history.olderError}
           onConnectionError={onConnectionError}
           onThreadActivityChange={onThreadActivityChange}
-          onThreadTitlePreview={onThreadTitlePreview}
           onThreadTitleSettled={onThreadTitleSettled}
           shouldNameThread={shouldNameThread}
           threadId={threadId}
@@ -2372,19 +2379,6 @@ function AuthenticatedAssistant({
     onLogout();
   };
 
-  const handleThreadTitlePreview = useCallback(
-    (title: string) => {
-      const normalized = title.trim();
-      if (!activeThreadId || !normalized) return;
-      setThreads((current) =>
-        current.map((thread) =>
-          thread.id === activeThreadId && !thread.title ? { ...thread, title: normalized } : thread,
-        ),
-      );
-    },
-    [activeThreadId],
-  );
-
   const handleThreadTitleSettled = useCallback(() => {
     void refreshThreads().catch((loadError: unknown) => {
       setError(loadError instanceof Error ? loadError.message : "Threads could not be refreshed.");
@@ -2412,7 +2406,7 @@ function AuthenticatedAssistant({
   };
 
   const activeThread = threads.find((thread) => thread.id === activeThreadId);
-  const shouldNameActiveThread = activeThread?.title == null;
+  const shouldNameActiveThread = !activeThread?.title?.trim();
   return (
     <div className="portfolio-assistant-session">
       <div className="portfolio-assistant-toolbar">
@@ -2455,7 +2449,6 @@ function AuthenticatedAssistant({
           key={activeThreadId}
           onConnectionError={setError}
           onThreadActivityChange={handleThreadActivityChange}
-          onThreadTitlePreview={handleThreadTitlePreview}
           onThreadTitleSettled={handleThreadTitleSettled}
           shouldNameThread={shouldNameActiveThread}
           threadId={activeThreadId}
@@ -2514,6 +2507,7 @@ function AuthenticatedAssistant({
 export default function PortfolioAssistantFab() {
   const { activePanel, closePanel, openPanel } = useFloatingControls();
   const isOpen = activePanel === "assistant";
+  const isResponsiveModal = useAssistantResponsiveDialog();
   const fabRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const [session, setSession] = useState<PublicSession | null>(null);
@@ -2522,7 +2516,9 @@ export default function PortfolioAssistantFab() {
   const configurationError = portfolioAssistantConfig.configurationError;
   const [isExpanded, setIsExpanded] = useState(false);
   const expandRef = useRef<HTMLButtonElement>(null);
-  const canExpand = Boolean(session?.authenticated && session.turnstileVerified);
+  const isDialogPresentation = isOpen && (isExpanded || isResponsiveModal);
+  const canExpand =
+    !isResponsiveModal && Boolean(session?.authenticated && session.turnstileVerified);
 
   const openAssistant = async () => {
     openPanel("assistant");
@@ -2568,12 +2564,20 @@ export default function PortfolioAssistantFab() {
     setIsExpanded((current) => !current);
   }, [canExpand]);
 
+  const dismissAssistantBackdrop = useCallback(() => {
+    if (isResponsiveModal) {
+      closeAssistant();
+      return;
+    }
+    collapseExpanded();
+  }, [closeAssistant, collapseExpanded, isResponsiveModal]);
+
   useEffect(() => {
     if (!canExpand) setIsExpanded(false);
   }, [canExpand]);
 
   useEffect(() => {
-    if (!isExpanded) return;
+    if (!isDialogPresentation) return;
     const documentElement = document.documentElement;
     const previousBodyOverflow = document.body.style.overflow;
     const previousDocumentOverflow = documentElement.style.overflow;
@@ -2586,7 +2590,7 @@ export default function PortfolioAssistantFab() {
       documentElement.style.overflow = previousDocumentOverflow;
       documentElement.style.scrollbarGutter = previousScrollbarGutter;
     };
-  }, [isExpanded]);
+  }, [isDialogPresentation]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -2600,14 +2604,14 @@ export default function PortfolioAssistantFab() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        if (isExpanded) {
+        if (isExpanded && !isResponsiveModal) {
           collapseExpanded();
         } else {
           closeAssistant();
         }
         return;
       }
-      if (!isExpanded || event.key !== "Tab") return;
+      if (!isDialogPresentation || event.key !== "Tab") return;
 
       const focusable = panelRef.current?.querySelectorAll<HTMLElement>(
         ASSISTANT_FOCUSABLE_SELECTOR,
@@ -2637,34 +2641,43 @@ export default function PortfolioAssistantFab() {
       window.cancelAnimationFrame(focusFrame);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [closeAssistant, collapseExpanded, isExpanded, isOpen]);
+  }, [
+    closeAssistant,
+    collapseExpanded,
+    isDialogPresentation,
+    isExpanded,
+    isOpen,
+    isResponsiveModal,
+  ]);
 
   return (
     <div
       className={`portfolio-assistant ${isOpen ? "is-open" : ""}`}
       data-assistant-mode={isExpanded ? "expanded" : "compact"}
+      data-assistant-dialog={isDialogPresentation ? "true" : undefined}
+      data-assistant-mobile-modal={isResponsiveModal ? "true" : undefined}
       data-availability={portfolioAssistantAvailability}
       data-floating-panel="assistant"
     >
-      {isOpen && isExpanded ? (
+      {isOpen && isDialogPresentation && !isResponsiveModal ? (
         <button
           aria-label="Close expanded portfolio assistant"
           className="portfolio-assistant-expanded-backdrop"
-          onClick={collapseExpanded}
+          onClick={dismissAssistantBackdrop}
           tabIndex={-1}
           type="button"
         />
       ) : null}
       {isOpen ? (
         <>
-          {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-modal is paired with the conditional dialog role in expanded mode. */}
+          {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-modal is paired with the conditional dialog role. */}
           <section
             aria-label="Portfolio assistant"
-            aria-modal={isExpanded ? "true" : undefined}
+            aria-modal={isDialogPresentation ? "true" : undefined}
             id="portfolio-assistant-panel"
             className="portfolio-assistant-panel"
-            role={isExpanded ? "dialog" : undefined}
-            tabIndex={isExpanded ? -1 : undefined}
+            role={isDialogPresentation ? "dialog" : undefined}
+            tabIndex={isDialogPresentation ? -1 : undefined}
             data-chat-state={
               portfolioAssistantAvailability === "teaser"
                 ? "teaser"
@@ -2791,32 +2804,34 @@ export default function PortfolioAssistantFab() {
           </section>
         </>
       ) : null}
-      <button
-        aria-controls="portfolio-assistant-panel"
-        aria-expanded={isOpen}
-        aria-label={
-          isOpen
-            ? "Close portfolio assistant"
-            : portfolioAssistantAvailability === "teaser"
-              ? "Open portfolio assistant (coming soon)"
-              : "Open portfolio assistant"
-        }
-        className="portfolio-assistant-fab"
-        onClick={() => (isOpen ? closeAssistant() : void openAssistant())}
-        title={
-          portfolioAssistantAvailability === "teaser"
-            ? "Portfolio assistant — coming soon"
-            : "Portfolio assistant"
-        }
-        ref={fabRef}
-        type="button"
-      >
-        {isOpen ? (
-          <X aria-hidden="true" size={20} />
-        ) : (
-          <MessageCircle aria-hidden="true" size={20} />
-        )}
-      </button>
+      {!isDialogPresentation ? (
+        <button
+          aria-controls="portfolio-assistant-panel"
+          aria-expanded={isOpen}
+          aria-label={
+            isOpen
+              ? "Close portfolio assistant"
+              : portfolioAssistantAvailability === "teaser"
+                ? "Open portfolio assistant (coming soon)"
+                : "Open portfolio assistant"
+          }
+          className="portfolio-assistant-fab"
+          onClick={() => (isOpen ? closeAssistant() : void openAssistant())}
+          title={
+            portfolioAssistantAvailability === "teaser"
+              ? "Portfolio assistant — coming soon"
+              : "Portfolio assistant"
+          }
+          ref={fabRef}
+          type="button"
+        >
+          {isOpen ? (
+            <X aria-hidden="true" size={20} />
+          ) : (
+            <MessageCircle aria-hidden="true" size={20} />
+          )}
+        </button>
+      ) : null}
     </div>
   );
 }
