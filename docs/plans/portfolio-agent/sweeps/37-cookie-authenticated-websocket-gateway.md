@@ -126,18 +126,29 @@ signal.
 ### Checkpoint 4 — Authenticated live smoke (paid/live approval gate)
 
 With the manually saved Google session and Turnstile completed, run only the
-desktop live test:
+desktop live test against the active Pages release:
 
 ```bash
-PLAYWRIGHT_LIVE_ASSISTANT=1 npm run test:e2e -- --project=desktop
+E2E_BASE_URL=https://syn-forge.com PLAYWRIGHT_LIVE_ASSISTANT=1 npm run test:e2e -- --project=desktop
 ```
 
 The redacted audit must show a successful WebSocket creation, no JWT-shaped URL
 or console value, no premature-close error, no page/request/socket error, and a
-grounded response with a recorded tool call and source disclosure. Record the
-Worker version, request ID, status, and timestamp without copying cookies,
-headers, prompts, model output, or raw URLs. This checkpoint can consume the
+grounded response with source disclosure. The
+`data-tool-call-state="recorded"` marker is optional presentation text from a
+provider-emitted marker; the live grounding assertion expands the disclosure
+and verifies a rendered source reference. This checkpoint can consume the
 rolling Workers AI budget.
+
+Execution evidence (2026-09-04): all three desktop tests passed in 8.8 seconds
+inside the Nix browser runtime using `playwright/.auth/google.json`: saved Google
+session, live grounded response, and responsive containment. The browser audit
+recorded a `wss://public-auth.syn-forge.com/...` connection with only `_pk` and
+`rid` query names, no credential/JWT signal, no premature-close or other
+unexpected event, and the expanded response contained source references.
+Worker versions were `0e8338e1-d21d-4b5b-827b-cfc35ef0d559` (agent) and
+`c36318cf-942e-4382-89ca-92f8f756863a` (public-auth). No request ID or raw URL
+was retained in the note.
 
 ### Checkpoint 5 — Soak and legacy retirement (separate approval)
 
@@ -161,19 +172,19 @@ premature-close console error, or a mismatch between deployed Worker versions.
 | Claim | Status | Evidence | Scope and caveat |
 | --- | --- | --- | --- |
 | Active source path does not request a bearer token | `verified-repository` | `PortfolioAssistantFab.tsx`, `portfolioAssistantApi.ts`, web tests | Committed local checkout; legacy API remains for rollback |
-| Gateway strips browser credentials and arbitrary query values | `verified-live` | public-auth Worker `c36318cf-942e-4382-89ca-92f8f756863a`, authenticated prepare/upgrade probes, gateway tests | Full model/grounded-response smoke remains Checkpoint 4; no secret values recorded |
+| Gateway strips browser credentials and arbitrary query values | `verified-live` | public-auth Worker `c36318cf-942e-4382-89ca-92f8f756863a`, authenticated prepare/upgrade probes, gateway tests | Full model/grounded-response smoke passed Checkpoint 4; no secret values recorded |
 | Agent validates internal identity and keeps public route separate | `verified-live-partial` | `portfolio-agent/src/index.ts`, internal route tests, authenticated gateway `101` smoke | End-to-end gateway proves the handoff; direct internal-key probing remains intentionally unexposed |
 | Agent hibernation is explicit and MCP is outside `onStart` | `verified-repository` and `verified-external` | `agent.ts`, identity tests, [Agents class docs](https://developers.cloudflare.com/agents/runtime/lifecycle/agent-class/), [DO WebSocket docs](https://developers.cloudflare.com/durable-objects/best-practices/websockets/) | Current source/build evidence; deployed eviction behavior pending |
-| Query-string credential exposure is reduced | `verified-repository` and `verified-external` | redacted audit tests, [OWASP guidance](https://owasp.org/www-community/vulnerabilities/Information_exposure_through_query_strings_in_url) | Browser/production telemetry pending Checkpoint 4 |
-| Agent production deployment | `verified-live` | Worker version `0e8338e1-d21d-4b5b-827b-cfc35ef0d559` deployed; denial probes passed and public-auth opened a native WebSocket through the internal service binding | Durable Object eviction behavior and full model response remain pending Checkpoints 4–5; no secret values recorded |
-| Pages client release | `verified-live` | Active asset `index-cVeBBw76.js`, saved-auth desktop test, and redacted browser audit | Paid model/grounded-response smoke remains Checkpoint 4; no raw URL retained |
+| Query-string credential exposure is reduced | `verified-repository` and `verified-external` | redacted audit tests, [OWASP guidance](https://owasp.org/www-community/vulnerabilities/Information_exposure_through_query_strings_in_url) | Saved-auth production telemetry passed Checkpoint 4; no raw values recorded |
+| Agent production deployment | `verified-live` | Worker version `0e8338e1-d21d-4b5b-827b-cfc35ef0d559` deployed; denial probes passed and public-auth opened a native WebSocket through the internal service binding | Full model/grounded response passed Checkpoint 4; eviction behavior and soak remain pending Checkpoint 5; no secret values recorded |
+| Pages client release | `verified-live` | Active asset `index-cVeBBw76.js`, saved-auth desktop test, redacted browser audit, and Checkpoint 4 smoke | Paid model/grounded-response smoke passed Checkpoint 4; no raw URL retained |
 
 ## Current handoff
 
-Checkpoint 0 is complete. Checkpoints 1–3 are complete for Worker
-deployment, gateway denial/preparation, no-model WebSocket handshake, Pages
-release, and redacted browser audit evidence. Durable Object eviction behavior,
-the authenticated model/grounded-response smoke, and the soak remain pending
-Checkpoints 4–5. The source changes are committed locally; push, D1 migration
-application, secret rotation, and production data changes remain separately
-gated.
+Checkpoint 0 is complete. Checkpoints 1–4 are complete for Worker deployment,
+gateway denial/preparation, no-model WebSocket handshake, Pages release,
+redacted browser audit evidence, and the approved authenticated
+model/grounded-response smoke. Durable Object eviction behavior and the soak
+remain pending Checkpoint 5. The source and smoke-test changes are committed
+locally; push, D1 migration application, secret rotation, legacy-route
+retirement, and production data changes remain separately gated.
