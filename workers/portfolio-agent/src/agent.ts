@@ -3,6 +3,7 @@ import {
   convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
+  generateText,
   type ModelMessage,
   streamText,
   toUIMessageStream,
@@ -40,6 +41,7 @@ import { AGENT_IDENTITY_HEADER, parseAgentIdentity } from "./identity.ts";
 import {
   asToolSet,
   buildSystemPrompt,
+  buildThreadTitlePrompt,
   estimateModelTokens,
   firstUserQuestion,
   formatThreadTitle,
@@ -48,6 +50,9 @@ import {
   type McpTool,
   mergeAdjacentUserMessages,
   stripAssistantReasoning,
+  THREAD_TITLE_OUTPUT_TOKEN_LIMIT,
+  THREAD_TITLE_PROVISIONAL_OUTPUT_TOKEN_ALLOWANCE,
+  THREAD_TITLE_SYSTEM_PROMPT,
 } from "./limits.ts";
 import {
   ensurePortfolioMcpConnection,
@@ -189,14 +194,66 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
     if (identity) this.persistIdentity(identity);
   }
 
-  private async persistInitialThreadTitle(): Promise<void> {
+  private async persistGeneratedThreadTitle(
+    answer: string,
+    abortSignal?: AbortSignal,
+  ): Promise<void> {
     const identity = this.identity;
-    if (!identity) return;
-
-    const title = formatThreadTitle(firstUserQuestion(this.messages));
-    if (!title) return;
+    const question = firstUserQuestion(this.messages);
+    if (!identity || !question || !answer.trim() || abortSignal?.aborted) return;
 
     try {
+      const thread = await this.environment.AUTH_DB.prepare(
+        "SELECT title FROM threads WHERE id = ?1 AND sub = ?2 AND deleted_at IS NULL AND (title IS NULL OR title = '')",
+      )
+        .bind(identity.tid, identity.sub)
+        .first<{ title: string | null }>();
+      if (!thread) return;
+
+      const titleMessages: ModelMessage[] = [
+        {
+          role: "user",
+          content: buildThreadTitlePrompt(question, answer),
+        },
+      ];
+      const titleQuota = await consumeRollingQuota(
+        this.environment.AUTH_DB,
+        identity.sub,
+        estimateQuotaUnits(
+          estimateModelTokens(THREAD_TITLE_SYSTEM_PROMPT, titleMessages),
+          THREAD_TITLE_PROVISIONAL_OUTPUT_TOKEN_ALLOWANCE,
+        ),
+      );
+      if (!titleQuota.allowed) return;
+
+      const titleResult = await generateText({
+        model: createWorkersAI({ binding: this.environment.AI as never })(MODEL_ID, {
+          sessionAffinity: this.sessionAffinity,
+        }),
+        system: THREAD_TITLE_SYSTEM_PROMPT,
+        messages: titleMessages,
+        maxOutputTokens: THREAD_TITLE_OUTPUT_TOKEN_LIMIT,
+        maxRetries: 1,
+        abortSignal,
+      });
+      try {
+        const settled = await settleRollingTokenUsage(
+          this.environment.AUTH_DB,
+          titleQuota.reservationId,
+          titleResult.usage,
+        );
+        if (!settled) {
+          console.error(
+            "[portfolio-agent] thread title usage settlement did not update reservation",
+          );
+        }
+      } catch (error) {
+        const errorType = error instanceof Error ? error.name : typeof error;
+        console.error(`[portfolio-agent] thread title usage settlement failed (${errorType})`);
+      }
+
+      const title = formatThreadTitle(titleResult.text);
+      if (!title) return;
       await this.environment.AUTH_DB.prepare(
         "UPDATE threads SET title = ?1, updated_at = ?2 WHERE id = ?3 AND sub = ?4 AND deleted_at IS NULL AND (title IS NULL OR title = '')",
       )
@@ -204,7 +261,7 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
         .run();
     } catch (error) {
       const errorType = error instanceof Error ? error.name : typeof error;
-      console.error(`[portfolio-agent] thread title update failed (${errorType})`);
+      console.error(`[portfolio-agent] generated thread title failed (${errorType})`);
     }
   }
 
@@ -320,7 +377,6 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
     if (!identity) return this.staticResponse("This assistant session is not authenticated.");
     const question = latestUserQuestion(this.messages);
     if (!question) return this.staticResponse("Please ask a portfolio question.");
-    await this.persistInitialThreadTitle();
     if (isUnsafeQuestion(question)) {
       return this.staticResponse(
         "I can only help with this portfolio and its linked project evidence.",
@@ -422,7 +478,7 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
           requestId: options?.requestId,
         });
       },
-      onEnd: async ({ usage, finishReason }) => {
+      onEnd: async ({ usage, finishReason, text }) => {
         const modelSucceeded = finishReason !== "error" && evidenceState.successfulResults > 0;
         this.emitDiagnostic({
           phase: "model",
@@ -477,6 +533,9 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
             const errorType = error instanceof Error ? error.name : typeof error;
             console.error(`[portfolio-agent] actual token usage settlement failed (${errorType})`);
           }
+        }
+        if (modelSucceeded) {
+          await this.persistGeneratedThreadTitle(text, options?.abortSignal);
         }
         try {
           await this.environment.AUTH_DB.prepare(
