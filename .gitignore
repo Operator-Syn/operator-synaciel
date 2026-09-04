@@ -40,6 +40,11 @@ graphify-out
 # Local Playwright authentication state
 /playwright/.auth/
 
+# Redacted Playwright run output (never keep authenticated traces or HAR files)
+/playwright/.artifacts/
+/apps/portfolio-web/test-results/
+/apps/portfolio-web/playwright-report/
+
 # Local Playwright browser downloads
 /.playwright-browsers/
 
