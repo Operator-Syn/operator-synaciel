@@ -1,6 +1,8 @@
 import { expect, test } from "playwright/test";
+import { installAssistantBrowserAudit } from "./playwright-observability.ts";
 
 test("reuses the saved Google session for the portfolio assistant", async ({ page }) => {
+  const audit = installAssistantBrowserAudit(page);
   await page.goto("/ai");
   await expect(page.getByRole("heading", { name: "Portfolio, readable by agents." })).toBeVisible();
 
@@ -16,11 +18,43 @@ test("reuses the saved Google session for the portfolio assistant", async ({ pag
 
   const panel = page.locator("#portfolio-assistant-panel");
   await expect(panel).toHaveAttribute("data-chat-state", /^(turnstile|active)$/);
+  audit.assertClean();
+});
+
+test("audits the authenticated assistant WebSocket and grounded response", async ({ page }) => {
+  test.skip(
+    process.env.PLAYWRIGHT_LIVE_ASSISTANT !== "1",
+    "Set PLAYWRIGHT_LIVE_ASSISTANT=1 only for the approval-gated live assistant smoke.",
+  );
+  const audit = installAssistantBrowserAudit(page);
+  await page.goto("/ai");
+  await page.getByRole("button", { name: "Open portfolio assistant" }).click();
+
+  const panel = page.locator("#portfolio-assistant-panel");
+  await expect(panel).toHaveAttribute("data-chat-state", "active");
+  await expect(panel.locator(".portfolio-assistant-composer textarea")).toBeVisible();
+  await expect
+    .poll(() => audit.events.some((event) => event.kind === "websocket-created"), {
+      timeout: 15_000,
+    })
+    .toBe(true);
+
+  const composer = panel.locator(".portfolio-assistant-composer textarea");
+  await composer.fill("Which projects use TypeScript?");
+  await panel.getByRole("button", { name: "Send portfolio question" }).click();
+  await expect(panel.locator(".portfolio-assistant-source-disclosure")).toBeVisible({
+    timeout: 90_000,
+  });
+  await expect
+    .poll(() => panel.locator('[data-tool-call-state="recorded"]').count(), { timeout: 90_000 })
+    .toBeGreaterThan(0);
+  audit.assertClean();
 });
 
 test("keeps the assistant contained and touch-sized across the responsive matrix", async ({
   page,
 }) => {
+  const audit = installAssistantBrowserAudit(page);
   await page.goto("/ai");
   await page.getByRole("button", { name: "Open portfolio assistant" }).click();
 
@@ -62,7 +96,10 @@ test("keeps the assistant contained and touch-sized across the responsive matrix
   );
 
   const state = await panel.getAttribute("data-chat-state");
-  if (state !== "active") return;
+  if (state !== "active") {
+    audit.assertClean();
+    return;
+  }
 
   const rows = await panel
     .locator(
@@ -102,4 +139,5 @@ test("keeps the assistant contained and touch-sized across the responsive matrix
   expect(await page.evaluate(() => window.scrollY)).toBe(pageScrollTop);
   if (transcriptScroll.canScroll)
     expect(transcriptScroll.after).toBeGreaterThan(transcriptScroll.before);
+  audit.assertClean();
 });
