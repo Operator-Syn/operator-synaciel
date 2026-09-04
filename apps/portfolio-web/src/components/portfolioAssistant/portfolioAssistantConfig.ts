@@ -2,19 +2,16 @@ export type AssistantBuildEnvironment = {
   DEV?: boolean;
   MODE?: string;
   VITE_PUBLIC_AUTH_URL?: string;
-  VITE_PORTFOLIO_AGENT_URL?: string;
   VITE_TURNSTILE_SITE_KEY?: string;
 };
 
 export type PortfolioAssistantConfig = {
   publicAuthOrigin: string | null;
-  agentOrigin: string | null;
   turnstileSiteKey: string | null;
   configurationError: string | null;
 };
 
 const PRODUCTION_PUBLIC_AUTH_ORIGIN = "https://public-auth.syn-forge.com";
-const PRODUCTION_AGENT_ORIGIN = "https://assistant.syn-forge.com";
 
 function normalizeHttpOrigin(value: string): string | null {
   try {
@@ -59,18 +56,10 @@ export function resolvePortfolioAssistantConfig(
     isDevelopment,
     errors,
   );
-  const agentOrigin = resolveOrigin(
-    environment.VITE_PORTFOLIO_AGENT_URL,
-    "VITE_PORTFOLIO_AGENT_URL",
-    PRODUCTION_AGENT_ORIGIN,
-    isDevelopment,
-    errors,
-  );
   const turnstileSiteKey = environment.VITE_TURNSTILE_SITE_KEY?.trim() || null;
 
   return {
     publicAuthOrigin,
-    agentOrigin,
     turnstileSiteKey,
     configurationError:
       errors.length > 0
@@ -83,7 +72,6 @@ const viteEnvironment: AssistantBuildEnvironment = {
   DEV: import.meta.env?.DEV,
   MODE: import.meta.env?.MODE,
   VITE_PUBLIC_AUTH_URL: import.meta.env?.VITE_PUBLIC_AUTH_URL,
-  VITE_PORTFOLIO_AGENT_URL: import.meta.env?.VITE_PORTFOLIO_AGENT_URL,
   VITE_TURNSTILE_SITE_KEY: import.meta.env?.VITE_TURNSTILE_SITE_KEY,
 };
 
