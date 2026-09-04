@@ -49,14 +49,17 @@ targets `portfolio-agent`. For the cookie-authenticated WebSocket gateway, keep
 that order: agent (internal route and hibernation behavior), public-auth (cookie
 and service-binding gateway), then Pages (browser host and connection query).
 Pages remains a separate Git-integrated deployment from the same main-branch
-push. Keep the legacy `/agent/token` path available until the new gateway has
-passed the authenticated smoke and soak window.
+push. The legacy `/agent/token` retirement patch is prepared after the
+authenticated smoke and CP5 soak, but the production Workers still expose the
+pre-retirement path until a separately authorized deployment. Rollback to a
+pre-gateway release is a separately authorized compatibility action.
 
 Local assistant testing uses the `env.local` profiles in the public-auth and
-portfolio-agent Wrangler files plus explicit Vite `VITE_PUBLIC_AUTH_URL` and
-`VITE_PORTFOLIO_AGENT_URL` values. Those local values are not production
-deployment inputs; see [[operations/local-development|Local Development]] for
-the local D1, OAuth callback, and ignored `.dev.vars` setup.
+portfolio-agent Wrangler files plus the explicit Vite `VITE_PUBLIC_AUTH_URL`
+value. The agent is reached through the public-auth service binding; local
+values are not production deployment inputs. See
+[[operations/local-development|Local Development]] for the local D1, OAuth
+callback, and ignored `.dev.vars` setup.
 
 ## Before a production release
 
@@ -562,16 +565,17 @@ npx wrangler deploy --env="" \
 ~~~
 
 The former fixed 8,000-neuron estimate is not a provider usage meter and is no
-longer an admission gate. The deployed auth Worker clears its legacy
-`daily-neuron-budget` marker once before issuing a token; an
-`AGENT_PAUSED` response now means an explicit administrator pause or missing
-control configuration. If Workers AI itself reports out-of-capacity, the agent
+longer an admission gate. The auth Worker clears its legacy
+`daily-neuron-budget` marker once before authorizing an assistant connection;
+the pre-retirement production version also performs that cleanup before its
+legacy token route. An `AGENT_PAUSED` response now means an explicit
+administrator pause or missing control configuration. If Workers AI itself reports out-of-capacity, the agent
 returns: **The model is at its maximum daily capacity. Please try again at
 00:00 UTC.**
 
 Do not pass runtime secrets on the command line. Wrangler uses the secrets and
 variables already provisioned on each Worker. The history route itself remains
-read-only and independent of the one-time WebSocket token; the rolling
+read-only and independent of the WebSocket connection; the rolling
 reservations are only written when an agent model turn starts.
 
 Check the route boundary before opening an authenticated browser session:
@@ -713,11 +717,12 @@ blindly rolling back.
 
 For Pages, use the Pages dashboard deployment history to retry or roll back
 the production deployment. Confirm the custom domain remains attached. For a
-gateway rollback, roll Pages back to the last client that uses `/agent/token`
-first, then roll public-auth back, and finally roll the agent back if its
-internal route or hibernation change must be removed. Keep the shared internal
-key and D1 schema compatible throughout; rollback does not revoke already-issued
-short-lived legacy tokens.
+gateway rollback, roll Pages back to the last compatible client, then roll
+public-auth back, and finally roll the agent back if its internal route or
+hibernation change must be removed. Keep the shared internal key and D1 schema
+compatible throughout. A rollback to a pre-gateway release may re-enable the
+legacy token flow; treat any resulting short-lived credentials as potentially
+valid until expiry and follow the auth incident procedure.
 
 ### Database recovery
 
