@@ -90,7 +90,7 @@ function skipped(
 }
 
 /**
- * Generate and persist the first successful evidence-backed title for a thread.
+ * Generate and persist the first successful title for a thread.
  *
  * The model adapter is injected so this orchestration can be tested without
  * reaching Workers AI. The SQL predicates remain the authorization and
