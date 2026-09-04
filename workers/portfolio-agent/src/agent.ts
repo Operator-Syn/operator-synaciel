@@ -471,6 +471,8 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
       },
       onEnd: async ({ usage, finishReason, text }) => {
         const modelSucceeded = finishReason !== "error" && evidenceState.successfulResults > 0;
+        const titleEligible =
+          finishReason !== "error" && text.trim().length > 0 && !options?.abortSignal?.aborted;
         this.emitDiagnostic({
           phase: "model",
           outcome: modelSucceeded ? "succeeded" : "failed",
@@ -525,7 +527,7 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
             console.error(`[portfolio-agent] actual token usage settlement failed (${errorType})`);
           }
         }
-        if (modelSucceeded) {
+        if (titleEligible) {
           await this.persistGeneratedThreadTitle(text, options?.abortSignal, options?.requestId);
         }
         try {
