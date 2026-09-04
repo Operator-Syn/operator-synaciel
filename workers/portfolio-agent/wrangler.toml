@@ -4,8 +4,6 @@ compatibility_date = "2026-08-29"
 
 [vars]
 PORTFOLIO_MCP_URL = "https://mcp.syn-forge.com/mcp"
-PUBLIC_AUTH_ORIGIN = "https://public-auth.syn-forge.com"
-AGENT_AUDIENCE = "portfolio-agent"
 MODEL_ID = "@cf/zai-org/glm-4.7-flash"
 BROWSER_ORIGINS = "https://syn-forge.com,https://www.syn-forge.com,http://localhost:5173"
 
@@ -36,8 +34,6 @@ routes = []
 
 [env.local.vars]
 PORTFOLIO_MCP_URL = "https://mcp.syn-forge.com/mcp"
-PUBLIC_AUTH_ORIGIN = "http://localhost:8787"
-AGENT_AUDIENCE = "portfolio-agent"
 MODEL_ID = "@cf/zai-org/glm-4.7-flash"
 BROWSER_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 
