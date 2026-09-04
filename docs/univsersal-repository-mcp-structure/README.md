@@ -57,18 +57,18 @@ Generic sections use placeholders such as `{{SERVER_NAME}}` and
 
 ```mermaid
 flowchart LR
-  C[Client] --> R[{{CLIENT_REGISTRATION}}]
-  R --> L[{{ROOT_SAFE_LAUNCHER}}]
-  L --> S[{{SERVER_ENTRYPOINT}}]
-  S --> T[{{TOOL_REGISTRY}}]
-  T --> P[{{POLICY_AND_SCHEMAS}}]
-  T --> Q[{{READ_AND_SEARCH}}]
-  T --> W[{{CHANGE_REVIEW}}]
-  W --> A[{{APPLY_COORDINATOR}}]
-  A --> K[{{MUTATION_LOCK}}]
-  A --> V[{{VERIFICATION_RUNNER}}]
-  A --> G[{{COMMIT_PIPELINE}}]
-  G --> H[{{VERSIONED_HOOKS}}]
+  C[Client] --> R["{{CLIENT_REGISTRATION}}"]
+  R --> L["{{ROOT_SAFE_LAUNCHER}}"]
+  L --> S["{{SERVER_ENTRYPOINT}}"]
+  S --> T["{{TOOL_REGISTRY}}"]
+  T --> P["{{POLICY_AND_SCHEMAS}}"]
+  T --> Q["{{READ_AND_SEARCH}}"]
+  T --> W["{{CHANGE_REVIEW}}"]
+  W --> A["{{APPLY_COORDINATOR}}"]
+  A --> K["{{MUTATION_LOCK}}"]
+  A --> V["{{VERIFICATION_RUNNER}}"]
+  A --> G["{{COMMIT_PIPELINE}}"]
+  G --> H["{{VERSIONED_HOOKS}}"]
 ```
 
 The current relation graph is recorded in
