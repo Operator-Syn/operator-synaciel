@@ -49,6 +49,15 @@ test("audits the authenticated assistant WebSocket and grounded response", async
   await expect(
     sourceDisclosure.locator(".portfolio-assistant-source-reference").first(),
   ).toBeVisible();
+  await expect
+    .poll(
+      async () =>
+        (await panel
+          .locator(".portfolio-assistant-thread-select-trigger")
+          .getAttribute("aria-label")) ?? "",
+      { timeout: 90_000 },
+    )
+    .not.toMatch(/^Assistant thread: Thread /);
   audit.assertClean();
 });
 
