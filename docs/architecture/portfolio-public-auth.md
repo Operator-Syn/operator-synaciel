@@ -46,25 +46,23 @@ configured rolling budget, remaining allowance, and earliest reservation expiry
 subject identifier or another user's usage. The assistant refreshes this view
 when a thread opens and after an attempted turn; a manual refresh remains
 available beside the meter.
-5. Turnstile is verified server-side once per session. The auth Worker then
-   issues a five-minute ES256 agent token scoped to the user, session, opaque
-   thread ID, audience, quota epoch, and one-time JTI. Token issuance is not
-   denied by the user's rolling quota-unit budget; that budget is enforced by
-   the agent only when a model turn is about to start.
-6. The agent Worker consumes that JTI on WebSocket upgrade, verifies the
-   signature and scope, removes the token from the forwarded URL, and routes
-   only the matching Durable Object thread.
+5. Turnstile is verified server-side once per session. `POST /agent/prepare`
+   rechecks the session, pause state, and owned thread, then returns only an
+   opaque attempt ID; it never returns a bearer credential.
+6. The browser upgrades `GET /agents/portfolio-agent/:id` on public-auth with
+   the opaque request ID. Public-auth rechecks the same ownership boundary and
+   forwards the upgrade over `AGENT_WORKER`, supplying a trusted identity
+   handoff to the agent. The agent strips browser cookies and authorization
+   before routing to the matching Durable Object thread.
 
 If a user's rolling budget is full, the agent returns a bounded assistant
-message after the authenticated WebSocket is established. The public-auth
-token route still succeeds, so the transcript remains readable and the same
-thread can be continued when older reservations roll off. The `agent_control`
-row is an administrator pause switch; the old local neuron estimate is not used
-to deny token issuance because it can disagree with the provider's usage
-dashboard. A manual pause can still make `/agent/token` return `503
-AGENT_PAUSED`, which is distinct from the per-user rolling quota-unit budget. When
-Workers AI itself reports that the model is out of capacity, the agent returns
-**The model is at its maximum daily capacity. Please try again at 00:00 UTC.**
+message after the authenticated WebSocket is established. The gateway remains
+available so the transcript can be read and the same thread can continue when
+older reservations roll off. The `agent_control` row is an administrator pause
+switch; the old local neuron estimate is not used to deny access because it can
+disagree with the provider's usage dashboard. When Workers AI itself reports
+that the model is out of capacity, the agent returns **The model is at its
+maximum daily capacity. Please try again at 00:00 UTC.**
 
 Allowed browser origins come from the Worker environment's `BROWSER_ORIGINS`
 list. Production config names the production portfolio origins plus the
@@ -82,8 +80,10 @@ not replace it with a wildcard.
 ## D1 ownership
 
 The auth database is separate from the portfolio API database. The checked-in
-migrations create users, sessions, OAuth state, threads, one-time agent tokens,
-rolling quota-unit reservations, and the singleton pause/reset control row. Migration
+migrations create users, sessions, OAuth state, threads, a historical one-time
+agent-token table, rolling quota-unit reservations, and the singleton pause/reset
+control row. The active runtime no longer issues or consumes agent tokens; the
+historical table remains to avoid a destructive schema migration. Migration
 `0002_add_actual_token_usage.sql` adds nullable columns that store weighted input
 and output quota-unit components, and `0003_add_google_profile_picture.sql` adds
 the nullable validated profile image URL; older reservations continue to use
@@ -107,8 +107,7 @@ fragments:
 | `GOOGLE_CLIENT_ID` | public-auth variable |
 | `GOOGLE_CLIENT_` + `SECRET` | public-auth secret |
 | `TURNSTILE_` + `SECRET_KEY` | public-auth secret |
-| `AGENT_TOKEN_` + `PRIVATE_JWK` | public-auth secret |
-| `AGENT_TOKEN_` + `PUBLIC_JWK` | agent variable/secret |
+| `AGENT_TOKEN_` pair | retired legacy secrets; delete only through a separately authorized Cloudflare change |
 | `AGENT_INTERNAL_` + `KEY` | shared service-binding secret |
 | `BROWSER_ORIGINS` | per-environment public-auth and agent variable |
 | `SESSION_COOKIE_SAME_SITE` | public-auth variable (`None` for production local-Vite access) |
@@ -120,10 +119,10 @@ return target in OAuth state. The isolated `env.local` profile instead uses the
 explicit callback
 `http://localhost:8787/oauth/google/callback`; it requires a matching Google
 authorized redirect URI. The Turnstile site key is a public frontend build
-variable. Generate the ES256 key pair outside the repository, store only the
-private JWK in public-auth and the public JWK in the agent, and rotate both
-together. The local profile should use a separate local-only pair and internal
-key.
+variable. The retired ES256 agent-token pair is no longer read by active
+Workers. Secret deletion or rotation remains a separately authorized
+Cloudflare operation; the service-binding internal key remains required. The
+local profile uses its own internal key.
 
 ## Thread history hydration
 

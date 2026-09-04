@@ -10,7 +10,7 @@ tags:
   - security
   - websockets
 role: project-plan-sweep
-status: in_progress
+status: complete
 plan_id: portfolio-agent-reliability
 owner: Operator-Syn
 last_reviewed: 2026-09-04
@@ -27,8 +27,8 @@ or [[architecture/portfolio-agent|the assistant architecture]].
 
 Remove browser-visible bearer credentials from the assistant WebSocket URL and
 prevent MCP or Durable Object restart work from failing the initial handshake.
-Keep the existing token route available only as a bounded rollout and rollback
-compatibility path until the new gateway has passed a live soak.
+After the live soak, the legacy token route is retired; rollback to a
+pre-gateway release remains separately authorized.
 
 ## Locked design
 
@@ -116,32 +116,72 @@ verification and do not infer live behavior from a successful build.
 Pass milestone: the browser WebSocket URL contains no token parameter and the
 old generated traces/HAR artifacts remain excluded from the repository.
 
+Execution evidence (2026-09-04): the active Pages asset is
+`index-cVeBBw76.js`; its marker scan found no `/agent/token` and one
+`/agent/prepare`. The saved-auth desktop test passed. A redacted browser audit
+recorded a `wss://public-auth.syn-forge.com/...` WebSocket with only the query
+names `_pk` and `rid`, no unexpected event, and no premature-close or credential
+signal.
+
 ### Checkpoint 4 — Authenticated live smoke (paid/live approval gate)
 
 With the manually saved Google session and Turnstile completed, run only the
-desktop live test:
+desktop live test against the active Pages release:
 
 ```bash
-PLAYWRIGHT_LIVE_ASSISTANT=1 npm run test:e2e -- --project=desktop
+E2E_BASE_URL=https://syn-forge.com PLAYWRIGHT_LIVE_ASSISTANT=1 npm run test:e2e -- --project=desktop
 ```
 
 The redacted audit must show a successful WebSocket creation, no JWT-shaped URL
 or console value, no premature-close error, no page/request/socket error, and a
-grounded response with a recorded tool call and source disclosure. Record the
-Worker version, request ID, status, and timestamp without copying cookies,
-headers, prompts, model output, or raw URLs. This checkpoint can consume the
+grounded response with source disclosure. The
+`data-tool-call-state="recorded"` marker is optional presentation text from a
+provider-emitted marker; the live grounding assertion expands the disclosure
+and verifies a rendered source reference. This checkpoint can consume the
 rolling Workers AI budget.
 
-### Checkpoint 5 — Soak and legacy retirement (separate approval)
+Execution evidence (2026-09-04): all three desktop tests passed in 8.8 seconds
+inside the Nix browser runtime using `playwright/.auth/google.json`: saved Google
+session, live grounded response, and responsive containment. The browser audit
+recorded a `wss://public-auth.syn-forge.com/...` connection with only `_pk` and
+`rid` query names, no credential/JWT signal, no premature-close or other
+unexpected event, and the expanded response contained source references.
+Worker versions were `0e8338e1-d21d-4b5b-827b-cfc35ef0d559` (agent) and
+`c36318cf-942e-4382-89ca-92f8f756863a` (public-auth). No request ID or raw URL
+was retained in the note.
 
-Keep `/agent/token` available through the agreed soak window. Compare gateway
-success/failure diagnostics with the legacy path, then make a separate reviewed
-change to remove the legacy route and unused frontend configuration. Do not
-combine retirement with the first gateway release.
+### Checkpoint 5 — Soak and legacy retirement (complete)
+
+The approved sequence kept `/agent/token` available through the soak window,
+compared gateway success/failure diagnostics with the legacy path, and then
+applied a separate reviewed change to remove the legacy route and unused
+frontend configuration. Retirement was deployed only after the soak and was
+not combined with the first gateway release.
+
+Execution evidence (2026-09-04): the saved-auth browser harness ran three
+legacy-token and three cookie-gateway handshake rounds at 30-second intervals
+against one owned thread. Every legacy token issuance returned `200` and its
+direct WebSocket opened; every gateway preparation returned `200` and its
+cookie-authenticated WebSocket opened. No pre-open timeout or socket error was
+observed, no model prompt was sent, and token values stayed in process memory.
+This validates the handshake comparison across idle intervals; Cloudflare log
+telemetry and a guaranteed eviction observation were not collected.
+
+The retirement source change removed `/agent/token` issuance, direct agent JWT
+verification, the unused agent-origin configuration, and
+`VITE_PORTFOLIO_AGENT_URL`. The historical D1 token table was preserved
+without a destructive migration. Production retirement then deployed as
+portfolio-agent version `dcab1312-ae9b-4f0b-ac70-c16ef69b6b7c` followed by
+public-auth version `31f80f41-efe2-4be1-875b-5d9c98cdf9b0`. Post-deployment
+probes returned `404` for `/agent/token` and the direct agent route,
+`401` for unauthenticated `/agent/prepare`, and `200` for public-auth
+health. The saved-auth desktop suite passed all three tests against Pages;
+its redacted audit recorded no credential/JWT signal, premature-close error,
+or other unexpected browser event.
 
 ## Rollback and stop rules
 
-For a gateway regression, roll Pages back to the last client using `/agent/token`
+For a gateway regression, roll Pages back to the last compatible client
 first, then public-auth, then the agent if its internal route or hibernation
 change must be removed. A Worker rollback does not undo D1 or Durable Object
 state and does not revoke already-issued short-lived legacy tokens; follow the
@@ -153,20 +193,23 @@ premature-close console error, or a mismatch between deployed Worker versions.
 
 | Claim | Status | Evidence | Scope and caveat |
 | --- | --- | --- | --- |
-| Active source path does not request a bearer token | `verified-repository` | `PortfolioAssistantFab.tsx`, `portfolioAssistantApi.ts`, web tests | Current uncommitted checkout; legacy API remains for rollback |
-| Gateway strips browser credentials and arbitrary query values | `verified-live` | public-auth Worker `c36318cf-942e-4382-89ca-92f8f756863a`, authenticated prepare/upgrade probes, gateway tests | Full model/grounded-response smoke remains Checkpoint 4; no secret values recorded |
-| Agent validates internal identity and keeps public route separate | `verified-live-partial` | `portfolio-agent/src/index.ts`, internal route tests, authenticated gateway `101` smoke | End-to-end gateway proves the handoff; direct internal-key probing remains intentionally unexposed |
-| Agent hibernation is explicit and MCP is outside `onStart` | `verified-repository` and `verified-external` | `agent.ts`, identity tests, [Agents class docs](https://developers.cloudflare.com/agents/runtime/lifecycle/agent-class/), [DO WebSocket docs](https://developers.cloudflare.com/durable-objects/best-practices/websockets/) | Current source/build evidence; deployed eviction behavior pending |
-| Query-string credential exposure is reduced | `verified-repository` and `verified-external` | redacted audit tests, [OWASP guidance](https://owasp.org/www-community/vulnerabilities/Information_exposure_through_query_strings_in_url) | Browser/production telemetry pending Checkpoint 4 |
-| Agent production deployment | `verified-live` | Worker version `0e8338e1-d21d-4b5b-827b-cfc35ef0d559` deployed; denial probes passed and public-auth opened a native WebSocket through the internal service binding | Durable Object eviction behavior and full model response remain pending Checkpoints 4–5; no secret values recorded |
+| Active source path does not request a bearer token | `verified-live` | `PortfolioAssistantFab.tsx`, `portfolioAssistantApi.ts`, web tests, post-deployment saved-auth audit | Pages client and both Workers now use the gateway; no credential values recorded |
+| Gateway strips browser credentials and arbitrary query values | `verified-live` | public-auth Worker `31f80f41-efe2-4be1-875b-5d9c98cdf9b0`, authenticated prepare/upgrade probes, gateway tests | Post-deployment saved-auth audit passed; no secret values recorded |
+| Agent validates internal identity and keeps public route separate | `verified-live` | `portfolio-agent/src/index.ts`, internal route tests, authenticated gateway `101` smoke, direct-route probe | Worker `dcab1312-ae9b-4f0b-ac70-c16ef69b6b7c` serves the internal route and returns `404` for the retired public route; no direct internal-key probe retained |
+| Agent hibernation is explicit and MCP is outside `onStart` | `verified-repository` and `verified-external` | `agent.ts`, identity tests, [Agents class docs](https://developers.cloudflare.com/agents/runtime/lifecycle/agent-class/), [DO WebSocket docs](https://developers.cloudflare.com/durable-objects/best-practices/websockets/) | Current source/build evidence; deployed eviction behavior remains unobserved |
+| Query-string credential exposure is reduced | `verified-repository` and `verified-external` | redacted audit tests, [OWASP guidance](https://owasp.org/www-community/vulnerabilities/Information_exposure_through_query_strings_in_url) | Saved-auth production telemetry passed Checkpoint 4; no raw values recorded |
+| Agent production deployment | `verified-live` | Worker version `dcab1312-ae9b-4f0b-ac70-c16ef69b6b7c` deployed; denial probes passed, public-auth opened a native WebSocket through the internal service binding, and the direct public route returned `404` | No D1 migration or production data change; no secret values recorded |
+| Pages client release | `verified-live` | Active asset `index-cVeBBw76.js`, post-deployment saved-auth desktop suite, redacted browser audit, and Checkpoint 4 smoke | Gateway client remains live; no raw URL retained |
 
 ## Current handoff
 
-Checkpoint 0 is complete. Checkpoints 1 and 2 are complete for deployment,
-denial, preparation, and no-model WebSocket handshake evidence. The active
-Pages asset still contains the legacy `/agent/token` marker and no
-`/agent/prepare` marker, so Checkpoint 3 remains unexecuted. Durable Object
-eviction behavior, the authenticated model/grounded-response smoke, and the
-soak remain pending Checkpoints 4–5. The source changes are intentionally
-uncommitted; Pages, D1 migration application, secret rotation, and production
-data changes remain separately gated.
+Checkpoints 0–5 are complete for Worker deployment, gateway
+denial/preparation, no-model and authenticated WebSocket checks, Pages release,
+redacted browser audit evidence, the approved grounded-response smoke, the
+soak, and production retirement. The deployed versions are
+portfolio-agent `dcab1312-ae9b-4f0b-ac70-c16ef69b6b7c` and public-auth
+`31f80f41-efe2-4be1-875b-5d9c98cdf9b0`; `/agent/token` and the direct public
+agent route return `404`, while unauthenticated preparation returns `401`.
+Durable Object eviction observation, Cloudflare log telemetry, secret cleanup,
+push, D1 migration application, and production data changes remain separately
+gated.

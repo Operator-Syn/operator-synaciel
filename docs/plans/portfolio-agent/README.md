@@ -31,7 +31,7 @@ reloading a monolithic plan. The historical record remains in
 5. [[plans/portfolio-agent/sweeps/34-cross-record-evidence-grounding|Sweep 34 — cross-record evidence grounding]] — source implementation complete; deployment and live replay pending.
 6. [[plans/portfolio-agent/sweeps/35-conversational-evidence-grounding|Sweep 35 — conversational evidence grounding]] — source implementation complete; deployment and live replay pending.
 7. [[plans/portfolio-agent/sweeps/36-mobile-assistant-responsive-surface|Sweep 36 — mobile assistant responsive surface]] — implementation in progress; browser and real-device gates pending.
-8. [[plans/portfolio-agent/sweeps/37-cookie-authenticated-websocket-gateway|Sweep 37 — cookie-authenticated WebSocket gateway]] — source implementation complete; Worker, Pages, and live gates pending.
+8. [[plans/portfolio-agent/sweeps/37-cookie-authenticated-websocket-gateway|Sweep 37 — cookie-authenticated WebSocket gateway]] — complete; production retirement and saved-auth live verification recorded.
 
 Reliability work is implemented incrementally in focused sweeps. Each sweep
 has its own acceptance gate and records source/test evidence separately from

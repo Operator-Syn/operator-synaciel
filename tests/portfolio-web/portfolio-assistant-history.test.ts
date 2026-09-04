@@ -8,7 +8,6 @@ import {
   getSession,
   getThreadMessages,
   getThreadMessagesPage,
-  issueAgentToken,
   PortfolioAssistantRequestError,
   prepareAgentConnection,
 } from "../../apps/portfolio-web/src/components/portfolioAssistant/portfolioAssistantApi.ts";
@@ -267,7 +266,7 @@ test("preserves rate-limit details for a user-facing assistant error", async () 
     );
 
   try {
-    await assert.rejects(issueAgentToken(threadId), (error: unknown) => {
+    await assert.rejects(prepareAgentConnection(threadId), (error: unknown) => {
       assert.ok(error instanceof PortfolioAssistantRequestError);
       assert.equal(error.status, 429);
       assert.equal(error.code, "ROLLING_LIMIT");

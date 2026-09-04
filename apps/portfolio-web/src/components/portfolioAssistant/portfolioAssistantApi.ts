@@ -211,13 +211,6 @@ export function exportThread(threadId: string): Promise<Record<string, unknown>>
   return requestJson<Record<string, unknown>>(`/threads/${encodeURIComponent(threadId)}/export`);
 }
 
-export function issueAgentToken(threadId: string): Promise<{ token: string; expiresAt: number }> {
-  return requestJson<{ token: string; expiresAt: number }>("/agent/token", {
-    method: "POST",
-    body: JSON.stringify({ threadId }),
-  });
-}
-
 export async function prepareAgentConnection(
   threadId: string,
 ): Promise<AssistantConnectionPreparation> {

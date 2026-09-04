@@ -239,7 +239,7 @@ test("mounts the portfolio assistant globally with bounded authenticated chat co
     /\.portfolio-assistant-reasoning:not\(\[open\]\)[\s\S]*?display:\s*none;/,
   );
   assert.match(cssSource, /\.portfolio-assistant-access-error\s*\{/);
-  assert.match(apiSource, /"\/agent\/token"/);
+  assert.doesNotMatch(apiSource, /\/agent\/token/);
   assert.match(apiSource, /"\/agent\/prepare"/);
   assert.match(fabSource, /publicAuthOrigin/);
   assert.match(fabSource, /rid/);
@@ -248,7 +248,7 @@ test("mounts the portfolio assistant globally with bounded authenticated chat co
   assert.doesNotMatch(fabSource, /token:\s*await getToken/);
   assert.match(apiSource, /"\/threads"/);
   assert.match(configSource, /VITE_PUBLIC_AUTH_URL/);
-  assert.match(configSource, /VITE_PORTFOLIO_AGENT_URL/);
+  assert.doesNotMatch(configSource, /VITE_PORTFOLIO_AGENT_URL/);
   assert.match(configSource, /required for local development/);
   assert.doesNotMatch(apiSource, /public-auth\.syn-forge\.com/);
   assert.doesNotMatch(fabSource, /assistant\.syn-forge\.com/);

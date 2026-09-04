@@ -22,6 +22,7 @@ test("reuses the saved Google session for the portfolio assistant", async ({ pag
 });
 
 test("audits the authenticated assistant WebSocket and grounded response", async ({ page }) => {
+  test.setTimeout(120_000);
   test.skip(
     process.env.PLAYWRIGHT_LIVE_ASSISTANT !== "1",
     "Set PLAYWRIGHT_LIVE_ASSISTANT=1 only for the approval-gated live assistant smoke.",
@@ -42,18 +43,19 @@ test("audits the authenticated assistant WebSocket and grounded response", async
   const composer = panel.locator(".portfolio-assistant-composer textarea");
   await composer.fill("Which projects use TypeScript?");
   await panel.getByRole("button", { name: "Send portfolio question" }).click();
-  await expect(panel.locator(".portfolio-assistant-source-disclosure")).toBeVisible({
-    timeout: 90_000,
-  });
-  await expect
-    .poll(() => panel.locator('[data-tool-call-state="recorded"]').count(), { timeout: 90_000 })
-    .toBeGreaterThan(0);
+  const sourceDisclosure = panel.locator(".portfolio-assistant-source-disclosure").first();
+  await expect(sourceDisclosure).toBeVisible({ timeout: 90_000 });
+  await sourceDisclosure.locator("summary").click();
+  await expect(
+    sourceDisclosure.locator(".portfolio-assistant-source-reference").first(),
+  ).toBeVisible();
   audit.assertClean();
 });
 
 test("keeps the assistant contained and touch-sized across the responsive matrix", async ({
   page,
 }) => {
+  test.setTimeout(60_000);
   const audit = installAssistantBrowserAudit(page);
   await page.goto("/ai");
   await page.getByRole("button", { name: "Open portfolio assistant" }).click();
@@ -84,13 +86,20 @@ test("keeps the assistant contained and touch-sized across the responsive matrix
     await expect(page.locator(".portfolio-assistant-fab")).toHaveCount(1);
   }
 
-  const targets = await panel.locator("button, textarea").evaluateAll((elements) =>
-    elements.map((element) => {
-      const rect = element.getBoundingClientRect();
-      return { height: rect.height, width: rect.width };
-    }),
-  );
-  expect(targets.every(({ height, width }) => height >= 44 && width >= 44)).toBe(true);
+  await expect
+    .poll(
+      async () => {
+        const targets = await panel.locator("button, textarea").evaluateAll((elements) =>
+          elements.map((element) => {
+            const rect = element.getBoundingClientRect();
+            return { height: rect.height, width: rect.width };
+          }),
+        );
+        return targets.every(({ height, width }) => height >= 44 && width >= 44);
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
     viewport.width,
   );
@@ -122,14 +131,16 @@ test("keeps the assistant contained and touch-sized across the responsive matrix
   expect(transcriptBox).not.toBeNull();
   expect(transcriptBox?.height ?? 0).toBeGreaterThanOrEqual(viewport.height * 0.45);
   const composer = panel.locator(".portfolio-assistant-composer textarea");
-  await expect(composer).toBeVisible();
+  await expect(composer).toBeVisible({ timeout: 15_000 });
   await composer.focus();
   await expect(composer).toBeFocused();
 
   const pageScrollTop = await page.evaluate(() => window.scrollY);
   const transcriptScroll = await transcript.evaluate((element) => {
     const before = element.scrollTop;
-    element.scrollTop = Math.min(element.scrollHeight - element.clientHeight, 120);
+    const maximum = element.scrollHeight - element.clientHeight;
+    const target = before > 0 ? Math.max(0, before - 120) : Math.min(maximum, before + 120);
+    element.scrollTop = target;
     return {
       before,
       after: element.scrollTop,
@@ -138,6 +149,6 @@ test("keeps the assistant contained and touch-sized across the responsive matrix
   });
   expect(await page.evaluate(() => window.scrollY)).toBe(pageScrollTop);
   if (transcriptScroll.canScroll)
-    expect(transcriptScroll.after).toBeGreaterThan(transcriptScroll.before);
+    expect(Math.abs(transcriptScroll.after - transcriptScroll.before)).toBeGreaterThan(0);
   audit.assertClean();
 });
