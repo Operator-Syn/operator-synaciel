@@ -179,8 +179,9 @@ placeholder.
 ## Administrative controls
 
 The admin reset endpoint is protected by the existing admin auth Worker and
-increments the user quota epoch, revokes sessions, invalidates outstanding
-agent JTIs, and clears that subject's rolling reservations. A user-specific
+increments the user quota epoch, revokes sessions, and clears that subject's
+rolling reservations. Historical token rows are marked consumed for schema
+compatibility but are not an active authorization mechanism. A user-specific
 reset leaves the global neuron guard unchanged; a global reset also clears all
 rolling reservations and the aggregate estimate, then resumes the agent. The
 control endpoint can pause or resume the assistant with a bounded reason. These
