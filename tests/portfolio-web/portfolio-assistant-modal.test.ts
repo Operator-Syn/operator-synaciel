@@ -87,6 +87,50 @@ test("gives the assistant conversation a clear bubble hierarchy and opaque stick
   assert.match(cssSource, /\.portfolio-assistant-toolbar\s*\{[\s\S]*?position:\s*relative;/);
 });
 
+test("uses a full-screen mobile dialog with stable reading rows", async () => {
+  const [cssSource, fabSource, htmlSource] = await Promise.all([
+    readFile(
+      resolve(
+        repositoryRoot,
+        "apps/portfolio-web/src/components/portfolioAssistant/PortfolioAssistant.css",
+      ),
+      "utf8",
+    ),
+    readFile(fabPath, "utf8"),
+    readFile(resolve(repositoryRoot, "apps/portfolio-web/index.html"), "utf8"),
+  ]);
+
+  assert.match(
+    fabSource,
+    /const isDialogPresentation = isOpen && \(isExpanded \|\| isResponsiveModal\);/,
+  );
+  assert.match(fabSource, /role=\{isDialogPresentation \? "dialog" : undefined\}/);
+  assert.match(fabSource, /if \(isResponsiveModal\) \{[\s\S]*?closeAssistant\(\);/);
+  assert.match(fabSource, /\{!isDialogPresentation \?/);
+  assert.match(fabSource, /if \(!isDialogPresentation\) return;/);
+  assert.match(
+    cssSource,
+    /\.portfolio-assistant\[data-assistant-mobile-modal="true"\] \.portfolio-assistant-panel\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?inset:\s*0;[\s\S]*?height:\s*100dvh;[\s\S]*?max-height:\s*none;/,
+  );
+  assert.match(
+    cssSource,
+    /\.portfolio-assistant\[data-assistant-mobile-modal="true"\] \.portfolio-assistant-body\s*\{[\s\S]*?max-height:\s*none;[\s\S]*?min-height:\s*0;/,
+  );
+  assert.match(
+    cssSource,
+    /\.portfolio-assistant\[data-assistant-mobile-modal="true"\] \.portfolio-assistant-toolbar\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) 2\.75rem 2\.75rem;/,
+  );
+  assert.match(
+    cssSource,
+    /\.portfolio-assistant\[data-assistant-mobile-modal="true"\] \.portfolio-assistant-transcript\s*\{[\s\S]*?min-height:\s*0;[\s\S]*?padding:/,
+  );
+  assert.match(
+    cssSource,
+    /\.portfolio-assistant\[data-assistant-mobile-modal="true"\] \.portfolio-assistant-quota-summary\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) auto;/,
+  );
+  assert.match(htmlSource, /viewport-fit=cover/);
+});
+
 test("keeps history readable during reconnects and follows new activity only when appropriate", async () => {
   const fabSource = await readFile(fabPath, "utf8");
 
