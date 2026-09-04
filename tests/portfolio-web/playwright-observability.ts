@@ -24,6 +24,29 @@ export type BrowserUrlInspection = {
   safeUrl: string;
 };
 
+/**
+ * Vite's development HMR socket carries a random token for the local dev
+ * server. It is not the assistant credential; keep this allowlist exact so a
+ * real token on the public-auth or agent gateway still fails the audit.
+ */
+export function isLocalViteHmrWebSocket(rawUrl: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+
+  return (
+    parsed.protocol === "ws:" &&
+    (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") &&
+    parsed.port === "5173" &&
+    parsed.pathname === "/" &&
+    [...parsed.searchParams.keys()].length === 1 &&
+    parsed.searchParams.has("token")
+  );
+}
+
 export function inspectBrowserUrl(rawUrl: string): BrowserUrlInspection {
   let parsed: URL;
   try {
@@ -91,7 +114,8 @@ export function installAssistantBrowserAudit(page: Page): {
 
   page.on("websocket", (websocket) => {
     const inspection = inspectBrowserUrl(websocket.url());
-    credentialExposure ||= inspection.credentialExposed;
+    credentialExposure ||=
+      !isLocalViteHmrWebSocket(websocket.url()) && inspection.credentialExposed;
     events.push({ kind: "websocket-created", url: inspection.safeUrl });
     websocket.on("close", () => events.push({ kind: "websocket-closed", url: inspection.safeUrl }));
     websocket.on("socketerror", () =>

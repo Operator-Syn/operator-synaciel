@@ -65,6 +65,27 @@ test("drops invalid diagnostic values and clamps numeric metadata", () => {
   );
 });
 
+test("allowlists thread-title outcomes without untrusted content", () => {
+  const normalized = normalizePortfolioAgentDiagnostic({
+    phase: "thread-title",
+    outcome: "skipped",
+    reason: "empty-output",
+    elapsedMs: 12,
+    requestId: "req_title_123456",
+    title: "private generated title",
+    answer: "private answer",
+  } as never);
+
+  assert.deepEqual(normalized, {
+    phase: "thread-title",
+    outcome: "skipped",
+    reason: "empty-output",
+    elapsedMs: 12,
+    requestId: "req_title_123456",
+  });
+  assert.doesNotMatch(JSON.stringify(normalized), /private generated title|private answer/);
+});
+
 test("diagnostic sink failures never affect the caller", () => {
   assert.doesNotThrow(() => {
     emitPortfolioAgentDiagnostic(

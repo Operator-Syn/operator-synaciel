@@ -51,6 +51,7 @@ root. Topic notes live in focused folders.
 - [[operations/repository-mcp|Local Repository MCP (stdio)]] - guarded local
   changes, verification, one-file commits, and versioned Git hooks.
 - [[univsersal-repository-mcp-structure|Universal Repository MCP Structure blueprint]] - reusable, repository-agnostic implementation stages and evidence mapping.
+- [[authenticated-identity-blueprint|Universal Authenticated Identity and Realtime Gateway blueprint]] - reusable authentication, identity, and protected realtime boundaries.
 
 ## Vault rules
 

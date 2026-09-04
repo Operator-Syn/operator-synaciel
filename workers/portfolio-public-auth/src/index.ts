@@ -610,6 +610,7 @@ app.post("/turnstile/verify", async (c) => {
 });
 
 app.get("/threads", async (c) => {
+  c.header("Cache-Control", "no-store");
   const session = await getSession(c.req.raw, c.env);
   if (!session) return c.json({ error: { code: "AUTH_REQUIRED", message: "Sign in first." } }, 401);
   const result = await c.env.AUTH_DB.prepare(

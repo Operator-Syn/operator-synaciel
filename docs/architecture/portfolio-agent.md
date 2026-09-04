@@ -92,17 +92,18 @@ messages before each model call. New threads initially display a compact
 `Thread <id-prefix>` fallback. After a model turn completes with usable portfolio
 evidence, the agent asks the same Workers AI model for one bounded plain-text title
 using the earliest non-empty user question and the completed assistant answer. The
-title prompt receives text-only excerpts, uses no MCP tools, and has a 32-token output
-cap; its separate rolling-quota reservation is settled from the provider usage.
-The generated value is normalized to at most 72 characters and conditionally written
-to the existing auth-D1 `threads.title` field only when it is still empty. The
-update is first-writer-wins and best-effort: title-generation, quota, or metadata
+title-only call disables model reasoning so its 32-token output cap is reserved for
+the title text; its separate rolling-quota reservation is settled from provider
+usage. The generated value is normalized to at most 72 characters and conditionally
+written to the existing auth-D1 `threads.title` field only when it is still empty.
+The update is first-writer-wins and best-effort: title-generation, quota, or metadata
 failures never interrupt the completed answer. Rejected, aborted, or unverified
-turns leave the ID fallback. The browser does not preview a title while the answer
-is streaming; it refreshes the authoritative thread list after completion. Existing
-untitled threads are named on their next successful completion and are not backfilled.
-When generated titles collide, the selector appends the shortest unique thread-ID
-prefix for that title without changing the stored value.
+turns leave the ID fallback. The title lifecycle is awaited before the response
+stream closes, and the browser does not preview a title while the answer is
+streaming; it refreshes the uncached authoritative thread list after completion.
+Existing untitled threads are named on their next successful completion and are not
+backfilled. When generated titles collide, the selector appends the shortest unique
+thread-ID prefix for that title without changing the stored value.
 The system prompt treats those loaded messages as
 the current thread context and prior assistant replies as generated drafts, so a
 summarize or continue request does not reset context or inherit an earlier

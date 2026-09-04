@@ -139,6 +139,23 @@ test("returns an explicit null title for a newly created thread", async () => {
   assert.equal(body.title, null);
 });
 
+test("does not cache authenticated thread metadata", async () => {
+  const response = await app.fetch(
+    new Request("https://public-auth.syn-forge.com/threads", {
+      headers: {
+        Origin: ORIGIN,
+        Cookie: `${SESSION_COOKIE}=${SESSION_VALUE}`,
+      },
+    }),
+    environment(new ThreadDatabase(false), {
+      fetch: async () => Response.json({ messages: [] }),
+    }) as never,
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("Cache-Control"), "no-store");
+});
+
 test("blocks another thread while the existing thread is empty", async () => {
   let internalRequest: Request | undefined;
   const response = await app.fetch(
