@@ -4,17 +4,31 @@
     "type": "split",
     "children": [
       {
-        "id": "a29083309829417a",
+        "id": "aa2c1ebd28f99cc0",
         "type": "tabs",
         "children": [
           {
-            "id": "b83b3267afc86b43",
+            "id": "7a839de7db41596a",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "docs/univsersal-repository-mcp-structure/README.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "README"
             }
           }
         ]
@@ -181,42 +195,47 @@
       "bases:Create new base": false
     }
   },
-  "active": "b83b3267afc86b43",
+  "active": "7a839de7db41596a",
   "lastOpenFiles": [
-    "dist/sitemap.xml",
-    "dist/robots.txt",
-    "dist/index.html",
+    "apps/portfolio-web/dist/sitemap.xml",
+    "apps/portfolio-web/dist/index.html",
+    "graphify-out/cache/stat-index.2zt0co_8.tmp",
+    "tests/portfolio-agent/thread-title.test.ts.eec4d8bc-4b6e-47a5-bc9e-431cb03526c8.tmp",
+    "docs/architecture/portfolio-agent.md.d2cd7516-d2a8-4f4f-8c77-3465e336bf51.tmp",
+    "workers/portfolio-public-auth/src/index.ts.2110438f-dac7-4e2b-a14d-2b4495758969.tmp",
+    "tests/portfolio-agent/limits.test.ts.dace9fb0-87de-4feb-8e12-76c0c22a8913.tmp",
+    "workers/portfolio-agent/src/agent.ts.5e8b5470-a6b7-4c87-9189-e599092f0306.tmp",
+    "workers/portfolio-agent/src/diagnostics.ts.6aca38df-1e7f-4eca-be5e-4d3396a322da.tmp",
+    "workers/portfolio-agent/src/thread-title.ts",
+    "tests/portfolio-agent/thread-title.test.ts",
+    "docs/univsersal-repository-mcp-structure/12-sequential-checkpoints.md",
+    "docs/univsersal-repository-mcp-structure/README.md",
+    "docs/univsersal-repository-mcp-structure/03-tool-registry-and-contracts.md",
+    "docs/univsersal-repository-mcp-structure/02-registration-and-bootstrap.md",
+    "docs/univsersal-repository-mcp-structure/01-vocabulary-and-configuration.md",
+    "docs/adr/0001-cookie-authenticated-realtime-gateway.md",
+    "docs/authenticated-identity-blueprint/references/standards-and-platforms.md",
+    "docs/authenticated-identity-blueprint/audits/unresolved-questions.md",
+    "docs/authenticated-identity-blueprint/audits/repository-map.md",
+    "docs/authenticated-identity-blueprint/audits/evidence-ledger.md",
+    "docs/authenticated-identity-blueprint/09-sequential-checkpoints.md",
+    "docs/authenticated-identity-blueprint/08-cloudflare-adapter.md",
+    "docs/authenticated-identity-blueprint/07-rollout-revocation-and-recovery.md",
+    "docs/authenticated-identity-blueprint/06-observability-redaction-and-testing.md",
+    "docs/authenticated-identity-blueprint/05-stateful-runtime-and-hibernation.md",
+    "docs/authenticated-identity-blueprint/04-protected-realtime-gateway.md",
+    "docs/univsersal-repository-mcp-structure/audits/unresolved-questions.md",
+    "docs/univsersal-repository-mcp-structure/audits/repository-map.md",
+    "docs/univsersal-repository-mcp-structure/audits/evidence-ledger.md",
+    "docs/authenticated-identity-blueprint/03-identity-handoff-and-authorization.md",
+    "docs/authenticated-identity-blueprint/02-authentication-and-session-lifecycle.md",
+    "docs/authenticated-identity-blueprint/01-vocabulary-and-trust-boundaries.md",
+    "docs/authenticated-identity-blueprint/README.md",
+    "docs/authenticated-identity-blueprint/CONTEXT.md",
     "docs/design-system/references/portfolio-home-responsive-wide-reference.png",
     "docs/design-system/references/portfolio-home-responsive-work-failure.png",
     "docs/design-system/responsive-layout.md",
     "docs/design-system/references/portfolio-home-responsive-fixed.png",
-    "docs/design-system/references/portfolio-home-responsive-failure.png",
-    "docs/design-system/homepage-fidelity.md",
-    "src/components/pages/homePage/Home.tsx",
-    "src/components/homePage/HomeToolsTable.tsx",
-    "src/components/homePage/HomeSelectedWork.tsx",
-    "src/components/homePage/HomeIdentityPanel.tsx",
-    "src/components/homePage/HomeFooter.tsx",
-    "src/components/homePage/HomeCoordinates.tsx",
-    "src/components/homePage",
-    "node_modules/@biomejs/cli-linux-x64/CHANGELOG.md",
-    "node_modules/@biomejs/biome/README.zh-TW.md",
-    "node_modules/@biomejs/biome/README.zh-CN.md",
-    "node_modules/@biomejs/biome/README.uk.md",
-    "node_modules/@biomejs/biome/README.ru.md",
-    "node_modules/@biomejs/biome/README.pt-BR.md",
-    "node_modules/@biomejs/biome/README.pl.md",
-    "node_modules/@biomejs/biome/README.md",
-    "node_modules/@biomejs/biome/README.kr.md",
-    "node_modules/@biomejs/biome/README.ja.md",
-    "node_modules/@biomejs/biome/README.hi.md",
-    "node_modules/@biomejs/biome/README.fr.md",
-    "node_modules/@biomejs/biome/README.es.md",
-    "PRODUCT.md",
-    "docs/architecture/models.md",
-    "docs/architecture/controllers.md",
-    "docs/architecture/layer-boundaries.md",
-    "node_modules/markdown-table/readme.md",
-    "screenshot.png.md"
+    "docs/design-system/references/portfolio-home-responsive-failure.png"
   ]
 }
