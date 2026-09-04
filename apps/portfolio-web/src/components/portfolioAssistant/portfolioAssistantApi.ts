@@ -153,7 +153,9 @@ export function verifyTurnstile(token: string): Promise<{ verified: boolean }> {
 }
 
 export function listThreads(): Promise<{ threads: AssistantThread[] }> {
-  return requestJson<{ threads: AssistantThread[] }>("/threads");
+  return requestJson<{ threads: AssistantThread[] }>("/threads", {
+    cache: "no-store",
+  });
 }
 
 export async function getThreadMessages(threadId: string): Promise<UIMessage[]> {
