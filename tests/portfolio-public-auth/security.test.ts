@@ -3,7 +3,6 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test } from "node:test";
 import {
-  AGENT_ACCESS_TTL_SECONDS,
   getSessionCookieSameSite,
   ROLLING_TOKEN_BUDGET,
   ROLLING_TOKEN_WINDOW_SECONDS,
@@ -36,7 +35,6 @@ const authIndex = resolve(import.meta.dirname, "../../workers/portfolio-public-a
 test("uses bounded public-auth session and quota constants", () => {
   assert.equal(SESSION_COOKIE, "__Host-portfolio_session");
   assert.equal(SESSION_MAX_AGE_SECONDS, 30 * 24 * 60 * 60);
-  assert.equal(AGENT_ACCESS_TTL_SECONDS, 5 * 60);
   assert.equal(ROLLING_TOKEN_BUDGET, 1_000_000);
   assert.equal(ROLLING_TOKEN_WINDOW_SECONDS, 60 * 60);
 });
@@ -130,15 +128,8 @@ test("stores rolling reservations by subject and creation time", async () => {
   assert.match(profileMigration, /length\(picture_url\) <= 2048/);
 });
 
-test("does not let token issuance hide history behind a legacy daily counter", async () => {
+test("keeps the retired bearer-token route absent", async () => {
   const source = await readFile(authIndex, "utf8");
-  const tokenRoute = source.slice(
-    source.indexOf('app.post("/agent/token"'),
-    source.indexOf('app.get("/threads/:id/export")'),
-  );
-  assert.doesNotMatch(tokenRoute, /usage_windows|DAILY_TURN_LIMIT|DAILY_LIMIT/);
-  assert.match(tokenRoute, /AGENT_PAUSED/);
-  assert.match(tokenRoute, /clearLegacyAutomaticPause/);
-  assert.doesNotMatch(tokenRoute, /estimated_neurons\s*(?:>=|>)/);
-  assert.match(tokenRoute, /paused by an administrator/);
+  assert.doesNotMatch(source, /app\.post\("\/agent\/token"/);
+  assert.match(source, /app\.post\("\/agent\/prepare"/);
 });
