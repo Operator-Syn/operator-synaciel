@@ -1,5 +1,5 @@
-import { createRemoteJWKSet, importJWK, jwtVerify, SignJWT } from "jose";
-import { AGENT_ACCESS_TTL_SECONDS, getConfigString, type PublicAuthEnvironment } from "./config.ts";
+import { createRemoteJWKSet, jwtVerify } from "jose";
+import { getConfigString, type PublicAuthEnvironment } from "./config.ts";
 
 const GOOGLE_ISSUERS = ["https://accounts.google.com", "accounts.google.com"];
 const GOOGLE_JWKS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
@@ -59,38 +59,4 @@ export async function verifyGoogleIdToken(
         ? payload.picture.trim().slice(0, 2_048)
         : null,
   };
-}
-
-export async function issueAgentAccessToken(
-  environment: PublicAuthEnvironment,
-  claims: {
-    sub: string;
-    sid: string;
-    tid: string;
-    quotaEpoch: number;
-  },
-): Promise<{ token: string; jti: string; expiresAt: number }> {
-  const now = Math.floor(Date.now() / 1000);
-  const expiresAt = now + AGENT_ACCESS_TTL_SECONDS;
-  const jti = randomToken(16);
-  const privateJwk = JSON.parse(
-    getConfigString(environment, "AGENT", "TOKEN", "PRIVATE", "JWK"),
-  ) as JsonWebKey;
-  const key = await importJWK(privateJwk, "ES256");
-  const token = await new SignJWT({
-    sub: claims.sub,
-    sid: claims.sid,
-    tid: claims.tid,
-    scope: "chat",
-    q: claims.quotaEpoch,
-  })
-    .setProtectedHeader({ alg: "ES256", typ: "JWT" })
-    .setIssuer(environment.PUBLIC_AUTH_ORIGIN)
-    .setAudience(environment.AGENT_AUDIENCE)
-    .setJti(jti)
-    .setIssuedAt(now)
-    .setExpirationTime(expiresAt)
-    .sign(key);
-
-  return { token, jti, expiresAt };
 }
