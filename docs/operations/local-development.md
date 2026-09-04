@@ -97,19 +97,35 @@ redirect back to `/ai`, then close the browser so Playwright writes the state
 file. Do not automate or record Google username/password entry, bypass MFA or
 CAPTCHA, or copy credentials into a generated test.
 
-Run the opt-in authenticated smoke test with:
+Run the authenticated browser checks with:
 
 ```bash
 npm run test:e2e
 ```
 
-It loads `playwright/.auth/google.json`, opens `/ai`, checks that
-`/session` returns an authenticated profile, and confirms the assistant
-reaches its authenticated `turnstile` or `active` state. It does not solve
-Turnstile, create a thread, open a WebSocket, or send a model request. If the
-state expires, repeat the manual recorder flow. Treat the state file as a live
-session secret and never commit or share it. Install the Playwright Chromium
-browser once with `npx playwright install chromium` if needed.
+The suite loads `playwright/.auth/google.json`, opens `/ai`, checks that
+`/session` returns an authenticated profile, and exercises the active assistant
+connection through the public-auth gateway. Every test installs the redacted
+browser audit from `tests/portfolio-web/playwright-observability.ts`: it keeps
+only event kinds and URL parameter names, detects JWT-shaped values without
+retaining them, and flags the premature-close console error. Playwright writes
+no trace or HAR; output goes to the ignored `playwright/.artifacts/` directory.
+Set `E2E_BASE_URL` to target a local Pages preview instead of Vite.
+
+The grounded model question is intentionally skipped unless the explicit live
+gate is enabled:
+
+```bash
+PLAYWRIGHT_LIVE_ASSISTANT=1 npm run test:e2e -- --project=desktop
+```
+
+That opt-in test creates a real assistant turn and can consume the rolling
+Workers AI budget, so run it only at the approval-gated live-smoke checkpoint.
+The normal suite may still open and close an authenticated WebSocket while
+checking the panel; it does not send a model question. If the state expires,
+repeat the manual recorder flow. Treat the state file as a live session secret
+and never commit or share it. Install the Playwright Chromium browser once
+with `npx playwright install chromium` if needed.
 
 This application does not use Firebase or IndexedDB for authentication. If a
 future auth implementation stores tokens in IndexedDB, save the state with
@@ -151,19 +167,26 @@ parent shell.
 
 ### Assistant connection troubleshooting
 
-The Agents SDK resolves an asynchronous token query during the assistant
+The Agents SDK resolves an asynchronous opaque request ID during the assistant
 connection. The chat component is intentionally rendered under `Suspense` and
-uses a short positive query cache so reconnects receive a fresh one-time token.
-The per-user 1,000,000-token/1-hour budget is enforced after the WebSocket is
-authenticated, so a full rolling window does not hide the saved transcript.
+uses a short positive query cache so reconnects receive a fresh `/agent/prepare`
+result. The browser connects to public-auth with its HttpOnly session cookie;
+public-auth rechecks access and forwards the upgrade over the private service
+binding, so no bearer token is placed in the WebSocket URL. The per-user
+1,000,000-token/1-hour budget is enforced after the WebSocket is authenticated,
+so a full rolling window does not hide the saved transcript.
+
 If the browser reports `An unknown Component is an async Client Component` at
 `useAgent`, reload the current build and confirm the deployed Pages version
-contains the assistant connection boundary. A token or WebSocket failure should
-remain inside the assistant panel as `The assistant connection could not be
-opened`; use its retry action or start a new thread. Chrome's `Fetch finished
+contains the assistant connection boundary. A gateway or WebSocket failure
+should remain inside the assistant panel as `The assistant connection could not
+be opened`; use its retry action or start a new thread. Chrome's `Fetch finished
 loading` messages are informational; inspect the corresponding request status
-before treating them as errors. Never paste session cookies, agent tokens, or
-authorization headers into an issue or log.
+before treating them as errors. The expected Cloudflare Insights beacon
+`ERR_BLOCKED_BY_CLIENT` can be ignored; other request failures and
+`WebSocket is closed before the connection is established` events should be
+captured by the redacted Playwright audit. Never paste session cookies, agent
+tokens, authorization headers, or raw WebSocket URLs into an issue or log.
 
 ### Agent diagnostics
 
