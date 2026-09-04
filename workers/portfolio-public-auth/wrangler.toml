@@ -5,11 +5,9 @@ compatibility_date = "2026-08-29"
 [vars]
 PUBLIC_AUTH_ORIGIN = "https://public-auth.syn-forge.com"
 PORTFOLIO_ORIGIN = "https://syn-forge.com"
-AGENT_ORIGIN = "https://assistant.syn-forge.com"
 BROWSER_ORIGINS = "https://syn-forge.com,https://www.syn-forge.com,http://localhost:5173"
 SESSION_COOKIE_SAME_SITE = "None"
 GOOGLE_REDIRECT_URI = "https://public-auth.syn-forge.com/oauth/google/callback"
-AGENT_AUDIENCE = "portfolio-agent"
 ADMIN_AUTH_ENDPOINT = "https://auth.syn-forge.com/auth/user"
 
 [[d1_databases]]
@@ -34,11 +32,9 @@ routes = []
 [env.local.vars]
 PUBLIC_AUTH_ORIGIN = "http://localhost:8787"
 PORTFOLIO_ORIGIN = "http://localhost:5173"
-AGENT_ORIGIN = "http://localhost:8788"
 BROWSER_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 SESSION_COOKIE_SAME_SITE = "Lax"
 GOOGLE_REDIRECT_URI = "http://localhost:8787/oauth/google/callback"
-AGENT_AUDIENCE = "portfolio-agent"
 ADMIN_AUTH_ENDPOINT = "http://localhost:8789/auth/user"
 
 [[env.local.d1_databases]]
