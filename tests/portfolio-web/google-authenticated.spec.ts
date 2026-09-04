@@ -75,6 +75,7 @@ test("keeps the assistant contained and touch-sized across the responsive matrix
       panel.getByRole("button", { name: "Expand portfolio assistant for reading" }),
     ).toHaveCount(0);
 
+    await expect.poll(async () => (await panel.boundingBox())?.x ?? -1, { timeout: 5_000 }).toBe(0);
     const panelBox = await panel.boundingBox();
     expect(panelBox).not.toBeNull();
     expect(panelBox?.x ?? -1).toBe(0);
