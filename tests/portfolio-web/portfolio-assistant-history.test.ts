@@ -10,6 +10,7 @@ import {
   getThreadMessagesPage,
   issueAgentToken,
   PortfolioAssistantRequestError,
+  prepareAgentConnection,
 } from "../../apps/portfolio-web/src/components/portfolioAssistant/portfolioAssistantApi.ts";
 
 const repositoryRoot = resolve(import.meta.dirname, "../../");
@@ -199,8 +200,57 @@ test("hydrates each selected thread through the ownership-checked history loader
     fabSource.indexOf("function AssistantChat("),
     fabSource.indexOf("function AssistantChatBoundary("),
   );
-  assert.match(assistantChatSource, /getToken/);
+  assert.match(assistantChatSource, /getAttemptId/);
   assert.doesNotMatch(assistantChatSource, /issueAgentToken/);
+});
+
+test("prepares a cookie-authenticated assistant connection without returning a bearer token", async () => {
+  let captured:
+    | { body: string | null; credentials: RequestCredentials | undefined; url: string }
+    | undefined;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    captured = {
+      body: typeof init?.body === "string" ? init.body : null,
+      credentials: init?.credentials,
+      url: String(input),
+    };
+    return Response.json({
+      ready: true,
+      threadId,
+      attemptId: "attempt_123456789012",
+    });
+  };
+
+  try {
+    assert.deepEqual(await prepareAgentConnection(threadId), {
+      ready: true,
+      threadId,
+      attemptId: "attempt_123456789012",
+    });
+    assert.equal(captured?.url, "https://public-auth.syn-forge.com/agent/prepare");
+    assert.equal(captured?.credentials, "include");
+    assert.deepEqual(JSON.parse(captured?.body ?? "{}"), { threadId });
+    assert.doesNotMatch(captured?.body ?? "", /token|authorization|eyJ/i);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("rejects an assistant connection preparation for another thread", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    Response.json({
+      ready: true,
+      threadId: "OtherThread123456",
+      attemptId: "attempt_123456789012",
+    });
+
+  try {
+    await assert.rejects(prepareAgentConnection(threadId), /connection could not be prepared/i);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("preserves rate-limit details for a user-facing assistant error", async () => {
