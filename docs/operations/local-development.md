@@ -43,20 +43,20 @@ the authentication or agent endpoints. Switch to the `agent-development`
 branch before exercising the active chat flow; that branch changes only the
 release gate, so the endpoint and security instructions below remain the same.
 
-Vite development requires explicit assistant endpoints. To use the deployed
-Workers from `npm run dev`, put these values in the ignored repository-root
-`.env.local` file (the Vite configuration uses that root as its `envDir`):
+Vite development requires an explicit public-auth endpoint. To use the
+deployed Workers from `npm run dev`, put these values in the ignored
+repository-root `.env.local` file (the Vite configuration uses that root as
+its `envDir`):
 
 ```dotenv
 VITE_PUBLIC_AUTH_URL=https://public-auth.syn-forge.com
-VITE_PORTFOLIO_AGENT_URL=https://assistant.syn-forge.com
 VITE_TURNSTILE_SITE_KEY=<production widget site key>
 ```
 
-If either endpoint is missing or malformed in a development build, the FAB
-shows a configuration error instead of redirecting to production. Production
-builds use the explicit production defaults only when no production override
-is provided. The production Worker `BROWSER_ORIGINS` values are parameterized
+If the public-auth endpoint is missing or malformed in a development build, the
+FAB shows a configuration error instead of redirecting to production. Production
+builds use the explicit production default only when no production override is
+provided. The production Worker `BROWSER_ORIGINS` values are parameterized
 in the Wrangler files and include `http://localhost:5173` for this workflow;
 they are not wildcard origins.
 
