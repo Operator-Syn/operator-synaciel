@@ -150,12 +150,28 @@ Worker versions were `0e8338e1-d21d-4b5b-827b-cfc35ef0d559` (agent) and
 `c36318cf-942e-4382-89ca-92f8f756863a` (public-auth). No request ID or raw URL
 was retained in the note.
 
-### Checkpoint 5 — Soak and legacy retirement (separate approval)
+### Checkpoint 5 — Soak and legacy retirement (soak complete; deployment pending)
 
 Keep `/agent/token` available through the agreed soak window. Compare gateway
 success/failure diagnostics with the legacy path, then make a separate reviewed
 change to remove the legacy route and unused frontend configuration. Do not
 combine retirement with the first gateway release.
+
+Execution evidence (2026-09-04): the saved-auth browser harness ran three
+legacy-token and three cookie-gateway handshake rounds at 30-second intervals
+against one owned thread. Every legacy token issuance returned `200` and its
+direct WebSocket opened; every gateway preparation returned `200` and its
+cookie-authenticated WebSocket opened. No pre-open timeout or socket error was
+observed, no model prompt was sent, and token values stayed in process memory.
+This validates the handshake comparison across idle intervals; Cloudflare log
+telemetry and a guaranteed eviction observation were not collected.
+
+Retirement source change is applied and verified locally: `/agent/token`
+issuance, direct agent JWT verification, the unused agent-origin configuration,
+and `VITE_PORTFOLIO_AGENT_URL` are removed. The historical D1 token table is
+preserved without a destructive migration. Production Worker retirement is
+not deployed yet; the live rollback path remains until that separately
+authorized deployment completes.
 
 ## Rollback and stop rules
 
@@ -171,20 +187,21 @@ premature-close console error, or a mismatch between deployed Worker versions.
 
 | Claim | Status | Evidence | Scope and caveat |
 | --- | --- | --- | --- |
-| Active source path does not request a bearer token | `verified-repository` | `PortfolioAssistantFab.tsx`, `portfolioAssistantApi.ts`, web tests | Committed local checkout; legacy API remains for rollback |
+| Active source path does not request a bearer token | `verified-repository` | `PortfolioAssistantFab.tsx`, `portfolioAssistantApi.ts`, web tests | Committed local checkout; retirement source patch removes the legacy API |
 | Gateway strips browser credentials and arbitrary query values | `verified-live` | public-auth Worker `c36318cf-942e-4382-89ca-92f8f756863a`, authenticated prepare/upgrade probes, gateway tests | Full model/grounded-response smoke passed Checkpoint 4; no secret values recorded |
-| Agent validates internal identity and keeps public route separate | `verified-live-partial` | `portfolio-agent/src/index.ts`, internal route tests, authenticated gateway `101` smoke | End-to-end gateway proves the handoff; direct internal-key probing remains intentionally unexposed |
-| Agent hibernation is explicit and MCP is outside `onStart` | `verified-repository` and `verified-external` | `agent.ts`, identity tests, [Agents class docs](https://developers.cloudflare.com/agents/runtime/lifecycle/agent-class/), [DO WebSocket docs](https://developers.cloudflare.com/durable-objects/best-practices/websockets/) | Current source/build evidence; deployed eviction behavior pending |
+| Agent validates internal identity and keeps public route separate | `verified-live-partial` | `portfolio-agent/src/index.ts`, internal route tests, authenticated gateway `101` smoke | Source retirement removes the public route locally; live Worker remains pre-retirement until deployment |
+| Agent hibernation is explicit and MCP is outside `onStart` | `verified-repository` and `verified-external` | `agent.ts`, identity tests, [Agents class docs](https://developers.cloudflare.com/agents/runtime/lifecycle/agent-class/), [DO WebSocket docs](https://developers.cloudflare.com/durable-objects/best-practices/websockets/) | Current source/build evidence; deployed eviction behavior remains unobserved |
 | Query-string credential exposure is reduced | `verified-repository` and `verified-external` | redacted audit tests, [OWASP guidance](https://owasp.org/www-community/vulnerabilities/Information_exposure_through_query_strings_in_url) | Saved-auth production telemetry passed Checkpoint 4; no raw values recorded |
-| Agent production deployment | `verified-live` | Worker version `0e8338e1-d21d-4b5b-827b-cfc35ef0d559` deployed; denial probes passed and public-auth opened a native WebSocket through the internal service binding | Full model/grounded response passed Checkpoint 4; eviction behavior and soak remain pending Checkpoint 5; no secret values recorded |
-| Pages client release | `verified-live` | Active asset `index-cVeBBw76.js`, saved-auth desktop test, redacted browser audit, and Checkpoint 4 smoke | Paid model/grounded-response smoke passed Checkpoint 4; no raw URL retained |
+| Agent production deployment | `verified-live` | Worker version `0e8338e1-d21d-4b5b-827b-cfc35ef0d559` deployed; denial probes passed and public-auth opened a native WebSocket through the internal service binding | Live Worker remains pre-retirement; locally verified retirement patch awaits separately authorized deployment; no secret values recorded |
+| Pages client release | `verified-live` | Active asset `index-cVeBBw76.js`, saved-auth desktop test, redacted browser audit, and Checkpoint 4 smoke | Gateway client is live; retirement Worker deployment remains pending; no raw URL retained |
 
 ## Current handoff
 
-Checkpoint 0 is complete. Checkpoints 1–4 are complete for Worker deployment,
-gateway denial/preparation, no-model WebSocket handshake, Pages release,
-redacted browser audit evidence, and the approved authenticated
-model/grounded-response smoke. Durable Object eviction behavior and the soak
-remain pending Checkpoint 5. The source and smoke-test changes are committed
-locally; push, D1 migration application, secret rotation, legacy-route
-retirement, and production data changes remain separately gated.
+Checkpoint 0 is complete. Checkpoints 1–4 and the CP5 handshake soak are
+complete for Worker deployment, gateway denial/preparation, no-model and
+authenticated WebSocket checks, Pages release, redacted browser audit
+evidence, and the approved grounded-response smoke. The retirement patch is
+verified locally, but the production Worker still exposes the legacy path until
+its separately authorized deployment. Durable Object eviction observation,
+secret cleanup, push, D1 migration application, and production data changes
+remain separately gated.
