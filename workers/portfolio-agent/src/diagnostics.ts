@@ -9,6 +9,7 @@ const DIAGNOSTIC_PHASES = [
   "quota",
   "model",
   "settlement",
+  "thread-title",
 ] as const;
 
 const DIAGNOSTIC_OUTCOMES = ["started", "succeeded", "failed", "skipped", "rejected"] as const;
@@ -27,6 +28,13 @@ const DIAGNOSTIC_REASONS = [
   "completed",
   "not-required",
   "out-of-scope",
+  "missing-identity",
+  "missing-question",
+  "missing-answer",
+  "thread-not-untitled",
+  "empty-output",
+  "not-updated",
+  "database-update",
 ] as const;
 
 const QUOTA_DECISIONS = [
