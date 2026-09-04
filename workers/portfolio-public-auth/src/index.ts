@@ -42,6 +42,9 @@ const app = new Hono<{ Bindings: PublicAuthEnvironment }>();
 
 const DEFAULT_THREAD_MESSAGE_PAGE_SIZE = 24;
 const MAX_THREAD_MESSAGE_PAGE_SIZE = 50;
+const AGENT_IDENTITY_HEADER = "x-portfolio-agent-identity";
+const AGENT_REQUEST_ID_HEADER = "x-portfolio-agent-request-id";
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
 
 app.use("*", (c, next) => {
   const allowedOrigins = parseBrowserOrigins(c.env.BROWSER_ORIGINS);
@@ -81,7 +84,7 @@ function sameOrigin(request: Request, environment: PublicAuthEnvironment): boole
 function jsonError(
   code: string,
   message: string,
-  status: 400 | 401 | 403 | 404 | 409 | 429 | 502 | 503,
+  status: 400 | 401 | 403 | 404 | 409 | 426 | 429 | 502 | 503,
 ): Response {
   return Response.json({ error: { code, message } }, { status });
 }
@@ -316,13 +319,118 @@ async function loadControl(environment: PublicAuthEnvironment): Promise<AgentCon
 
 async function clearLegacyAutomaticPause(environment: PublicAuthEnvironment): Promise<void> {
   // The old estimated-neuron counter was only a local approximation and can
-  // disagree with the Workers AI usage dashboard. It must not block token
-  // issuance; administrator pauses use the control row's other reasons.
+  // disagree with the Workers AI usage dashboard. It must not block agent
+  // access; administrator pauses use the control row's other reasons.
   await environment.AUTH_DB.prepare(
     "UPDATE agent_control SET estimated_neurons = 0, paused = 0, pause_reason = NULL, updated_at = ?1 WHERE id = 1 AND pause_reason = 'daily-neuron-budget'",
   )
     .bind(Date.now())
     .run();
+}
+
+type AuthorizedAgentThread = {
+  session: SessionContext;
+  thread: ThreadRow;
+};
+
+async function authorizeAgentThread(
+  request: Request,
+  environment: PublicAuthEnvironment,
+  threadId: string,
+): Promise<AuthorizedAgentThread | Response> {
+  const session = await getSession(request, environment);
+  if (!session) return jsonError("AUTH_REQUIRED", "Sign in first.", 401);
+  if (session.session.turnstile_verified_at === null) {
+    return jsonError("TURNSTILE_REQUIRED", "Complete bot verification first.", 403);
+  }
+  await clearLegacyAutomaticPause(environment);
+  const control = await loadControl(environment);
+  if (!control || control.paused !== 0) {
+    return jsonError(
+      "AGENT_PAUSED",
+      control
+        ? "The shared Workers AI capacity is paused by an administrator. This is separate from each user's rolling 1-hour quota-unit budget."
+        : "The shared Workers AI capacity control is unavailable. Please try again later.",
+      503,
+    );
+  }
+  const thread = await ownedThread(environment, session.user.sub, threadId);
+  if (!thread) return jsonError("THREAD_NOT_FOUND", "That thread is not available.", 404);
+  return { session, thread };
+}
+
+function safeRequestId(value: string | undefined): string {
+  const trimmed = value?.trim() ?? "";
+  return REQUEST_ID_PATTERN.test(trimmed) ? trimmed : createOpaqueId();
+}
+
+type AgentGatewayDiagnosticOutcome = "started" | "succeeded" | "failed" | "rejected";
+
+function emitAgentGatewayDiagnostic(
+  phase: "ws-prepare" | "ws-gateway",
+  outcome: AgentGatewayDiagnosticOutcome,
+  requestId: string,
+  status?: number,
+): void {
+  const event: {
+    phase: "ws-prepare" | "ws-gateway";
+    outcome: AgentGatewayDiagnosticOutcome;
+    requestId: string;
+    status?: number;
+  } = { phase, outcome, requestId };
+  if (typeof status === "number" && Number.isInteger(status) && status >= 100 && status <= 599) {
+    event.status = status;
+  }
+  console.info(`[portfolio-public-auth:diagnostic] ${JSON.stringify(event)}`);
+}
+
+function isWebSocketUpgrade(request: Request): boolean {
+  return request.method === "GET" && request.headers.get("Upgrade")?.toLowerCase() === "websocket";
+}
+
+function serializeAgentIdentity(authorization: AuthorizedAgentThread): string {
+  return JSON.stringify({
+    sub: authorization.session.user.sub,
+    sid: authorization.session.session.id_hash,
+    tid: authorization.thread.id,
+    q: authorization.session.user.quota_epoch,
+  });
+}
+
+async function forwardAgentWebSocket(
+  request: Request,
+  environment: PublicAuthEnvironment,
+  authorization: AuthorizedAgentThread,
+  requestId: string,
+): Promise<Response> {
+  const sourceUrl = new URL(request.url);
+  const targetUrl = new URL(
+    `https://portfolio-agent.internal/internal/agents/portfolio-agent/${encodeURIComponent(authorization.thread.id)}`,
+  );
+  const connectionId = sourceUrl.searchParams.get("_pk");
+  if (connectionId && connectionId.length <= 128) targetUrl.searchParams.set("_pk", connectionId);
+
+  const headers = new Headers(request.headers);
+  headers.delete("Cookie");
+  headers.delete("Authorization");
+  headers.delete(AGENT_IDENTITY_HEADER);
+  headers.delete(AGENT_REQUEST_ID_HEADER);
+  headers.set(
+    "Authorization",
+    `Bearer ${getConfigString(environment, "AGENT", "INTERNAL", "KEY")}`,
+  );
+  headers.set(AGENT_IDENTITY_HEADER, serializeAgentIdentity(authorization));
+  headers.set(AGENT_REQUEST_ID_HEADER, requestId);
+
+  const forwardedHeaders: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    forwardedHeaders[key] = value;
+  });
+  const response = await environment.AGENT_WORKER.fetch(targetUrl.toString(), {
+    method: "GET",
+    headers: forwardedHeaders,
+  });
+  return response as unknown as Response;
 }
 
 app.get("/health", (c) => c.json({ ok: true, service: "portfolio-public-auth" }));
@@ -684,6 +792,46 @@ app.post("/agent/token", async (c) => {
     threadId: thread.id,
     agentUrl: `${c.env.AGENT_ORIGIN}/agents/portfolio-agent/${thread.id}`,
   });
+});
+
+app.post("/agent/prepare", async (c) => {
+  if (!sameOrigin(c.req.raw, c.env)) return c.body(null, 403);
+  const body = await readBody(c.req.raw);
+  const threadId = readString(body, "threadId", 64);
+  if (!threadId) return jsonError("THREAD_REQUIRED", "An assistant thread is required.", 400);
+  const authorization = await authorizeAgentThread(c.req.raw, c.env, threadId);
+  if (authorization instanceof Response) return authorization;
+  const attemptId = createOpaqueId();
+  emitAgentGatewayDiagnostic("ws-prepare", "succeeded", attemptId, 200);
+  return c.json({ ready: true, threadId: authorization.thread.id, attemptId });
+});
+
+app.get("/agents/portfolio-agent/:id", async (c) => {
+  if (!sameOrigin(c.req.raw, c.env)) return c.body(null, 403);
+  if (!isWebSocketUpgrade(c.req.raw)) {
+    return jsonError("WEBSOCKET_REQUIRED", "A WebSocket connection is required.", 426);
+  }
+  const authorization = await authorizeAgentThread(c.req.raw, c.env, c.req.param("id"));
+  if (authorization instanceof Response) return authorization;
+  const requestId = safeRequestId(c.req.query("rid"));
+  emitAgentGatewayDiagnostic("ws-gateway", "started", requestId);
+  try {
+    const response = await forwardAgentWebSocket(c.req.raw, c.env, authorization, requestId);
+    emitAgentGatewayDiagnostic(
+      "ws-gateway",
+      response.status === 101 || response.ok ? "succeeded" : "rejected",
+      requestId,
+      response.status,
+    );
+    return response;
+  } catch {
+    emitAgentGatewayDiagnostic("ws-gateway", "failed", requestId, 502);
+    return jsonError(
+      "AGENT_UNAVAILABLE",
+      "The assistant connection is temporarily unavailable. Please try again.",
+      502,
+    );
+  }
 });
 
 app.get("/threads/:id/export", async (c) => {
