@@ -116,6 +116,13 @@ verification and do not infer live behavior from a successful build.
 Pass milestone: the browser WebSocket URL contains no token parameter and the
 old generated traces/HAR artifacts remain excluded from the repository.
 
+Execution evidence (2026-09-04): the active Pages asset is
+`index-cVeBBw76.js`; its marker scan found no `/agent/token` and one
+`/agent/prepare`. The saved-auth desktop test passed. A redacted browser audit
+recorded a `wss://public-auth.syn-forge.com/...` WebSocket with only the query
+names `_pk` and `rid`, no unexpected event, and no premature-close or credential
+signal.
+
 ### Checkpoint 4 — Authenticated live smoke (paid/live approval gate)
 
 With the manually saved Google session and Turnstile completed, run only the
@@ -153,20 +160,20 @@ premature-close console error, or a mismatch between deployed Worker versions.
 
 | Claim | Status | Evidence | Scope and caveat |
 | --- | --- | --- | --- |
-| Active source path does not request a bearer token | `verified-repository` | `PortfolioAssistantFab.tsx`, `portfolioAssistantApi.ts`, web tests | Current uncommitted checkout; legacy API remains for rollback |
+| Active source path does not request a bearer token | `verified-repository` | `PortfolioAssistantFab.tsx`, `portfolioAssistantApi.ts`, web tests | Committed local checkout; legacy API remains for rollback |
 | Gateway strips browser credentials and arbitrary query values | `verified-live` | public-auth Worker `c36318cf-942e-4382-89ca-92f8f756863a`, authenticated prepare/upgrade probes, gateway tests | Full model/grounded-response smoke remains Checkpoint 4; no secret values recorded |
 | Agent validates internal identity and keeps public route separate | `verified-live-partial` | `portfolio-agent/src/index.ts`, internal route tests, authenticated gateway `101` smoke | End-to-end gateway proves the handoff; direct internal-key probing remains intentionally unexposed |
 | Agent hibernation is explicit and MCP is outside `onStart` | `verified-repository` and `verified-external` | `agent.ts`, identity tests, [Agents class docs](https://developers.cloudflare.com/agents/runtime/lifecycle/agent-class/), [DO WebSocket docs](https://developers.cloudflare.com/durable-objects/best-practices/websockets/) | Current source/build evidence; deployed eviction behavior pending |
 | Query-string credential exposure is reduced | `verified-repository` and `verified-external` | redacted audit tests, [OWASP guidance](https://owasp.org/www-community/vulnerabilities/Information_exposure_through_query_strings_in_url) | Browser/production telemetry pending Checkpoint 4 |
 | Agent production deployment | `verified-live` | Worker version `0e8338e1-d21d-4b5b-827b-cfc35ef0d559` deployed; denial probes passed and public-auth opened a native WebSocket through the internal service binding | Durable Object eviction behavior and full model response remain pending Checkpoints 4–5; no secret values recorded |
+| Pages client release | `verified-live` | Active asset `index-cVeBBw76.js`, saved-auth desktop test, and redacted browser audit | Paid model/grounded-response smoke remains Checkpoint 4; no raw URL retained |
 
 ## Current handoff
 
-Checkpoint 0 is complete. Checkpoints 1 and 2 are complete for deployment,
-denial, preparation, and no-model WebSocket handshake evidence. The active
-Pages asset still contains the legacy `/agent/token` marker and no
-`/agent/prepare` marker, so Checkpoint 3 remains unexecuted. Durable Object
-eviction behavior, the authenticated model/grounded-response smoke, and the
-soak remain pending Checkpoints 4–5. The source changes are intentionally
-uncommitted; Pages, D1 migration application, secret rotation, and production
-data changes remain separately gated.
+Checkpoint 0 is complete. Checkpoints 1–3 are complete for Worker
+deployment, gateway denial/preparation, no-model WebSocket handshake, Pages
+release, and redacted browser audit evidence. Durable Object eviction behavior,
+the authenticated model/grounded-response smoke, and the soak remain pending
+Checkpoints 4–5. The source changes are committed locally; push, D1 migration
+application, secret rotation, and production data changes remain separately
+gated.
