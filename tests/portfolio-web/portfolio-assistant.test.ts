@@ -213,7 +213,7 @@ test("mounts the portfolio assistant globally with bounded authenticated chat co
   assert.match(fabSource, /Response interrupted/);
   assert.match(fabSource, /Model capacity reached/);
   assert.match(fabSource, /maximum daily capacity/);
-  assert.match(fabSource, /useAssistantTokenGate/);
+  assert.match(fabSource, /useAssistantConnectionGate/);
   assert.match(fabSource, /Rolling budget reached/);
   assert.match(fabSource, /Shared capacity paused/);
   assert.match(fabSource, /AGENT_PAUSED/);
@@ -240,6 +240,12 @@ test("mounts the portfolio assistant globally with bounded authenticated chat co
   );
   assert.match(cssSource, /\.portfolio-assistant-access-error\s*\{/);
   assert.match(apiSource, /"\/agent\/token"/);
+  assert.match(apiSource, /"\/agent\/prepare"/);
+  assert.match(fabSource, /publicAuthOrigin/);
+  assert.match(fabSource, /rid/);
+  assert.match(fabSource, /maxRetries: 3/);
+  assert.match(fabSource, /connectionTimeout: 10_000/);
+  assert.doesNotMatch(fabSource, /token:\s*await getToken/);
   assert.match(apiSource, /"\/threads"/);
   assert.match(configSource, /VITE_PUBLIC_AUTH_URL/);
   assert.match(configSource, /VITE_PORTFOLIO_AGENT_URL/);
