@@ -201,9 +201,10 @@ event contract.
 ### Optional: run isolated local Workers
 
 If you do not want local Vite requests to use production authentication and
-agent state, switch the two Vite endpoint values to `http://localhost:8787` and
-`http://localhost:8788`, then run the local Workers and frontend in separate
-terminals:
+agent state, set `VITE_PUBLIC_AUTH_URL=http://localhost:8787` in the ignored
+`.env.local` file. No browser-facing agent URL is required because public-auth
+uses the local service binding. Then run the local Workers and frontend in
+separate terminals:
 
 ```bash
 npx wrangler d1 migrations apply portfolio-agent-auth --local \
@@ -213,20 +214,20 @@ npm run public-auth:dev
 npm run dev
 ```
 
-The local Wrangler profiles use `localhost:8787` for public-auth,
-`localhost:8788` for the agent, and a local service binding between them. They
-also pin the local compatibility date to the newest date supported by the
-installed Wrangler runtime; the production compatibility date remains
-unchanged. The shared local D1 database is keyed by the checked-in database ID
-but is not the remote database when `--local` is used. Do not apply this command
-with `--remote` as part of frontend testing.
+The local Wrangler profiles expose public-auth at `localhost:8787` and expose
+the agent only through their local service binding; `localhost:8788` is not a
+browser endpoint. They also pin the local compatibility date to the newest date
+supported by the installed Wrangler runtime; the production compatibility date
+remains unchanged. The shared local D1 database is keyed by the checked-in
+database ID but is not the remote database when `--local` is used. Do not apply
+this command with `--remote` as part of frontend testing.
 
 Create or fill the ignored `.dev.vars` files beside each Worker Wrangler
 configuration. This is needed only for the isolated local Worker profile.
-Use local-only values for the Google client credentials, Turnstile secret,
-ES256 JWK pair, and shared internal key; public-auth needs the private JWK and
-the agent needs the matching public JWK. Never copy those values into the
-frontend `.env` file or commit either `.dev.vars` file.
+Use local-only values for the Google client credentials, Turnstile secret, and
+shared internal key. Active Workers do not need an agent-token signing key.
+Never copy those values into the frontend `.env` file or commit either
+`.dev.vars` file.
 
 For the isolated local Worker profile, the Google OAuth client must allow
 `http://localhost:5173` as an authorized JavaScript origin and
