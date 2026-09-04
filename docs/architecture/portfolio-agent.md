@@ -17,8 +17,9 @@ questions about the Syn-Forge portfolio. It is split into two Worker
 workspaces:
 
 - `workers/portfolio-public-auth/` owns Google OIDC sign-in, Turnstile
-  verification, sessions, thread ownership, quotas, admin controls, and
-  short-lived WebSocket access tokens.
+  verification, sessions, thread ownership, quotas, admin controls, and the
+  cookie-authenticated assistant WebSocket gateway. The legacy short-lived token
+  issuer remains only as a rollout and rollback compatibility path.
 - `workers/portfolio-agent/` owns the stateful `AIChatAgent` Durable Object,
   Workers AI calls, MCP tool access, and sanitized thread export
   and deletion.
@@ -27,24 +28,30 @@ The frontend mounts
 [`PortfolioAssistantFab`](../../apps/portfolio-web/src/components/portfolioAssistant/PortfolioAssistantFab.tsx)
 from the global application shell. Main intentionally ships the FAB as a
 coming-soon teaser: the explicit availability gate in
-`portfolioAssistantAvailability.ts` returns before any session or token request.
-The `agent-development` branch switches that gate to `active` for continued
-chat work; it is not a production release branch. When active, the assistant
-connects to the configured `VITE_PORTFOLIO_AGENT_URL` only after the public-auth
-Worker has issued a one-time scoped token. Production has an explicit assistant
-origin; development requires a local endpoint override and never falls back to
-production. The frontend resolves the one-time token through a bounded token
-gate before mounting `useAgent`, preserving the auth Worker HTTP status and
-error code for the user-facing state. A failed token request is latched until
-the visitor explicitly retries, so transient auth or service failures cannot
-create a reconnect/request storm. Persisted history is loaded independently of
-the token gate, so the visitor can still read an owned thread while chat access
-is unavailable. Once access and history are ready, the token query is resolved
-by `useAgent` under a `Suspense` boundary. Its four-minute cache is shorter than
-the five-minute token lifetime; the Agents SDK invalidates that cache when the
-WebSocket reconnects, so a one-time token is not reused for a new connection.
-The token is passed in the WebSocket query because a browser WebSocket cannot
-set a custom Authorization header.
+`portfolioAssistantAvailability.ts` returns before any session or connection
+request. The `agent-development` branch switches that gate to `active` for
+continued chat work; it is not a production release branch.
+
+When active, the browser first calls the ownership-checked public-auth
+`POST /agent/prepare` route with its HttpOnly session cookie. It then mounts
+`useAgent` with `public-auth.syn-forge.com` as the WebSocket host and sends only
+an opaque `rid` request identifier (plus the SDK's optional `_pk` connection
+key). The browser URL never contains a bearer token or JWT. Public-auth
+revalidates the session, Turnstile state, control state, and thread ownership on
+the WebSocket upgrade, then forwards the upgrade over its private `AGENT_WORKER`
+service binding to the agent's internal route. The gateway strips browser
+cookies, authorization headers, and arbitrary query parameters before the
+agent sees the request; it supplies a trusted identity handoff and bounded
+request ID instead.
+
+Production has explicit assistant origins; development requires local endpoint
+overrides and never falls back to production. `VITE_PORTFOLIO_AGENT_URL` is
+retained for the legacy direct-token route during rollout but is not used by
+the active browser connection. Persisted history is loaded independently of the
+connection gate, so a visitor can still read an owned thread while chat access
+is unavailable. A failed preparation or connection is latched until the
+visitor explicitly retries, and `useAgent` has bounded reconnects and a
+connection timeout so a stale socket cannot create a request storm.
 
 ## Thread history
 
@@ -197,28 +204,33 @@ authenticated consumer of it.
 ## WebSocket startup and interruption recovery
 
 Portfolio MCP is an evidence dependency, not a prerequisite for opening an
-authenticated assistant session. `PortfolioAgent.onStart` uses
-[`ensurePortfolioMcpConnection`](../../workers/portfolio-agent/src/mcp.ts) to
-attempt the configured connection. The SDK's persisted retry policy uses
-three total attempts (the initial attempt plus two retries) for restored
-connections. Its initial add/discovery path is direct, so the helper adds
-the same bounded three-attempt recovery at startup with 250 ms then 500 ms
-exponential backoff, capped at 2 seconds. After a failed add it removes
-portfolio servers in either `failed` or `connected` state: discovery errors
-can leave the transport marked connected even though no usable catalog exists.
-If state inspection or cleanup fails, or no recoverable portfolio server is
-present, it stops immediately and records only a bounded error or timeout
-outcome. If the upstream is still unavailable after the bounded attempts,
-Durable Object startup
-continues and the next turn receives the bounded evidence-unavailable response
-instead of a failed WebSocket handshake.
+authenticated assistant session. `PortfolioAgent` explicitly opts into Durable
+Object WebSocket hibernation with `static options = { hibernate: true,
+sendIdentityOnConnect: false }`.
+Its `onStart` hook performs only synchronous SQLite schema and identity
+rehydration; it does not perform network I/O or wait for MCP discovery. That
+keeps a restored or hibernated object from coupling the browser upgrade to an
+upstream service.
+
+MCP is connected lazily when the first model turn needs the catalog. The
+[`ensurePortfolioMcpConnection`](../../workers/portfolio-agent/src/mcp.ts)
+helper uses three total attempts (the initial attempt plus two retries) with
+bounded backoff. After a failed add it removes portfolio servers in either
+`failed` or `connected` state because discovery errors can leave the transport
+marked connected without a usable catalog. If recovery still fails, the socket
+remains established and that turn receives the bounded evidence-unavailable
+response instead of a failed WebSocket handshake.
 
 This boundary matters because an exception from `onStart` is caught by the
 Agents SDK lifecycle as a WebSocket setup failure (close code 1011). Browsers
 surface that as “WebSocket is closed before the connection is established,” and
-the client may then log stale-socket send warnings while it retries. MCP failure must therefore never be allowed to strand a thread or make a thread
-look locked. A failed model stream can still be retried, and a new question uses
-the complete retained thread context.
+the client may then log stale-socket send warnings while it retries. The
+public-auth gateway and agent now emit only allowlisted lifecycle diagnostics
+with a bounded opaque request ID; the Playwright audit retains only event types
+and query-parameter names. MCP failure
+must never be allowed to strand a thread or make a thread look locked. A failed
+model stream can still be retried, and a new question uses the complete retained
+thread context.
 
 ## Full-context requests and external bounds
 
