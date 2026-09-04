@@ -684,11 +684,15 @@ test("keeps ID placeholders until completion and disambiguates duplicate titles"
     ],
   );
 
-  const source = await readFile(fabPath, "utf8");
+  const [source, apiSource] = await Promise.all([
+    readFile(fabPath, "utf8"),
+    readFile(apiPath, "utf8"),
+  ]);
   assert.match(source, /formatAssistantThreadOptions\(threads\)/);
   assert.doesNotMatch(source, /formatAssistantThreadTitle|titleCandidate|onThreadTitlePreview/);
   assert.match(source, /if \(shouldNameThread\) onThreadTitleSettled\(\)/);
   assert.match(source, /key=\{activeThreadId\}/);
+  assert.match(apiSource, /listThreads\(\): Promise[\s\S]*?requestJson[\s\S]*?cache: "no-store"/);
 });
 
 test("allows another thread only after the current thread has activity", () => {
