@@ -170,9 +170,7 @@ manual, reviewed operations and are not performed by GitHub Actions.
    use the production Workers, allow `localhost` in that widget's hostname
    list; expose only its site key as the frontend build variable
    VITE_TURNSTILE_SITE_KEY.
-5. Generate an ES256 JWK pair outside the repository. Store the private JWK in
-   public-auth, the public JWK in portfolio-agent, and rotate them together.
-6. Set the shared internal service-binding key in both Workers. Keep all
+5. Set the shared internal service-binding key in both Workers. Keep all
    runtime values out of committed .env files, logs, and workflow YAML. The
    production Wrangler variables also parameterize `BROWSER_ORIGINS` (including
    the exact localhost development origin) and set
@@ -209,7 +207,7 @@ CLOUDFLARE_ACCOUNT_ID. Use an account-scoped token based on Cloudflare's
 Edit Cloudflare Workers template and restrict it to this account.
 
 The workflow does not upload Pages, deploy auth-worker, pass runtime Google/
-Turnstile/JWK/service-binding values, or apply any D1 migration. A dry run
+Turnstile/service-binding values, or apply any D1 migration. A dry run
 validates the selected Wrangler configuration; it is not live verification.
 
 Cloudflare Pages remains on its existing Git integration and starts its own
@@ -739,7 +737,7 @@ state.
 - [ ] auth-worker exists and is reachable through the API Worker binding.
 - [ ] D1 database and R2 bucket names match wrangler.toml.
 - [ ] API Worker secrets exist and are scoped appropriately.
-- [ ] Public-auth D1, Google OAuth, Turnstile, ES256 JWK, and internal key
+- [ ] Public-auth D1, Google OAuth, Turnstile, and internal key
       provisioning is complete.
 - [ ] npm ci completed from the repository root.
 - [ ] GitHub Actions secrets are configured for Worker deployment.
