@@ -197,6 +197,12 @@ enforces commit policy at commit time; the Codex hook provides immediate
 feedback during an agent turn. It does not run for arbitrary shell commands,
 so manual shell writes should be followed by the explicit Biome command.
 
+The `SessionStart` and `SubagentStart` hooks also run a bounded, read-only Nix
+dev-shell check. They surface compatible `flake.nix` guidance and report
+missing or unconfirmed compatibility without entering the shell or rewriting
+commands; see [[operations/local-development|Local development]] for the
+current flake's runtime limitation.
+
 ## Tool output contracts
 
 All thirteen repository MCP tools advertise a native `outputSchema` in
