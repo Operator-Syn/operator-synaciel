@@ -249,41 +249,44 @@ transcript owns the single vertical scroll surface. The chat wrapper and message
 list stay in normal flow inside that region, so a long message can never be
 split by a sticky footer or paint below it. Transcript messages and source links
 wrap at any safe break, and the transcript uses the shared neutral scrollbar
-treatment without horizontal overflow. At narrow widths the toolbar reflows its
-controls, and below `400px` the thread selector takes its own row so enlarged
-text does not push the action targets out of the panel. The toolbar remains
-visible above the transcript with an opaque neutral backing and ruled lower
-edge; the composer is a fixed-height footer outside the scroll region, so the
-next question stays reachable without a nested scrollbar. The authenticated
-session is a block-sized containment surface so the transcript remains bounded
-through long histories and reconnect fallbacks. The toolbar and composer paint
-full-width opaque bands with the shared surface token, preventing transcript
-text from bleeding through their layers. User messages align to the trailing
-edge with the signal-soft surface; assistant messages align to the leading edge
-on a raised neutral surface. On first load, the transcript moves to the latest
-message while preserving a visitor's deliberate scroll position on subsequent
-updates. While an assistant response is streaming, markdown updates are
-coalesced into small visual commits and a restrained inline caret replaces a
-repeated card or scroll animation. The transcript follows only while it is
-pinned to the bottom; an upward reader gesture pauses following and exposes a
-keyboard-accessible **Jump to latest assistant response** control. The composer
-uses the scoped `--assistant-composer-min-block-size` token
-(`4.75rem` above `400px`, `4.5rem` at or below `400px`) and lets the textarea
-grow from its empty/two-row baseline to an `8rem` cap. Native vertical resizing
-is disabled; overflow is hidden until the cap is reached so an empty composer
-does not expose a scrollbar. Pressing Enter submits the current question;
-Shift+Enter inserts a new line, and Enter during IME composition is left to the
-composing input method.
+treatment without horizontal overflow. At phone widths or short windows
+(`max-width: 640px` or `max-height: 560px`), the authenticated assistant opens
+as a safe-area-aware full-screen dialog. Its header is compact, the thread
+selector and actions stay on one row, and the quota is a closed compact
+disclosure so the transcript remains the dominant region. The mobile dialog has
+one visible close action and temporarily removes the floating trigger; the
+desktop compact and explicitly expanded presentations remain available above
+that responsive boundary. The toolbar remains visible above the transcript with
+an opaque neutral backing and ruled lower edge; the composer is a fixed-height
+footer outside the scroll region, so the next question stays reachable without a
+nested scrollbar. The authenticated session is a block-sized containment
+surface so the transcript remains bounded through long histories and reconnect
+fallbacks. The toolbar and composer paint full-width opaque bands with the
+shared surface token, preventing transcript text from bleeding through their
+layers. User messages align to the trailing edge with the signal-soft surface;
+assistant messages align to the leading edge on a raised neutral surface. On
+first load, the transcript moves to the latest message while preserving a
+visitor's deliberate scroll position on subsequent updates. While an assistant
+response is streaming, markdown updates are coalesced into small visual commits
+and a restrained inline caret replaces a repeated card or scroll animation. The
+transcript follows only while it is pinned to the bottom; an upward reader
+gesture pauses following and exposes a keyboard-accessible **Jump to latest
+assistant response** control. The composer uses the scoped
+`--assistant-composer-min-block-size` token (`4.75rem` above `400px`, `4.5rem` at
+or below `400px`) and lets the textarea grow from its empty/two-row baseline to
+an `8rem` cap. Native vertical resizing is disabled; overflow is hidden until
+the cap is reached so an empty composer does not expose a scrollbar. Pressing
+Enter submits the current question; Shift+Enter inserts a new line, and Enter
+during IME composition is left to the composing input method.
 When the active transcript has no visible messages, it also offers a small set of
 keyboard-accessible starter questions; selecting one submits it through the same
-composer path as typed text.
-If the authenticated archive has no threads, the frontend provisions one
-automatically and shows a responsive, non-actionable placeholder while it is
-being prepared; it does not offer a duplicate New thread action in that state.
-When motion is enabled, opening the panel uses the overlay-enter token and the
-FAB, toolbar actions, send action, and composer focus use short signal-color and
-pressed-state feedback; all of those effects become immediate when reduced motion
-is active.
+composer path as typed text. If the authenticated archive has no threads, the
+frontend provisions one automatically and shows a responsive, non-actionable
+placeholder while it is being prepared; it does not offer a duplicate New thread
+action in that state. When motion is enabled, opening the panel uses the
+overlay-enter token and the FAB, toolbar actions, send action, and composer focus
+use short signal-color and pressed-state feedback; all of those effects become
+immediate when reduced motion is active.
 
 Destructive thread actions use the reusable `Modal` primitive rather than
 `window.alert` or `window.confirm`. The modal renders through a portal, locks
