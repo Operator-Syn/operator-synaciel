@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { assertPagesBuildHasTurnstileSiteKey } from "../../apps/portfolio-web/src/components/portfolioAssistant/portfolioAssistantBuildGuard.ts";
 import { resolvePortfolioAssistantConfig } from "../../apps/portfolio-web/src/components/portfolioAssistant/portfolioAssistantConfig.ts";
 
 test("requires an explicit local public-auth endpoint instead of falling back to production", () => {
@@ -40,4 +41,31 @@ test("rejects a non-http public-auth endpoint override", () => {
 
   assert.equal(config.publicAuthOrigin, null);
   assert.match(config.configurationError ?? "", /VITE_PUBLIC_AUTH_URL/);
+});
+
+test("fails a Cloudflare Pages production build without a Turnstile site key", () => {
+  assert.throws(
+    () =>
+      assertPagesBuildHasTurnstileSiteKey({
+        isPagesBuild: true,
+        mode: "production",
+      }),
+    /VITE_TURNSTILE_SITE_KEY/,
+  );
+});
+
+test("accepts a configured Pages key and leaves non-Pages builds permissive", () => {
+  assert.doesNotThrow(() =>
+    assertPagesBuildHasTurnstileSiteKey({
+      isPagesBuild: true,
+      mode: "production",
+      siteKey: "0x4AAAA-example-site-key",
+    }),
+  );
+  assert.doesNotThrow(() =>
+    assertPagesBuildHasTurnstileSiteKey({
+      isPagesBuild: false,
+      mode: "production",
+    }),
+  );
 });
