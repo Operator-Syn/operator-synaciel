@@ -149,13 +149,15 @@ token. The session cookie and server-side ownership check are the access
 boundary, while `AGENT_INTERNAL_KEY` protects the auth-to-agent
 service binding. This transcript route is read-only and does not add a D1
 migration: D1 stores thread ownership metadata, and the agent Durable Object
-SQLite remains the message source of truth. The existing nullable `threads.title`
-column stores the automatic first-question label; `GET /threads` returns it and
-`POST /threads` returns `title: null` for a new placeholder thread. The agent
-owns the one-time title write after the authenticated message arrives, while the
-frontend keeps the ID fallback and reconciles its immediate preview from the
-thread list. Existing untitled threads are not backfilled and are named on their
-next user turn.
+SQLite remains the message source of truth. The nullable `threads.title` column
+stores a bounded agent-generated summary after a successful evidence-backed reply;
+`GET /threads` returns it and `POST /threads` returns `title: null` for a new
+placeholder thread. The agent writes the title only when the value is still empty,
+and the frontend keeps the ID fallback while the reply is in flight, then refreshes
+the authoritative thread list after completion. Existing untitled threads are not
+backfilled; they are named on their next successful completion. Duplicate generated
+titles are disambiguated in the selector with the shortest unique thread-ID prefix.
+No D1 migration or transcript rewrite is required.
 
 ## Thread creation guard
 
