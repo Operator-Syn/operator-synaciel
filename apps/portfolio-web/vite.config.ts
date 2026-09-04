@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 import Sitemap from "vite-plugin-sitemap";
+import { assertPagesBuildHasTurnstileSiteKey } from "./src/components/portfolioAssistant/portfolioAssistantBuildGuard.ts";
 
 const appRoot = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(appRoot, "../..");
@@ -85,6 +86,11 @@ async function fetchSnippetRoutes(apiUrl: string): Promise<string[]> {
 
 export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, repositoryRoot, "");
+  assertPagesBuildHasTurnstileSiteKey({
+    isPagesBuild: process.env.CF_PAGES === "1",
+    mode,
+    siteKey: env.VITE_TURNSTILE_SITE_KEY,
+  });
   const snippetRoutes = await fetchSnippetRoutes(env.VITE_API_URL);
 
   return {

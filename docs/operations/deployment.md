@@ -409,16 +409,26 @@ project with:
 | Production branch | The branch selected for production in Pages |
 | Production custom domain | syn-forge.com |
 
-Set this production Pages environment variable. It is a public build-time URL,
-not a secret:
+Set these production Pages environment variables. They are public build-time
+values, not secrets:
 
 ~~~text
 VITE_API_URL=https://personal-portfolio.syn-forge.com/api
+VITE_TURNSTILE_SITE_KEY=<existing Turnstile site key>
 ~~~
 
-The Vite configuration loads environment values from the repository root and
-the frontend requests routes beneath VITE_API_URL. Do not set this to the MCP
-endpoint.
+If preview deployments are enabled, set `VITE_TURNSTILE_SITE_KEY` in the
+Preview environment too. The Vite configuration loads environment values from
+the repository root and the frontend requests routes beneath VITE_API_URL. Do
+not set this to the MCP endpoint.
+
+`VITE_TURNSTILE_SITE_KEY` is safe to expose in the browser bundle because it is
+the public widget identifier. Keep the paired `TURNSTILE_SECRET_KEY` only as a
+secret binding on the `portfolio-public-auth` Worker; never put that secret in
+Pages variables, `.env`, Wrangler `vars`, source, or workflow YAML. The Vite
+configuration fails a Cloudflare Pages production-mode build when the public
+site key is absent, preventing an unconfigured assistant gate from being
+published silently.
 
 Pages discovers apps/portfolio-web/functions/. The checked-in
 apps/portfolio-web/public/_routes.json is copied into the build output and
