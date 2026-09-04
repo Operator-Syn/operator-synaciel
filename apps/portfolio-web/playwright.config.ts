@@ -17,10 +17,13 @@ if (!existsSync(authStatePath)) {
 export default defineConfig({
   testDir: resolve(repositoryRoot, "tests/portfolio-web"),
   testMatch: "**/*.spec.ts",
+  outputDir: resolve(repositoryRoot, "playwright/.artifacts"),
+  reporter: "line",
+  workers: 1,
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: process.env.E2E_BASE_URL?.trim() || "http://localhost:5173",
     storageState: authStatePath,
-    trace: "retain-on-failure",
+    trace: "off",
   },
   projects: [
     { name: "phone-small", use: { viewport: { width: 320, height: 568 }, hasTouch: true } },
