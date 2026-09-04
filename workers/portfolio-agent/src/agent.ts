@@ -46,18 +46,12 @@ import {
 import {
   asToolSet,
   buildSystemPrompt,
-  buildThreadTitlePrompt,
   estimateModelTokens,
-  firstUserQuestion,
-  formatThreadTitle,
   isUnsafeQuestion,
   latestUserQuestion,
   type McpTool,
   mergeAdjacentUserMessages,
   stripAssistantReasoning,
-  THREAD_TITLE_OUTPUT_TOKEN_LIMIT,
-  THREAD_TITLE_PROVISIONAL_OUTPUT_TOKEN_ALLOWANCE,
-  THREAD_TITLE_SYSTEM_PROMPT,
 } from "./limits.ts";
 import {
   ensurePortfolioMcpConnection,
@@ -74,6 +68,7 @@ import {
   settleRollingTokenUsage,
 } from "./quota.ts";
 import { boundPortfolioAnswerStream, coalesceToolInputDeltas } from "./stream.ts";
+import { persistGeneratedThreadTitle as persistThreadTitle } from "./thread-title.ts";
 
 export type PortfolioAgentMessagePageOptions = {
   before?: string;
@@ -230,72 +225,35 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
   private async persistGeneratedThreadTitle(
     answer: string,
     abortSignal?: AbortSignal,
+    requestId?: string,
   ): Promise<void> {
-    const identity = this.identity;
-    const question = firstUserQuestion(this.messages);
-    if (!identity || !question || !answer.trim() || abortSignal?.aborted) return;
-
-    try {
-      const thread = await this.environment.AUTH_DB.prepare(
-        "SELECT title FROM threads WHERE id = ?1 AND sub = ?2 AND deleted_at IS NULL AND (title IS NULL OR title = '')",
-      )
-        .bind(identity.tid, identity.sub)
-        .first<{ title: string | null }>();
-      if (!thread) return;
-
-      const titleMessages: ModelMessage[] = [
-        {
-          role: "user",
-          content: buildThreadTitlePrompt(question, answer),
-        },
-      ];
-      const titleQuota = await consumeRollingQuota(
-        this.environment.AUTH_DB,
-        identity.sub,
-        estimateQuotaUnits(
-          estimateModelTokens(THREAD_TITLE_SYSTEM_PROMPT, titleMessages),
-          THREAD_TITLE_PROVISIONAL_OUTPUT_TOKEN_ALLOWANCE,
-        ),
-      );
-      if (!titleQuota.allowed) return;
-
-      const titleResult = await generateText({
-        model: createWorkersAI({ binding: this.environment.AI as never })(MODEL_ID, {
-          sessionAffinity: this.sessionAffinity,
+    await persistThreadTitle({
+      database: this.environment.AUTH_DB,
+      identity: this.identity,
+      messages: this.messages,
+      answer,
+      abortSignal,
+      requestId,
+      diagnosticSink: this.diagnosticSink,
+      generateTitle: async ({
+        system,
+        messages,
+        maxOutputTokens,
+        reasoning,
+        abortSignal: titleAbortSignal,
+      }) =>
+        generateText({
+          model: createWorkersAI({ binding: this.environment.AI as never })(MODEL_ID, {
+            sessionAffinity: this.sessionAffinity,
+          }),
+          system,
+          messages,
+          maxOutputTokens,
+          maxRetries: 1,
+          reasoning,
+          abortSignal: titleAbortSignal,
         }),
-        system: THREAD_TITLE_SYSTEM_PROMPT,
-        messages: titleMessages,
-        maxOutputTokens: THREAD_TITLE_OUTPUT_TOKEN_LIMIT,
-        maxRetries: 1,
-        abortSignal,
-      });
-      try {
-        const settled = await settleRollingTokenUsage(
-          this.environment.AUTH_DB,
-          titleQuota.reservationId,
-          titleResult.usage,
-        );
-        if (!settled) {
-          console.error(
-            "[portfolio-agent] thread title usage settlement did not update reservation",
-          );
-        }
-      } catch (error) {
-        const errorType = error instanceof Error ? error.name : typeof error;
-        console.error(`[portfolio-agent] thread title usage settlement failed (${errorType})`);
-      }
-
-      const title = formatThreadTitle(titleResult.text);
-      if (!title) return;
-      await this.environment.AUTH_DB.prepare(
-        "UPDATE threads SET title = ?1, updated_at = ?2 WHERE id = ?3 AND sub = ?4 AND deleted_at IS NULL AND (title IS NULL OR title = '')",
-      )
-        .bind(title, Date.now(), identity.tid, identity.sub)
-        .run();
-    } catch (error) {
-      const errorType = error instanceof Error ? error.name : typeof error;
-      console.error(`[portfolio-agent] generated thread title failed (${errorType})`);
-    }
+    });
   }
 
   private staticResponse(message: string): Response {
@@ -568,7 +526,7 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
           }
         }
         if (modelSucceeded) {
-          await this.persistGeneratedThreadTitle(text, options?.abortSignal);
+          await this.persistGeneratedThreadTitle(text, options?.abortSignal, options?.requestId);
         }
         try {
           await this.environment.AUTH_DB.prepare(
