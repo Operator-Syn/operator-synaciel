@@ -4,7 +4,9 @@ import { resolve } from "node:path";
 import { test } from "node:test";
 import {
   AGENT_IDENTITY_HEADER,
+  AGENT_REQUEST_ID_HEADER,
   encodeAgentIdentity,
+  normalizeAgentRequestId,
   parseAgentIdentity,
 } from "../../workers/portfolio-agent/src/identity.ts";
 
@@ -16,7 +18,10 @@ test("round-trips the verified identity handoff used after history-first startup
   const header = encodeAgentIdentity(identity);
 
   assert.equal(AGENT_IDENTITY_HEADER, "x-portfolio-agent-identity");
+  assert.equal(AGENT_REQUEST_ID_HEADER, "x-portfolio-agent-request-id");
   assert.deepEqual(parseAgentIdentity(header, identity.tid), identity);
+  assert.equal(normalizeAgentRequestId("attempt_123456789012"), "attempt_123456789012");
+  assert.equal(normalizeAgentRequestId("not safe"), undefined);
 });
 
 test("rejects malformed or cross-thread identity handoffs", () => {
@@ -32,8 +37,15 @@ test("passes verified claims to the DO when history initialized it first", async
     readFile(workerPath, "utf8"),
   ]);
 
+  assert.match(agentSource, /static options = \{ hibernate: true, sendIdentityOnConnect: false \}/);
+  const onStartSource = agentSource.slice(
+    agentSource.indexOf("async onStart("),
+    agentSource.indexOf("  onConnect("),
+  );
+  assert.doesNotMatch(onStartSource, /ensureMcpConnection/);
   assert.match(agentSource, /onConnect\([\s\S]*?parseAgentIdentity\(/);
   assert.match(agentSource, /persistIdentity\(identity\)/);
+  assert.match(agentSource, /AGENT_REQUEST_ID_HEADER/);
   assert.match(workerSource, /onBeforeConnect:[\s\S]*?AGENT_IDENTITY_HEADER/);
   assert.match(workerSource, /props: agentProps/);
 });

@@ -54,11 +54,11 @@ import {
   getAssistantQuota,
   getSession,
   getThreadMessagesPage,
-  issueAgentToken,
   listThreads,
   type PortfolioAssistantQuota,
   PortfolioAssistantRequestError,
   type PublicSession,
+  prepareAgentConnection,
   signInUrl,
   signOut,
   verifyTurnstile,
@@ -109,7 +109,7 @@ declare global {
   }
 }
 
-const { agentOrigin, turnstileSiteKey } = portfolioAssistantConfig;
+const { publicAuthOrigin, turnstileSiteKey } = portfolioAssistantConfig;
 const AGENT_QUERY_CACHE_TTL_MS = 4 * 60 * 1_000;
 const MODEL_CAPACITY_MESSAGE =
   "The model is at its maximum daily capacity. Please try again at 00:00 UTC.";
@@ -963,28 +963,28 @@ function AssistantAccessError({ error, onRetry }: { error: unknown; onRetry: () 
   );
 }
 
-function useAssistantTokenGate(threadId: string) {
+function useAssistantConnectionGate(threadId: string) {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState<unknown>(null);
-  const tokenRef = useRef<string | null>(null);
+  const attemptIdRef = useRef<string | null>(null);
   const requestRef = useRef<Promise<string> | null>(null);
   const terminalErrorRef = useRef<unknown>(null);
 
-  const ensureToken = useCallback(async () => {
+  const ensureAttemptId = useCallback(async () => {
     if (terminalErrorRef.current) throw terminalErrorRef.current;
-    if (tokenRef.current) return tokenRef.current;
+    if (attemptIdRef.current) return attemptIdRef.current;
 
     if (!requestRef.current) {
-      requestRef.current = issueAgentToken(threadId)
+      requestRef.current = prepareAgentConnection(threadId)
         .then((result) => {
-          tokenRef.current = result.token;
-          return result.token;
+          attemptIdRef.current = result.attemptId;
+          return result.attemptId;
         })
-        .catch((tokenError: unknown) => {
-          terminalErrorRef.current = tokenError;
-          setError(tokenError);
+        .catch((preparationError: unknown) => {
+          terminalErrorRef.current = preparationError;
+          setError(preparationError);
           setStatus("error");
-          throw tokenError;
+          throw preparationError;
         })
         .finally(() => {
           requestRef.current = null;
@@ -994,15 +994,15 @@ function useAssistantTokenGate(threadId: string) {
     return requestRef.current;
   }, [threadId]);
 
-  const takeToken = useCallback(async () => {
-    const token = await ensureToken();
-    if (tokenRef.current === token) tokenRef.current = null;
-    return token;
-  }, [ensureToken]);
+  const takeAttemptId = useCallback(async () => {
+    const attemptId = await ensureAttemptId();
+    if (attemptIdRef.current === attemptId) attemptIdRef.current = null;
+    return attemptId;
+  }, [ensureAttemptId]);
 
   useEffect(() => {
     let mounted = true;
-    void ensureToken()
+    void ensureAttemptId()
       .then(() => {
         if (mounted) setStatus("ready");
       })
@@ -1010,19 +1010,19 @@ function useAssistantTokenGate(threadId: string) {
     return () => {
       mounted = false;
     };
-  }, [ensureToken]);
+  }, [ensureAttemptId]);
 
   const retry = useCallback(() => {
     terminalErrorRef.current = null;
-    tokenRef.current = null;
+    attemptIdRef.current = null;
     setError(null);
     setStatus("loading");
-    void ensureToken()
+    void ensureAttemptId()
       .then(() => setStatus("ready"))
       .catch(() => undefined);
-  }, [ensureToken]);
+  }, [ensureAttemptId]);
 
-  return { error, retry, status, takeToken };
+  return { error, retry, status, takeAttemptId };
 }
 
 function AssistantUserAvatar({ pictureUrl }: { pictureUrl: string | null }) {
@@ -1774,7 +1774,7 @@ function AssistantQuotaStatus({
 }
 
 function AssistantChat({
-  getToken,
+  getAttemptId,
   hasOlderMessages,
   initialMessages,
   isLoadingOlder,
@@ -1788,7 +1788,7 @@ function AssistantChat({
   userDisplayName,
   userPictureUrl,
 }: {
-  getToken: () => Promise<string>;
+  getAttemptId: () => Promise<string>;
   hasOlderMessages: boolean;
   initialMessages: UIMessage[];
   isLoadingOlder: boolean;
@@ -1802,16 +1802,18 @@ function AssistantChat({
   userDisplayName: string;
   userPictureUrl: string | null;
 }) {
-  const query = useCallback(async () => ({ token: await getToken() }), [getToken]);
+  const query = useCallback(async () => ({ rid: await getAttemptId() }), [getAttemptId]);
   const queryDeps = useMemo(() => [threadId], [threadId]);
   const loadInitialMessages = useCallback(async () => initialMessages, [initialMessages]);
   const agent = useAgent({
     agent: "PortfolioAgent",
     name: threadId,
-    host: agentOrigin ?? "",
+    host: publicAuthOrigin ?? "",
     query,
     queryDeps,
     cacheTtl: AGENT_QUERY_CACHE_TTL_MS,
+    maxRetries: 3,
+    connectionTimeout: 10_000,
     onConnectionError: () => {
       onConnectionError(
         "The assistant connection was interrupted. Your thread is still available; try again.",
@@ -2187,19 +2189,28 @@ function AssistantChatBoundary({
   onThreadTitleSettled: () => void;
   shouldNameThread: boolean;
   threadId: string;
-  onConnectionError: (message: string) => void;
+  onConnectionError: (message: string | null) => void;
   userDisplayName: string;
   userPictureUrl: string | null;
 }) {
-  const { error, retry, status, takeToken } = useAssistantTokenGate(threadId);
+  const { error, retry, status, takeAttemptId } = useAssistantConnectionGate(threadId);
   const history = useThreadHistory(threadId);
+  const [connectionError, setConnectionError] = useState<unknown>(null);
+  const handleConnectionError = useCallback((message: string) => {
+    setConnectionError(new Error(message));
+  }, []);
+  const handleConnectionRetry = useCallback(() => {
+    setConnectionError(null);
+    onConnectionError(null);
+    retry();
+  }, [onConnectionError, retry]);
 
   useEffect(() => {
     if (history.status !== "ready") return;
     onThreadActivityChange(threadId, hasThreadActivity(history.messages));
   }, [history.messages, history.status, onThreadActivityChange, threadId]);
 
-  if (status === "error" || history.status === "error") {
+  if (status === "error" || history.status === "error" || connectionError) {
     return (
       <>
         <AssistantHistoryState
@@ -2209,6 +2220,9 @@ function AssistantChatBoundary({
           userPictureUrl={userPictureUrl}
         />
         {status === "error" ? <AssistantAccessError error={error} onRetry={retry} /> : null}
+        {connectionError ? (
+          <AssistantAccessError error={connectionError} onRetry={handleConnectionRetry} />
+        ) : null}
       </>
     );
   }
@@ -2245,13 +2259,13 @@ function AssistantChatBoundary({
         }
       >
         <AssistantChat
-          getToken={takeToken}
+          getAttemptId={takeAttemptId}
           hasOlderMessages={history.hasMore}
           initialMessages={history.messages}
           isLoadingOlder={history.isLoadingOlder}
           loadOlderMessages={history.loadOlder}
           olderError={history.olderError}
-          onConnectionError={onConnectionError}
+          onConnectionError={handleConnectionError}
           onThreadActivityChange={onThreadActivityChange}
           onThreadTitleSettled={onThreadTitleSettled}
           shouldNameThread={shouldNameThread}

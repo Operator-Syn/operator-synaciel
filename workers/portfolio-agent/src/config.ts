@@ -17,6 +17,7 @@ export type AgentProps = {
   sid: string;
   tid: string;
   q: number;
+  requestId?: string;
 };
 
 export type PortfolioAgentEnvironment = {

@@ -1,4 +1,9 @@
 const EMPTY_ORIGINS = new Set<string>();
+const THREAD_ID_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
+
+export function isValidThreadId(value: string): boolean {
+  return THREAD_ID_PATTERN.test(value);
+}
 
 export function parseBrowserOrigins(value: string | undefined): ReadonlySet<string> {
   const origins = new Set<string>();

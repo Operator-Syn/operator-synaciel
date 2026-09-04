@@ -37,7 +37,12 @@ import {
   shouldStopPortfolioToolLoop,
 } from "./evidence.ts";
 import { collectExportToolCalls, sanitizeExportMessage } from "./export.ts";
-import { AGENT_IDENTITY_HEADER, parseAgentIdentity } from "./identity.ts";
+import {
+  AGENT_IDENTITY_HEADER,
+  AGENT_REQUEST_ID_HEADER,
+  normalizeAgentRequestId,
+  parseAgentIdentity,
+} from "./identity.ts";
 import {
   asToolSet,
   buildSystemPrompt,
@@ -100,7 +105,7 @@ function modelStreamError(error: unknown): string {
 }
 
 export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unknown, AgentProps> {
-  static options = { sendIdentityOnConnect: false };
+  static options = { hibernate: true, sendIdentityOnConnect: false };
   messageConcurrency = "queue" as const;
   // Catalog readiness owns the single bounded wait so a timeout is not paid twice.
   waitForMcpConnections = false;
@@ -168,30 +173,58 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
   }
 
   async onStart(props?: AgentProps): Promise<void> {
-    this.sql([
-      "CREATE TABLE IF NOT EXISTS portfolio_agent_identity (sub TEXT NOT NULL, sid TEXT NOT NULL, tid TEXT NOT NULL, q INTEGER NOT NULL)",
-    ] as unknown as TemplateStringsArray);
-    if (props) {
-      this.persistIdentity(props);
+    const startedAt = Date.now();
+    this.emitDiagnostic({
+      phase: "agent-start",
+      outcome: "started",
+      requestId: props?.requestId,
+    });
+    try {
+      this.sql([
+        "CREATE TABLE IF NOT EXISTS portfolio_agent_identity (sub TEXT NOT NULL, sid TEXT NOT NULL, tid TEXT NOT NULL, q INTEGER NOT NULL)",
+      ] as unknown as TemplateStringsArray);
+      if (props) {
+        this.persistIdentity(props);
+      }
+      const stored = this.sql<AgentIdentityRow>([
+        "SELECT sub, sid, tid, q FROM portfolio_agent_identity LIMIT 1",
+      ] as unknown as TemplateStringsArray)[0];
+      if (!this.identity && stored) {
+        this.identity = parseAgentIdentity(JSON.stringify(stored), this.name);
+      }
+    } catch (error) {
+      this.emitDiagnostic({
+        phase: "agent-start",
+        outcome: "failed",
+        reason: "configuration",
+        elapsedMs: Date.now() - startedAt,
+        requestId: props?.requestId,
+      });
+      throw error;
     }
-    const stored = this.sql<AgentIdentityRow>([
-      "SELECT sub, sid, tid, q FROM portfolio_agent_identity LIMIT 1",
-    ] as unknown as TemplateStringsArray)[0];
-    if (!this.identity && stored) {
-      this.identity = parseAgentIdentity(JSON.stringify(stored), this.name);
-    }
-    await this.ensureMcpConnection();
+    this.emitDiagnostic({
+      phase: "agent-start",
+      outcome: "succeeded",
+      elapsedMs: Date.now() - startedAt,
+      requestId: props?.requestId,
+    });
   }
 
   onConnect(
     _connection: Parameters<AIChatAgent<PortfolioAgentEnvironment>["onConnect"]>[0],
     context: Parameters<AIChatAgent<PortfolioAgentEnvironment>["onConnect"]>[1],
   ): void {
+    const requestId = normalizeAgentRequestId(context.request.headers.get(AGENT_REQUEST_ID_HEADER));
     const identity = parseAgentIdentity(
       context.request.headers.get(AGENT_IDENTITY_HEADER),
       this.name,
     );
     if (identity) this.persistIdentity(identity);
+    this.emitDiagnostic({
+      phase: "ws-connect",
+      outcome: "succeeded",
+      requestId,
+    });
   }
 
   private async persistGeneratedThreadTitle(

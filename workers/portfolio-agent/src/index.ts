@@ -3,8 +3,14 @@ import { getAgentByName, routeAgentRequest } from "agents";
 import { importJWK, jwtVerify } from "jose";
 import { type AgentProps, getConfigString, type PortfolioAgentEnvironment } from "./config.ts";
 import { sha256Base64Url } from "./crypto.ts";
-import { AGENT_IDENTITY_HEADER, encodeAgentIdentity } from "./identity.ts";
-import { isAllowedBrowserOrigin, parseBrowserOrigins } from "./validation.ts";
+import {
+  AGENT_IDENTITY_HEADER,
+  AGENT_REQUEST_ID_HEADER,
+  encodeAgentIdentity,
+  normalizeAgentRequestId,
+  parseAgentIdentity,
+} from "./identity.ts";
+import { isAllowedBrowserOrigin, isValidThreadId, parseBrowserOrigins } from "./validation.ts";
 
 type AgentAccessClaims = {
   sub: string;
@@ -74,15 +80,57 @@ async function consumeAgentAccess(
   return updated.meta.changes === 1;
 }
 
+async function internalAgentWebSocketRequest(
+  request: Request,
+  environment: PortfolioAgentEnvironment,
+): Promise<Response> {
+  const url = new URL(request.url);
+  const parts = url.pathname.split("/").filter(Boolean);
+  let threadId = "";
+  try {
+    threadId = decodeURIComponent(parts[3] ?? "");
+  } catch {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+  if (!isValidThreadId(threadId)) return Response.json({ error: "Not found" }, { status: 404 });
+  if (request.method !== "GET" || request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
+    return Response.json({ error: "A WebSocket connection is required." }, { status: 426 });
+  }
+  const identity = parseAgentIdentity(request.headers.get(AGENT_IDENTITY_HEADER), threadId);
+  if (!identity) return Response.json({ error: "Authentication required" }, { status: 401 });
+  const requestId = normalizeAgentRequestId(request.headers.get(AGENT_REQUEST_ID_HEADER));
+  const targetUrl = new URL(request.url);
+  targetUrl.pathname = `/agents/portfolio-agent/${encodeURIComponent(threadId)}`;
+  targetUrl.search = "";
+  const connectionId = url.searchParams.get("_pk");
+  if (connectionId && connectionId.length <= 128) targetUrl.searchParams.set("_pk", connectionId);
+
+  const headers = new Headers(request.headers);
+  headers.delete("Authorization");
+  headers.delete("Cookie");
+  headers.delete(AGENT_REQUEST_ID_HEADER);
+  const response = await routeAgentRequest(
+    new Request(targetUrl, { method: "GET", headers }),
+    environment,
+    { props: requestId ? { ...identity, requestId } : identity },
+  );
+  return response ?? Response.json({ error: "Not found" }, { status: 404 });
+}
+
 async function internalRequest(
   request: Request,
   environment: PortfolioAgentEnvironment,
 ): Promise<Response | null> {
   const url = new URL(request.url);
-  if (!url.pathname.startsWith("/internal/threads/")) return null;
+  const isInternalAgentRoute = url.pathname.startsWith("/internal/agents/portfolio-agent/");
+  const isInternalThreadRoute = url.pathname.startsWith("/internal/threads/");
+  if (!isInternalAgentRoute && !isInternalThreadRoute) return null;
   const expected = `Bearer ${getConfigString(environment, "AGENT", "INTERNAL", "KEY")}`;
   if (request.headers.get("Authorization") !== expected)
     return Response.json({ error: "Forbidden" }, { status: 403 });
+  if (isInternalAgentRoute) {
+    return internalAgentWebSocketRequest(request, environment);
+  }
   const parts = url.pathname.split("/").filter(Boolean);
   const threadId = parts[2] ?? "";
   const action = parts[3] ?? "delete";

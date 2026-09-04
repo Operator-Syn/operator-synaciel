@@ -45,8 +45,12 @@ This release spans five runtime surfaces plus their storage dependencies:
 The API Worker must be available before the MCP Worker because its service
 binding depends on that runtime surface. The portfolio agent is deployed after
 the MCP Worker, and public-auth follows the agent because its service binding
-targets `portfolio-agent`. Pages remains a separate Git-integrated deployment
-from the same main-branch push.
+targets `portfolio-agent`. For the cookie-authenticated WebSocket gateway, keep
+that order: agent (internal route and hibernation behavior), public-auth (cookie
+and service-binding gateway), then Pages (browser host and connection query).
+Pages remains a separate Git-integrated deployment from the same main-branch
+push. Keep the legacy `/agent/token` path available until the new gateway has
+passed the authenticated smoke and soak window.
 
 Local assistant testing uses the `env.local` profiles in the public-auth and
 portfolio-agent Wrangler files plus explicit Vite `VITE_PUBLIC_AUTH_URL` and
@@ -364,7 +368,10 @@ work.
 ## Deploy the public-auth Worker
 
 The public-auth Worker is deployed after the portfolio-agent Worker because its
-`AGENT_WORKER` Service Binding targets that Worker. Run the dry run first:
+`AGENT_WORKER` Service Binding targets that Worker. The gateway accepts only the
+same-origin browser session and WebSocket upgrade, then forwards through the
+binding to the agent's internal route; it strips cookies, browser authorization,
+and arbitrary query values before forwarding. Run the dry run first:
 
 ~~~bash
 npx wrangler deploy --dry-run \
@@ -494,14 +501,16 @@ PortfolioAgent Durable Object migration declared in its Wrangler file. Do not
 apply the Durable Object migration manually. Confirm the assistant custom
 domain and binding names in the dry-run output before deploying.
 
-The agent treats the portfolio MCP as an evidence dependency rather than a
-WebSocket prerequisite. On startup it removes and retries one persisted failed
-MCP connection; if recovery still fails, the authenticated socket remains
-available and the next turn returns a bounded evidence-unavailable response.
-This prevents an upstream MCP outage from surfacing as a socket that closes
-before establishment or from locking a thread. The helper logs only
-the failure type. After deploying an agent fix, inspect the Worker version and
-logs without copying tokens, cookies, model prompts, or MCP payloads.
+The agent opts into Durable Object WebSocket hibernation and keeps `onStart`
+local: it rehydrates SQLite identity but does not wait on MCP or other network
+I/O. MCP is an evidence dependency rather than a WebSocket prerequisite and is
+connected lazily for the first model turn with bounded recovery. If recovery
+fails, the authenticated socket remains available and the next turn returns a
+bounded evidence-unavailable response. This prevents an upstream MCP outage
+from surfacing as a socket that closes before establishment or from locking a
+thread. The helper logs only allowlisted lifecycle data. After deploying an
+agent fix, inspect the Worker version and logs without copying tokens, cookies,
+model prompts, or MCP payloads.
 
 The history endpoint may initialize a thread before its first WebSocket
 connection. The agent release therefore includes a Worker-only identity
@@ -656,16 +665,18 @@ curl --include --silent --request GET https://assistant.syn-forge.com/health
 ~~~
 
 Then perform one interactive browser smoke flow: Google sign-in, one Turnstile
-verification, create/select a thread, ask a grounded portfolio question,
-observe a citation, export the sanitized transcript (including the bounded
-public reasoning trace and tool-call audit), create a new thread, and
-delete the old thread. Confirm an unrelated or unsafe request is refused, the
-automatic context compaction is not applied, and a full rolling
-1-hour budget leaves the full thread readable while deferring only
-the next model turn. Confirm the async `useAgent` connection shows its loading fallback,
-does not emit the React async-client-component crash, and contains a rejected
-token/WebSocket attempt inside the assistant panel with a retry action. Record
-live results separately from source/build checks.
+verification, create/select a thread, ask a grounded portfolio question through
+the cookie-authenticated public-auth gateway, observe a citation, export the
+sanitized transcript (including the bounded public reasoning trace and tool-call
+audit), create a new thread, and delete the old thread. Confirm an unrelated or
+unsafe request is refused, the automatic context compaction is not applied, and
+a full rolling 1-hour budget leaves the full thread readable while deferring
+only the next model turn. Confirm the async `useAgent` connection shows its
+loading fallback, does not emit the React async-client-component crash, and
+contains a rejected gateway/WebSocket attempt inside the assistant panel with a
+retry action. Run the redacted Playwright audit for this flow and record live
+results separately from source/build checks; never retain traces, HAR files,
+cookies, authorization headers, or raw WebSocket URLs.
 
 ## Deployment records
 
@@ -701,7 +712,12 @@ incompatible, restore service with a forward-compatible change instead of
 blindly rolling back.
 
 For Pages, use the Pages dashboard deployment history to retry or roll back
-the production deployment. Confirm the custom domain remains attached.
+the production deployment. Confirm the custom domain remains attached. For a
+gateway rollback, roll Pages back to the last client that uses `/agent/token`
+first, then roll public-auth back, and finally roll the agent back if its
+internal route or hibernation change must be removed. Keep the shared internal
+key and D1 schema compatible throughout; rollback does not revoke already-issued
+short-lived legacy tokens.
 
 ### Database recovery
 
