@@ -44,13 +44,9 @@ test("validates the trusted identity handoff and binds it to the requested threa
   assert.match(source, /props: requestId \? \{ \.\.\.identity, requestId \} : identity/);
 });
 
-test("does not let the public token route accept an internal identity header", async () => {
+test("keeps the public agent route retired", async () => {
   const source = await readFile(workerPath, "utf8");
-
-  const publicRouteSource = source.slice(source.indexOf("async function authenticatedRoute("));
-  assert.match(publicRouteSource, /const token = url\.searchParams\.get\("token"\)/);
-  assert.match(
-    publicRouteSource,
-    /if \(!token \|\| !name\) return Response\.json\(\{ error: "Authentication required" \}, \{ status: 401 \}\)/,
-  );
+  assert.doesNotMatch(source, /async function authenticatedRoute/);
+  assert.doesNotMatch(source, /searchParams\.get\("token"\)/);
+  assert.match(source, /if \(internal\) return internal;[\s\S]*?status: 404/);
 });
