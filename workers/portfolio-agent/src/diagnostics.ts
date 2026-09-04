@@ -1,4 +1,6 @@
 const DIAGNOSTIC_PHASES = [
+  "agent-start",
+  "ws-connect",
   "mcp-startup",
   "mcp-recovery",
   "mcp-rediscovery",
