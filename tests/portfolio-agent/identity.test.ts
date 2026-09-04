@@ -46,6 +46,9 @@ test("passes verified claims to the DO when history initialized it first", async
   assert.match(agentSource, /onConnect\([\s\S]*?parseAgentIdentity\(/);
   assert.match(agentSource, /persistIdentity\(identity\)/);
   assert.match(agentSource, /AGENT_REQUEST_ID_HEADER/);
-  assert.match(workerSource, /onBeforeConnect:[\s\S]*?AGENT_IDENTITY_HEADER/);
-  assert.match(workerSource, /props: agentProps/);
+  assert.match(
+    workerSource,
+    /parseAgentIdentity\(request\.headers\.get\(AGENT_IDENTITY_HEADER\), threadId\)/,
+  );
+  assert.match(workerSource, /props: requestId \? \{ \.\.\.identity, requestId \} : identity/);
 });
