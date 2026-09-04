@@ -18,7 +18,7 @@ import {
   assistantUserLabel,
   canStartAnotherThread,
   collapseDuplicateAssistantSourceMessages,
-  formatAssistantThreadTitle,
+  formatAssistantThreadOptions,
   hasThreadActivity,
   hasVisibleMessageContent,
   latestCompactionNotice,
@@ -156,7 +156,14 @@ test("mounts the portfolio assistant globally with bounded authenticated chat co
   assert.match(fabSource, /AssistantThreadActionsMenu/);
   assert.match(fabSource, /Expand portfolio assistant for reading/);
   assert.match(fabSource, /data-assistant-mode=/);
-  assert.match(fabSource, /aria-modal=\{isExpanded \? "true" : undefined\}/);
+  assert.match(fabSource, /aria-modal=\{isDialogPresentation \? "true" : undefined\}/);
+  assert.match(fabSource, /data-assistant-mobile-modal=/);
+  assert.match(
+    fabSource,
+    /ASSISTANT_RESPONSIVE_DIALOG_QUERY = "\(max-width: 640px\), \(max-height: 560px\)"/,
+  );
+  assert.match(fabSource, /function useAssistantResponsiveDialog/);
+  assert.match(fabSource, /!isDialogPresentation \? \(/);
   assert.match(fabSource, /portfolio-assistant-source-disclosure/);
   assert.match(fabSource, /ChevronDown/);
   assert.match(fabSource, /aria-expanded=\{isOpen\}/);
@@ -657,16 +664,25 @@ test("uses the signed-in Google display name for user messages with a safe fallb
   assert.equal(assistantUserLabel("   "), "You");
 });
 
-test("derives bounded first-question thread titles", () => {
-  assert.equal(
-    formatAssistantThreadTitle("  What about [thesis](https://example.test) and research?\n"),
-    "What about thesis and research?",
+test("keeps ID placeholders until completion and disambiguates duplicate titles", async () => {
+  assert.deepEqual(
+    formatAssistantThreadOptions([
+      { id: "abcdef123456", title: "Portfolio overview" },
+      { id: "123456abcdef", title: "Portfolio overview" },
+      { id: "unique-thread", title: null },
+    ]),
+    [
+      { id: "abcdef123456", label: "Portfolio overview · abcdef" },
+      { id: "123456abcdef", label: "Portfolio overview · 123456" },
+      { id: "unique-thread", label: "Thread unique" },
+    ],
   );
-  assert.equal(formatAssistantThreadTitle(" ??? "), null);
 
-  const longTitle = formatAssistantThreadTitle("portfolio ".repeat(20));
-  assert.ok(longTitle?.endsWith("…"));
-  assert.ok((longTitle ? Array.from(longTitle).length : 0) <= 72);
+  const source = await readFile(fabPath, "utf8");
+  assert.match(source, /formatAssistantThreadOptions\(threads\)/);
+  assert.doesNotMatch(source, /formatAssistantThreadTitle|titleCandidate|onThreadTitlePreview/);
+  assert.match(source, /if \(shouldNameThread\) onThreadTitleSettled\(\)/);
+  assert.match(source, /key=\{activeThreadId\}/);
 });
 
 test("allows another thread only after the current thread has activity", () => {
@@ -734,18 +750,6 @@ test("keeps empty active threads from creating another thread", async () => {
   assert.match(source, /canStartAnotherThread/);
   assert.match(source, /disabled=\{!canCreateNewThread \|\| isCreatingThread\}/);
   assert.match(source, /Ask a question before creating another thread/);
-});
-
-test("previews and reconciles a new thread title without remounting its chat", async () => {
-  const source = await readFile(fabPath, "utf8");
-  assert.match(
-    source,
-    /const titleCandidate = shouldNameThread \? formatAssistantThreadTitle\(titleSource\) : null/,
-  );
-  assert.match(source, /if \(titleCandidate\) onThreadTitlePreview\(titleCandidate\)/);
-  assert.match(source, /if \(titleCandidate\) onThreadTitleSettled\(\)/);
-  assert.match(source, /thread\.id === activeThreadId && !thread\.title/);
-  assert.match(source, /key=\{activeThreadId\}/);
 });
 
 test("keeps public reasoning visible as assistant content", () => {
