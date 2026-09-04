@@ -150,13 +150,13 @@ service binding. This transcript route is read-only and does not add a D1
 migration: D1 stores thread ownership metadata, and the agent Durable Object
 SQLite remains the message source of truth. The nullable `threads.title` column
 stores a bounded agent-generated summary after a successful evidence-backed reply;
-`GET /threads` returns it and `POST /threads` returns `title: null` for a new
-placeholder thread. The agent writes the title only when the value is still empty,
-and the frontend keeps the ID fallback while the reply is in flight, then refreshes
-the authoritative thread list after completion. Existing untitled threads are not
-backfilled; they are named on their next successful completion. Duplicate generated
-titles are disambiguated in the selector with the shortest unique thread-ID prefix.
-No D1 migration or transcript rewrite is required.
+`GET /threads` returns it with `Cache-Control: no-store`, and `POST /threads`
+returns `title: null` for a new placeholder thread. The agent writes the title only
+when the value is still empty, and the frontend keeps the ID fallback while the reply
+is in flight, then refreshes the uncached authoritative thread list after completion.
+Existing untitled threads are not backfilled; they are named on their next successful
+completion. Duplicate generated titles are disambiguated in the selector with the
+shortest unique thread-ID prefix. No D1 migration or transcript rewrite is required.
 
 ## Thread creation guard
 
