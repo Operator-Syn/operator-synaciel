@@ -135,36 +135,55 @@ export function messageSnapshotKey(messages: readonly UIMessage[]): string {
   );
 }
 
-const ASSISTANT_THREAD_TITLE_MAX_LENGTH = 72;
+export type AssistantThreadLabelSource = {
+  id: string;
+  title: string | null;
+};
 
-/**
- * Build the compact label shown for a newly titled assistant thread.
- * Keep this deterministic and bounded: it is a presentation hint while the
- * agent persists the same first-question title authoritatively.
- */
-export function formatAssistantThreadTitle(value: string): string | null {
-  const normalized = value
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/[*_~]/g, "")
-    .replaceAll("`", "")
-    .replace(/\p{Cc}/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!normalized || !/[\p{L}\p{N}]/u.test(normalized)) return null;
+type AssistantThreadOption = {
+  id: string;
+  label: string;
+};
 
-  const characters = Array.from(normalized);
-  if (characters.length <= ASSISTANT_THREAD_TITLE_MAX_LENGTH) return normalized;
+function uniqueThreadIdPrefixLength(ids: readonly string[]): number {
+  const maximumLength = Math.max(6, ...ids.map((id) => id.length));
+  for (let length = 6; length < maximumLength; length += 1) {
+    const prefixes = ids.map((id) => id.slice(0, length));
+    if (new Set(prefixes).size === prefixes.length) return length;
+  }
+  return maximumLength;
+}
 
-  const clipped = characters
-    .slice(0, ASSISTANT_THREAD_TITLE_MAX_LENGTH - 1)
-    .join("")
-    .trimEnd();
-  const wordBoundary = clipped.lastIndexOf(" ");
-  const readable =
-    wordBoundary >= Math.floor(ASSISTANT_THREAD_TITLE_MAX_LENGTH * 0.55)
-      ? clipped.slice(0, wordBoundary)
-      : clipped;
-  return `${readable}…`;
+export function formatAssistantThreadOptions(
+  threads: readonly AssistantThreadLabelSource[],
+): AssistantThreadOption[] {
+  const idsByTitle = new Map<string, string[]>();
+  for (const thread of threads) {
+    const title = thread.title?.trim();
+    if (!title) continue;
+    const ids = idsByTitle.get(title);
+    if (ids) ids.push(thread.id);
+    else idsByTitle.set(title, [thread.id]);
+  }
+
+  const suffixLengths = new Map<string, number>();
+  for (const ids of idsByTitle.values()) {
+    if (ids.length <= 1) continue;
+    const length = uniqueThreadIdPrefixLength(ids);
+    for (const id of ids) suffixLengths.set(id, length);
+  }
+
+  return threads.map((thread) => {
+    const title = thread.title?.trim();
+    if (!title) {
+      return { id: thread.id, label: `Thread ${thread.id.slice(0, 6)}` };
+    }
+    const suffixLength = suffixLengths.get(thread.id);
+    return {
+      id: thread.id,
+      label: suffixLength ? `${title} · ${thread.id.slice(0, suffixLength)}` : title,
+    };
+  });
 }
 
 export function assistantUserLabel(displayName: string | null | undefined): string {
