@@ -31,6 +31,12 @@ export type AssistantMessagePageOptions = {
   limit?: number;
 };
 
+export type AssistantConnectionPreparation = {
+  ready: true;
+  threadId: string;
+  attemptId: string;
+};
+
 export type PortfolioAssistantQuota = {
   usedTokens: number;
   budgetTokens: number;
@@ -210,6 +216,28 @@ export function issueAgentToken(threadId: string): Promise<{ token: string; expi
     method: "POST",
     body: JSON.stringify({ threadId }),
   });
+}
+
+export async function prepareAgentConnection(
+  threadId: string,
+): Promise<AssistantConnectionPreparation> {
+  const result = await requestJson<Partial<AssistantConnectionPreparation>>("/agent/prepare", {
+    method: "POST",
+    body: JSON.stringify({ threadId }),
+  });
+  if (
+    result.ready !== true ||
+    result.threadId !== threadId ||
+    typeof result.attemptId !== "string" ||
+    !/^[A-Za-z0-9_-]{16,64}$/.test(result.attemptId)
+  ) {
+    throw new Error("The assistant connection could not be prepared.");
+  }
+  return {
+    ready: true,
+    threadId: result.threadId,
+    attemptId: result.attemptId,
+  };
 }
 
 export function signInUrl(returnTo: string): string {
