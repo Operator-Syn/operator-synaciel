@@ -3,6 +3,7 @@ import { getAgentByName, routeAgentRequest } from "agents";
 import { importJWK, jwtVerify } from "jose";
 import { type AgentProps, getConfigString, type PortfolioAgentEnvironment } from "./config.ts";
 import { sha256Base64Url } from "./crypto.ts";
+import { AGENT_IDENTITY_HEADER, encodeAgentIdentity } from "./identity.ts";
 import { isAllowedBrowserOrigin, parseBrowserOrigins } from "./validation.ts";
 
 type AgentAccessClaims = {
@@ -13,6 +14,9 @@ type AgentAccessClaims = {
   jti: string;
   scope: "chat";
 };
+
+const DEFAULT_THREAD_MESSAGE_PAGE_SIZE = 24;
+const MAX_THREAD_MESSAGE_PAGE_SIZE = 50;
 
 async function verifyAgentAccess(
   token: string,
@@ -82,13 +86,47 @@ async function internalRequest(
   const parts = url.pathname.split("/").filter(Boolean);
   const threadId = parts[2] ?? "";
   const action = parts[3] ?? "delete";
-  if (threadId.length < 16 || (action !== "delete" && action !== "export")) {
+  if (
+    threadId.length < 16 ||
+    (action !== "delete" && action !== "export" && action !== "messages")
+  ) {
     return Response.json({ error: "Not found" }, { status: 404 });
   }
+  const limitParam = url.searchParams.get("limit");
+  const beforeParam = url.searchParams.get("before");
+  const paged = limitParam !== null || beforeParam !== null;
+  let pageOptions: { before?: string; limit: number } | undefined;
+  if (paged) {
+    const limit = limitParam === null ? DEFAULT_THREAD_MESSAGE_PAGE_SIZE : Number(limitParam);
+    const before = beforeParam?.trim();
+    if (!Number.isInteger(limit) || limit < 1 || limit > MAX_THREAD_MESSAGE_PAGE_SIZE) {
+      return Response.json({ error: "Invalid thread message page size." }, { status: 400 });
+    }
+    if (beforeParam !== null && (!before || before.length > 256)) {
+      return Response.json({ error: "Invalid thread message cursor." }, { status: 400 });
+    }
+    pageOptions = { limit, ...(before ? { before } : {}) };
+  }
+
   const stub = (await getAgentByName(environment.PortfolioAgent as never, threadId)) as unknown as {
     deleteThread: () => Promise<{ deleted: true }>;
     exportThread: () => Promise<Record<string, unknown>>;
+    getThreadMessages: (options?: {
+      before?: string;
+      limit?: number;
+    }) => Promise<unknown[] | { messages: unknown[]; nextCursor: string | null; hasMore: boolean }>;
   };
+  if (action === "messages" && request.method === "GET") {
+    try {
+      const result = await stub.getThreadMessages(pageOptions);
+      return Response.json(paged ? result : { messages: result });
+    } catch (error) {
+      if (error instanceof Error && error.message === "Invalid thread message cursor.") {
+        return Response.json({ error: "Invalid thread message cursor." }, { status: 400 });
+      }
+      throw error;
+    }
+  }
   if (action === "export" && request.method === "GET") {
     return Response.json(await stub.exportThread());
   }
@@ -126,8 +164,19 @@ async function authenticatedRoute(
   const cleanUrl = new URL(request.url);
   cleanUrl.searchParams.delete("token");
   const forwarded = new Request(cleanUrl, request);
+  const agentProps: AgentProps = {
+    sub: claims.sub,
+    sid: claims.sid,
+    tid: claims.tid,
+    q: claims.q,
+  };
   const response = await routeAgentRequest(forwarded, environment, {
-    props: claims as AgentProps,
+    onBeforeConnect: (connectRequest) => {
+      const nextRequest = new Request(connectRequest);
+      nextRequest.headers.set(AGENT_IDENTITY_HEADER, encodeAgentIdentity(agentProps));
+      return nextRequest;
+    },
+    props: agentProps,
   });
   return response ?? Response.json({ error: "Not found" }, { status: 404 });
 }

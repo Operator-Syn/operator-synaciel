@@ -25,15 +25,10 @@ function assertStructuredResponse(response: JsonRpcMessage): Record<string, unkn
 
   assert.ok(text);
   assert.ok(structuredContent);
-  assert.deepEqual(structuredContent, JSON.parse(text));
+  assert.ok(text.length <= 500);
+  assert.equal(text.includes("\n"), false);
+  assert.equal(text.trim().startsWith("{"), false);
 
-  return structuredContent;
-}
-
-function assertStructuredOnlyResponse(response: JsonRpcMessage): Record<string, unknown> {
-  assert.equal(response.result?.content?.[0]?.text, '{"structuredContent":true}');
-  const structuredContent = response.result?.structuredContent;
-  assert.ok(structuredContent);
   return structuredContent;
 }
 
@@ -55,11 +50,13 @@ describe("repository MCP protocol", () => {
       names,
       new Set([
         "repository_workflow_status",
+        "search_repository",
         "prepare_repository_change",
         "apply_repository_change",
         "verify_repository_change",
         "read_repository_change_diff",
         "read_repository_files",
+        "grant_repository_read_access",
         "read_working_tree_diff",
         "prepare_working_tree_commit",
         "git_commit_working_tree",
@@ -68,9 +65,10 @@ describe("repository MCP protocol", () => {
       ]),
     );
     const instructions = server.initialization.result?.instructions ?? "";
-    assert.match(instructions, /repository_workflow_status/);
-    assert.match(instructions, /context_filter/);
-    assert.match(instructions, /prepare_working_tree_commit directly/);
+    assert.ok(instructions.length < 500);
+    assert.match(instructions, /Local repository MCP/);
+    assert.match(instructions, /selected profile/);
+    assert.match(instructions, /approved apply/);
   });
 
   test("advertises output schemas and structured text-compatible results", async () => {
@@ -81,10 +79,25 @@ describe("repository MCP protocol", () => {
 
     const listed = await server.call("tools/list");
     const tools = listed.result?.tools ?? [];
-    assert.equal(tools.length, 11);
+    assert.equal(tools.length, 13);
     for (const tool of tools) {
       assert.ok(tool.outputSchema);
+      const properties = (tool.inputSchema?.properties ?? {}) as Record<string, unknown>;
+      assert.equal("responseMode" in properties, false);
+      assert.equal("taskType" in properties, false);
+      assert.equal("expectedFileHashes" in properties, false);
     }
+    const prepareTool = tools.find((tool) => tool.name === "prepare_repository_change");
+    const applyTool = tools.find((tool) => tool.name === "apply_repository_change");
+    const prepareProperties = (prepareTool?.inputSchema?.properties ?? {}) as Record<
+      string,
+      unknown
+    >;
+    const applyProperties = (applyTool?.inputSchema?.properties ?? {}) as Record<string, unknown>;
+    assert.equal("taskType" in prepareProperties, false);
+    assert.equal("responseMode" in prepareProperties, false);
+    assert.equal("expectedFileHashes" in applyProperties, false);
+    assert.equal("responseMode" in applyProperties, false);
 
     const status = await server.call("tools/call", {
       name: "repository_workflow_status",
@@ -92,6 +105,9 @@ describe("repository MCP protocol", () => {
     });
     const statusPayload = assertStructuredResponse(status);
     assert.equal(statusPayload.status, "attention");
+    const serverMetadata = statusPayload.server as Record<string, unknown>;
+    assert.equal(serverMetadata.version, "2.0.0");
+    assert.equal(typeof serverMetadata.instanceId, "string");
     const verificationProfiles = (statusPayload.capabilities as Record<string, unknown>)
       .verificationProfiles as Record<string, unknown>;
     assert.equal(typeof verificationProfiles, "object");
@@ -110,14 +126,13 @@ describe("repository MCP protocol", () => {
 
     const structuredStatus = await server.call("tools/call", {
       name: "repository_workflow_status",
-      arguments: { responseMode: "structured" },
+      arguments: {},
     });
-    assertStructuredOnlyResponse(structuredStatus);
+    assertStructuredResponse(structuredStatus);
 
     const prepared = await server.call("tools/call", {
       name: "prepare_repository_change",
       arguments: {
-        taskType: "app",
         description: "exercise structured repository output",
         profile: "app",
         verifyOnApply: false,
@@ -153,6 +168,99 @@ describe("repository MCP protocol", () => {
     assert.equal(sourceFiles[1]?.exists, false);
     assert.deepEqual(sourcePayload.omittedPaths, []);
 
+    const requestedPath = "workers/portfolio-api/src/entrypoint.ts";
+    const deniedRead = await server.call("tools/call", {
+      name: "read_repository_files",
+      arguments: {
+        profile: "app",
+        files: [{ path: requestedPath }],
+      },
+    });
+    assert.equal(deniedRead.result?.isError, true);
+    const deniedReadPayload = deniedRead.result?.structuredContent;
+    assert.match(String(deniedReadPayload?.message), /Path ".*entrypoint\.ts" is not allowed/);
+    assert.equal(deniedReadPayload?.reasonCode, "READ_PERMISSION_REQUIRED");
+    assert.deepEqual(deniedReadPayload?.nextAction, {
+      tool: "grant_repository_read_access",
+    });
+
+    const deniedWrite = await server.call("tools/call", {
+      name: "prepare_repository_change",
+      arguments: {
+        description: "verify write profile boundaries remain explicit",
+        profile: "app",
+        operations: [{ path: requestedPath, content: "not written\n" }],
+      },
+    });
+    const deniedWritePayload = assertStructuredResponse(deniedWrite);
+    assert.equal(deniedWritePayload.status, "rejected");
+    assert.match(
+      String(deniedWritePayload.message),
+      /Path "workers\/portfolio-api\/src\/entrypoint\.ts" is not allowed by the app write profile/,
+    );
+
+    const missingScope = await server.call("tools/call", {
+      name: "grant_repository_read_access",
+      arguments: {
+        profile: "app",
+        paths: [requestedPath],
+        approve: true,
+      },
+    });
+    assert.equal(missingScope.result?.isError, true);
+    assert.match(
+      missingScope.result?.content?.[0]?.text ?? "",
+      /Interactive permission selection is unavailable|choose temporary or permanent/,
+    );
+
+    const permission = await server.call("tools/call", {
+      name: "grant_repository_read_access",
+      arguments: {
+        profile: "app",
+        paths: [requestedPath],
+        scope: "temporary",
+        approve: true,
+      },
+    });
+    const permissionPayload = assertStructuredResponse(permission);
+    assert.equal(permissionPayload.status, "granted");
+    assert.equal(permissionPayload.scope, "temporary");
+    assert.equal(typeof permissionPayload.permissionToken, "string");
+
+    const permittedRead = await server.call("tools/call", {
+      name: "read_repository_files",
+      arguments: {
+        profile: "app",
+        files: [{ path: requestedPath }],
+        permissionToken: permissionPayload.permissionToken,
+      },
+    });
+    const permittedPayload = assertStructuredResponse(permittedRead);
+    assert.equal((permittedPayload.files as Array<Record<string, unknown>>)[0]?.exists, false);
+
+    const stillDeniedWrite = await server.call("tools/call", {
+      name: "prepare_repository_change",
+      arguments: {
+        description: "ensure read grants do not widen write access",
+        profile: "app",
+        operations: [{ path: requestedPath, content: "not written\n" }],
+      },
+    });
+    const stillDeniedWritePayload = assertStructuredResponse(stillDeniedWrite);
+    assert.equal(stillDeniedWritePayload.status, "rejected");
+    assert.match(String(stillDeniedWritePayload.message), /app write profile/);
+
+    const reusedPermission = await server.call("tools/call", {
+      name: "read_repository_files",
+      arguments: {
+        profile: "app",
+        files: [{ path: requestedPath }],
+        permissionToken: permissionPayload.permissionToken,
+      },
+    });
+    assert.equal(reusedPermission.result?.isError, true);
+    assert.match(reusedPermission.result?.content?.[0]?.text ?? "", /temporary access/);
+
     const broadRead = await server.call("tools/call", {
       name: "read_repository_files",
       arguments: {
@@ -174,7 +282,6 @@ describe("repository MCP protocol", () => {
     const broadPrepared = await server.call("tools/call", {
       name: "prepare_repository_change",
       arguments: {
-        taskType: "repository",
         description: "exercise the broad repository profile",
         profile: "repository",
         operations: [
@@ -205,7 +312,6 @@ describe("repository MCP protocol", () => {
     const rejected = await server.call("tools/call", {
       name: "prepare_repository_change",
       arguments: {
-        taskType: "patch",
         description: "reject traversal",
         profile: "app",
         operations: [{ path: "../outside.txt", content: "nope\n" }],
@@ -216,7 +322,6 @@ describe("repository MCP protocol", () => {
     const tooMany = await server.call("tools/call", {
       name: "prepare_repository_change",
       arguments: {
-        taskType: "app",
         description: "reject an oversized prepared file set",
         profile: "app",
         operations: Array.from({ length: 21 }, (_, index) => ({
@@ -259,7 +364,6 @@ describe("repository MCP protocol", () => {
       await server.call("tools/call", {
         name: "prepare_repository_change",
         arguments: {
-          taskType: "patch",
           description: "reject traversal",
           profile: "app",
           operations: [{ path: "../outside.txt", content: "nope\n" }],
@@ -287,7 +391,6 @@ describe("repository MCP protocol", () => {
       await server.call("tools/call", {
         name: "prepare_repository_change",
         arguments: {
-          taskType: "repository",
           description: "reject binary text changes",
           profile: "repository",
           operations: [
@@ -312,7 +415,6 @@ describe("repository MCP protocol", () => {
       await server.call("tools/call", {
         name: "prepare_repository_change",
         arguments: {
-          taskType: "config",
           description: "review ordinary project configuration files",
           profile: "config",
           operations: [
@@ -388,7 +490,6 @@ describe("repository MCP protocol", () => {
       await server.call("tools/call", {
         name: "prepare_repository_change",
         arguments: {
-          taskType: "config",
           description: "keep database migrations on the database profile",
           profile: "config",
           operations: [
@@ -413,7 +514,6 @@ describe("repository MCP protocol", () => {
       await server.call("tools/call", {
         name: "prepare_repository_change",
         arguments: {
-          taskType: "mcp",
           description: "review the project-local skill lockfile",
           profile: "mcp",
           operations: [{ path: "skills-lock.json", content: '{"version":1}\n' }],
@@ -434,7 +534,6 @@ describe("repository MCP protocol", () => {
       await server.call("tools/call", {
         name: "prepare_repository_change",
         arguments: {
-          taskType: "database",
           description: "review database configuration and schema artifacts",
           profile: "database",
           operations: [
@@ -502,7 +601,6 @@ describe("repository MCP protocol", () => {
       await server.call("tools/call", {
         name: "prepare_repository_change",
         arguments: {
-          taskType: "patch",
           description: "reject a symlink path",
           profile: "app",
           operations: [{ path: "apps/portfolio-web/src/link.ts", content: "blocked\n" }],
@@ -515,7 +613,6 @@ describe("repository MCP protocol", () => {
       await server.call("tools/call", {
         name: "prepare_repository_change",
         arguments: {
-          taskType: "patch",
           description: "reject an environment path",
           profile: "app",
           operations: [{ path: "apps/portfolio-web/public/.env", content: "TOKEN=blocked\n" }],

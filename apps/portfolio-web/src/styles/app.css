@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./tokens.css";
+@import "./floating-controls.css";
 @import "./base.css";
 @import "./primitives.css";
 @import "./homepage-motion.css";
@@ -10,6 +11,7 @@
 @import "./interaction-states.css";
 @import "./cursors.css";
 @import "./media-modal.css";
+@import "./modal.css";
 @import "./quick-navigation.css";
 @import "./responsive.css";
 @import "./page-transition.css";

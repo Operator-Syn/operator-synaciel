@@ -1,8 +1,8 @@
 export const MCP_SERVER_NAME = "operator-synaciel-repository";
-export const MCP_SERVER_VERSION = "1.4.0";
+export const MCP_SERVER_VERSION = "2.0.0";
 export const COMMIT_APPROVAL_ENV = "OPERATOR_SYNACIEL_COMMIT_PIPELINE_APPROVAL";
 export const MCP_SERVER_INSTRUCTIONS =
-  "Start with repository_workflow_status and use the cached status when appropriate. Query Graphify narrowly with context_filter, shallow depth, and an explicit budget, then read the cited source directly. Use the repository profile for cross-workspace source snapshots and planned changes; use focused profiles when a narrower scope is sufficient. For fast MCP iteration, use the fixed mcp-fast verification profile and its cache; run the complete matching profile before commit. Use read_repository_files for bounded batches of complete source snapshots. For planned changes, prepare complete source content with old hashes, review every bounded diff chunk, apply only with explicit approval, then commit through the guarded one-file pipeline. Use responseMode structured when a client already consumes structuredContent. For dirty-tree commits, use prepare_working_tree_commit directly; use prepare_commits only after an applied-change operation. The source launcher is default; set OPERATOR_SYNACIEL_MCP_COMPILED=1 only after npm run mcp:build. Never deploy, access Cloudflare credentials, apply D1 migrations, or perform remote Git operations through this server.";
+  "Local repository MCP. Search or read within a selected profile before editing. Prepare and review the complete diff before an explicit approved apply; hashes, atomic writes, rollback, and Git hooks remain active. Use fixed verification profiles before committing. Read permissions are exact-path and approval-gated. This server never deploys, pushes, applies migrations, or accesses credentials.";
 
 export const MAX_PREPARED_FILES = 20;
 export const MAX_DIFF_PREVIEW_CHARACTERS = 16_000;
@@ -122,6 +122,10 @@ export const REPOSITORY_WRITE_PROFILES = {
       "tools/repository-mcp/",
       ".github/workflows/",
       ".gitignore",
+      ".env.example",
+      ".envrc",
+      "flake.nix",
+      "flake.lock",
       ".vscode/",
       "docs/",
       "README.md",
@@ -150,6 +154,10 @@ export const REPOSITORY_WRITE_PROFILES = {
       ".obsidian/",
       ".vscode/",
       ".gitignore",
+      ".env.example",
+      ".envrc",
+      "flake.nix",
+      "flake.lock",
       ".graphifyignore",
       ".mcp.json",
       "AGENTS.md",
@@ -275,12 +283,14 @@ export const SAFE_VERIFICATION_COMMANDS: Record<SafeVerificationCheck, readonly 
 
 export const LOCAL_ONLY_MCP_TOOLS = new Set([
   "repository_workflow_status",
+  "search_repository",
   "prepare_repository_change",
   "apply_repository_change",
   "verify_repository_change",
   "read_repository_change_diff",
   "read_working_tree_diff",
   "read_repository_files",
+  "grant_repository_read_access",
   "prepare_working_tree_commit",
   "git_commit_working_tree",
   "prepare_commits",

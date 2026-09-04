@@ -73,11 +73,89 @@ the localhost return target. The production Turnstile widget must allow the
 production `TURNSTILE_SECRET_KEY`. Do not use Cloudflare's dummy test keys with
 the production Worker secret.
 
+### Authenticated Playwright browser checks
+
+The authenticated browser check targets the active assistant on the
+`agent-development` branch. Keep Vite at `http://localhost:5173` and use the
+deployed public-auth and agent endpoints from the environment above. The
+Playwright configuration starts or reuses that Vite server when the E2E command
+runs.
+
+Create the ignored storage directory and start the recorder from the repository
+root:
+
+```bash
+mkdir -p playwright/.auth
+npx playwright codegen \
+  --save-storage=playwright/.auth/google.json \
+  http://localhost:5173/ai
+```
+
+In the opened browser, open the portfolio assistant, choose **Continue with
+Google**, and complete Google login, MFA, or CAPTCHA yourself. Wait for the
+redirect back to `/ai`, then close the browser so Playwright writes the state
+file. Do not automate or record Google username/password entry, bypass MFA or
+CAPTCHA, or copy credentials into a generated test.
+
+Run the opt-in authenticated smoke test with:
+
+```bash
+npm run test:e2e
+```
+
+It loads `playwright/.auth/google.json`, opens `/ai`, checks that
+`/session` returns an authenticated profile, and confirms the assistant
+reaches its authenticated `turnstile` or `active` state. It does not solve
+Turnstile, create a thread, open a WebSocket, or send a model request. If the
+state expires, repeat the manual recorder flow. Treat the state file as a live
+session secret and never commit or share it. Install the Playwright Chromium
+browser once with `npx playwright install chromium` if needed.
+
+This application does not use Firebase or IndexedDB for authentication. If a
+future auth implementation stores tokens in IndexedDB, save the state with
+`context.storageState({ path: authFile, indexedDB: true })` before reusing it.
+
+### Optional Nix shell for Playwright browsers
+
+The repository includes an optional Nix flake for Playwright browser runtime
+libraries on Linux and browser-cache policy on macOS. It does not install Node,
+npm, Python, or Pipenv; use the host's supported Node.js runtime (Node 22 or
+newer, matching CI).
+
+Enter it manually with `nix develop`, or run `direnv allow` to use the guarded
+root `.envrc`. If the flake files are still untracked in a working tree, use
+`nix develop --impure path:$PWD` until they are added to Git. From the repository
+root, install the npm Playwright revisions
+explicitly:
+
+```bash
+npx playwright install chromium firefox webkit
+```
+
+Downloads stay in the ignored `.playwright-browsers/` directory, and
+`PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` prevents dependency installation from
+silently downloading a second browser set. Do not use
+`npx playwright install-deps` on NixOS; that command targets apt-based hosts.
+The shell does not enable system-wide `nix-ld`; Linux hosts need an existing
+compatible ELF loader for downloaded WebKit binaries. Authentication storage
+remains a manually created local session secret as described above.
+
+Codex's repository-local `SessionStart` and `SubagentStart` hooks perform a
+lightweight, read-only check for root Nix shell markers. When Nix is available
+and the host system is declared by the flake, the hook suggests `nix develop
+--command <command>` for browser/runtime-sensitive checks. If Nix is missing or
+compatibility cannot be confirmed, it reports that and leaves commands in the
+host environment. It does not run `nix develop`, call `direnv allow`, source
+`.envrc`, or provide Node/npm/Python/Pipenv; a child hook cannot change the
+parent shell.
+
 ### Assistant connection troubleshooting
 
 The Agents SDK resolves an asynchronous token query during the assistant
 connection. The chat component is intentionally rendered under `Suspense` and
 uses a short positive query cache so reconnects receive a fresh one-time token.
+The per-user 1,000,000-token/1-hour budget is enforced after the WebSocket is
+authenticated, so a full rolling window does not hide the saved transcript.
 If the browser reports `An unknown Component is an async Client Component` at
 `useAgent`, reload the current build and confirm the deployed Pages version
 contains the assistant connection boundary. A token or WebSocket failure should
@@ -86,6 +164,16 @@ opened`; use its retry action or start a new thread. Chrome's `Fetch finished
 loading` messages are informational; inspect the corresponding request status
 before treating them as errors. Never paste session cookies, agent tokens, or
 authorization headers into an issue or log.
+
+### Agent diagnostics
+
+Server logs prefixed [portfolio-agent:diagnostic] contain allowlisted JSON events
+for MCP, quota, model, and settlement phases. Use the phase and outcome to
+separate a skipped/static turn, MCP discovery or grounding failure, provider
+stream failure, and completed settlement; question text, raw tool data, and
+credentials are intentionally absent. See
+[[plans/portfolio-agent/sweeps/33-structured-diagnostics|Sweep 33]] for the
+event contract.
 
 ### Optional: run isolated local Workers
 

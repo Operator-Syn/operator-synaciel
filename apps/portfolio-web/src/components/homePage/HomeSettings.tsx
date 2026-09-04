@@ -1,5 +1,6 @@
 import { Download, RotateCcw, Settings2, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   CUSTOM_THEME_MAX_BYTES,
   type CustomThemeDocument,
@@ -10,6 +11,7 @@ import {
   serializeCustomTheme,
 } from "../../preferences/customTheme";
 import type { SiteTheme } from "../../preferences/sitePreferences";
+import { useFloatingControls } from "../floatingControls/useFloatingControls";
 import useSitePreferences from "../sitePreferences/useSitePreferences";
 
 const builtInThemeChoices: Array<{ label: string; value: SiteTheme }> = [
@@ -32,7 +34,7 @@ function downloadThemeDocument(content: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-export default function HomeSettings() {
+function HomeSettingsPanel() {
   const {
     clearCustomTheme,
     customTheme,
@@ -44,7 +46,8 @@ export default function HomeSettings() {
     systemReducedMotion,
     theme,
   } = useSitePreferences();
-  const [isOpen, setIsOpen] = useState(false);
+  const { activePanel, closePanel, openPanel } = useFloatingControls();
+  const isOpen = activePanel === "settings";
   const [announcement, setAnnouncement] = useState("");
   const panelRef = useRef<HTMLDivElement>(null);
   const panelScrollRef = useRef<HTMLElement>(null);
@@ -81,9 +84,13 @@ export default function HomeSettings() {
   }, []);
 
   const closeSettings = useCallback(() => {
-    setIsOpen(false);
+    closePanel("settings");
     window.requestAnimationFrame(() => triggerRef.current?.focus());
-  }, []);
+  }, [closePanel]);
+
+  useEffect(() => {
+    return () => closePanel("settings");
+  }, [closePanel]);
 
   useEffect(() => {
     const nextJson = customTheme ? serializeCustomTheme(customTheme) : createCustomThemeTemplate();
@@ -192,7 +199,7 @@ export default function HomeSettings() {
     .join(" ");
 
   return (
-    <div className="home-settings" ref={panelRef}>
+    <div className="home-settings" data-floating-panel="settings" ref={panelRef}>
       <section
         aria-hidden={!isOpen}
         aria-labelledby="home-settings-title"
@@ -256,8 +263,11 @@ export default function HomeSettings() {
             <span>Reduced motion</span>
             <span className="home-settings-choice-state">{reducedMotion ? "On" : "Off"}</span>
           </label>
-          {!reducedMotion && systemReducedMotion && (
-            <p className="home-settings-note">Device preference is active.</p>
+          {(reducedMotion || systemReducedMotion) && (
+            <p className="home-settings-note">
+              Page wipes and animated feedback are disabled while reduced motion is active. Static
+              cursor cues remain available.
+            </p>
           )}
         </fieldset>
 
@@ -380,11 +390,17 @@ export default function HomeSettings() {
         aria-label={isOpen ? "Close interface settings" : "Open interface settings"}
         className="home-settings-trigger"
         data-state={isOpen ? "open" : "closed"}
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={() => (isOpen ? closeSettings() : openPanel("settings"))}
         type="button"
       >
         <Settings2 aria-hidden="true" size={18} />
       </button>
     </div>
   );
+}
+
+export default function HomeSettings() {
+  const location = useLocation();
+  if (location.pathname !== "/") return null;
+  return <HomeSettingsPanel />;
 }

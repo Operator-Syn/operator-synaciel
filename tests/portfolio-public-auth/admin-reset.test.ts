@@ -89,6 +89,10 @@ test("user reset preserves the global neuron control row", async () => {
       database.queries.some(({ sql }) => sql.includes("UPDATE agent_control")),
       false,
     );
+    assert.equal(
+      database.queries.some(({ sql }) => sql.includes("DELETE FROM rolling_token_usage")),
+      true,
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -103,6 +107,10 @@ test("global reset clears the global neuron control row", async () => {
     assert.equal(response.status, 200);
     assert.equal(
       database.queries.some(({ sql }) => sql.includes("UPDATE agent_control")),
+      true,
+    );
+    assert.equal(
+      database.queries.some(({ sql }) => sql.includes("DELETE FROM rolling_token_usage")),
       true,
     );
   } finally {

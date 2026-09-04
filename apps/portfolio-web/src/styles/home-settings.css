@@ -1,16 +1,16 @@
 /* Home-only visitor preferences stay anchored outside document flow. */
 .home-settings {
-    position: fixed;
-    inset-inline-end: var(--floating-control-inline-end);
-    inset-block-end: var(--floating-control-block-end);
-    z-index: 30;
+    position: relative;
     display: grid;
     justify-items: end;
-    gap: 0.75rem;
+    gap: var(--floating-control-gap);
     pointer-events: none;
 }
 
 .home-settings-panel {
+    position: absolute;
+    inset-inline-end: 0;
+    inset-block-end: calc(100% + var(--floating-control-gap));
     width: min(22rem, calc(100vw - 2rem));
     max-height: min(46rem, calc(100vh - 2rem));
     max-height: min(46rem, calc(100dvh - 2rem));
@@ -313,7 +313,7 @@
 
 @media (max-width: 640px) {
     .home-settings-panel {
-        width: min(22rem, calc(100vw - 1.5rem));
+        width: min(22rem, calc(100vw - 2rem));
         max-height: min(46rem, calc(100dvh - 4.5rem - var(--floating-control-block-end) - 3.75rem));
     }
 }

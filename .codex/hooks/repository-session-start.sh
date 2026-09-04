@@ -14,3 +14,9 @@ Operator-Synaciel repository workflow:
 - Direct shell git commit is intentionally routed through the repository MCP and versioned Git hooks.
 - Keep Graphify updates, Cloudflare access, deployment, and database migration application outside the repository MCP.
 EOF
+
+repository_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+dev_shell_hook="$repository_root/.codex/hooks/repository-dev-shell.sh"
+if [[ -f "$dev_shell_hook" ]]; then
+  bash "$dev_shell_hook" "$repository_root" || true
+fi

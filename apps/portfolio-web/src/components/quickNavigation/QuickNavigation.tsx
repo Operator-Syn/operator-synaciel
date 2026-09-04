@@ -1,6 +1,7 @@
 import { Folder, FolderOpen, Home as HomeIcon, ListTree, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { useFloatingControls } from "../floatingControls/useFloatingControls";
 import TransitionNavLink from "../pageTransition/TransitionNavLink";
 
 type QuickNavigationTab = "portfolio" | "apps";
@@ -24,17 +25,24 @@ const links = {
 
 export default function QuickNavigation() {
   const location = useLocation();
-  const [isOpen, setIsOpen] = useState(false);
+  const { activePanel, closePanel, openPanel } = useFloatingControls();
   const [activeTab, setActiveTab] = useState<QuickNavigationTab>("portfolio");
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const isOpen = activePanel === "quick-navigation";
+  const isVisible = visibleRoutePrefixes.some((prefix) => location.pathname.startsWith(prefix));
 
   const closeNavigation = useCallback(() => {
-    setIsOpen(false);
+    closePanel("quick-navigation");
     window.requestAnimationFrame(() => toggleRef.current?.focus());
-  }, []);
+  }, [closePanel]);
 
   useEffect(() => {
     if (!isOpen) return;
+
+    const focusFrame = window.requestAnimationFrame(() => {
+      panelRef.current?.querySelector<HTMLElement>("button, a")?.focus();
+    });
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -44,18 +52,26 @@ export default function QuickNavigation() {
     };
 
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [closeNavigation, isOpen]);
 
-  const isVisible = visibleRoutePrefixes.some((prefix) => location.pathname.startsWith(prefix));
+  useEffect(() => {
+    if (isVisible || !isOpen) return;
+    closePanel("quick-navigation");
+  }, [closePanel, isOpen, isVisible]);
 
   if (!isVisible) return null;
 
   return (
     <div
-      className={`quick-navigation fixed z-30 grid justify-items-end gap-3 ${isOpen ? "is-open" : ""}`}
+      className={`quick-navigation${isOpen ? " is-open" : ""}`}
+      data-floating-panel="quick-navigation"
     >
       <div
+        ref={panelRef}
         aria-hidden={!isOpen}
         className="quick-navigation-panel w-[min(22rem,calc(100vw-2rem))] border border-line-strong bg-surface shadow-panel"
         data-state={isOpen ? "open" : "closed"}
@@ -128,13 +144,7 @@ export default function QuickNavigation() {
         aria-label={isOpen ? "Close quick navigation" : "Open quick navigation"}
         className="quick-navigation-toggle inline-flex min-h-12 items-center gap-3 border border-line-strong bg-surface px-3 text-text shadow-panel transition-colors hover:border-signal hover:text-signal"
         data-cursor="context-menu"
-        onClick={() => {
-          if (isOpen) {
-            closeNavigation();
-          } else {
-            setIsOpen(true);
-          }
-        }}
+        onClick={() => (isOpen ? closeNavigation() : openPanel("quick-navigation"))}
         title="Quick navigation"
         type="button"
       >

@@ -12,12 +12,17 @@ role: guide
 > Scope: this note documents the local repository-only MCP. It is launched as a
 > stdio subprocess and has no public HTTP endpoint, portfolio tools, or
 > portfolio resources. For the separate remote service, see [[architecture/portfolio-mcp|Public Portfolio MCP (Streamable HTTP)]].
+>
+> The reusable, repository-agnostic implementation blueprint is [[univsersal-repository-mcp-structure|Universal Repository MCP Structure Blueprint]].
 
 The local `operator-synaciel-repository` MCP is implemented in the
 `tools/repository-mcp/` workspace. It provides reviewable file changes, fixed
 verification, and guarded local commits through `StdioServerTransport`. It
 operates on the checked-out Git repository and is separate from the public
 `workers/portfolio-mcp/` Worker and from Graphify.
+
+The current local protocol is version 2.0.0. Long-lived clients must reconnect
+after a server or tool-schema version change.
 
 The tracked `.mcp.json` registration is shared by compatible project-scoped
 clients. `.codex/config.toml` keeps Codex-specific tool approval policy. Both
@@ -40,17 +45,21 @@ For repeated MCP iterations, use the cached `mcp-fast` verification profile afte
 
 Use the bounded flow for planned edits:
 
-1. `prepare_repository_change` with complete replacement content, the current
-   hash for every existing file, and the smallest practical file set.
-2. Review every returned path, old hash, new hash, byte count, profile, and
+1. Use `search_repository` and `read_repository_files` to locate the exact
+   source. Reads support character offsets and inclusive line ranges.
+2. Call `prepare_repository_change` with a complete `write`, an exact anchored
+   `edit`, or `action: "delete"` plus the current hash. Keep the smallest
+   practical file set.
+3. Review every returned path, old hash, new hash, byte count, profile, and
    bounded diff preview. When `diffTruncated` is true, read all chunks with
    `read_repository_change_diff` before applying.
-3. `apply_repository_change` with the exact token, hashes, and approval.
-4. Run `verify_repository_change` explicitly with the returned matching profile;
+4. `apply_repository_change` with `planId`, `applyToken`, `reviewHash`, and
+   explicit approval. The server rechecks every current file hash.
+5. Run `verify_repository_change` explicitly with the returned matching profile;
    do not prepare or commit subjects until the required checks pass. An apply
    response may include a passing optional verification summary, but an absent
    or failing summary leaves `verificationRequired` true.
-5. `prepare_commits`, edit the subjects, then `git_commit_files`.
+6. `prepare_commits`, edit the subjects, then `git_commit_files`.
 
 Use the complete dirty-tree flow when reviewing existing work:
 
@@ -63,11 +72,13 @@ Use the complete dirty-tree flow when reviewing existing work:
 
 `prepare_commits` is intentionally limited to an operation returned by
 `apply_repository_change`; it is not the dirty-tree preparation tool.
+For a deletion, `git_commit_files` rechecks that the reviewed path remains
+absent and stages it with `git add -u` before invoking the one-file hook gate.
 
 The server rechecks status and content hashes immediately before each commit,
 keeps the Git hooks active, and stops on the first failure. Partial progress
-is returned instead of silently continuing. Use `responseMode: "structured"` for
-compact transport when a client does not need the compatibility JSON text block.
+is returned instead of silently continuing. Results always include native
+`structuredContent` and one compact human-readable text summary.
 
 Mutating apply and commit operations are serialized per checkout with an atomic
 lock in the Git common directory. Same-process calls queue; other server
@@ -75,22 +86,32 @@ processes wait briefly for the lock. A lock is reclaimed only when its owner is
 gone or its lease is demonstrably stale, and every completed operation releases
 it in a `finally` path.
 
-For `prepare_repository_change`, each operation must contain the complete
-replacement content for its target text file. A single operation is limited to
-20 files and each profile keeps its existing aggregate byte budget. Do not use
-bounded terminal output as the replacement payload. The `repository` profile
-is the broad cross-workspace option for planned changes; it covers the current
-application, API Worker, public MCP Worker, local MCP, tools, tests, scripts,
-documentation, workflows, restricted developer directories, and root
-configuration files. Focused profiles remain available when a narrower
-boundary is preferable. To catch accidental truncation
-before any write, a shorter replacement for an existing file is rejected by
-default with a request to set `allowContentShortening: true`. Use that opt-in
-only after reviewing the complete diff for an intentional reduction. The
-preparation response includes compact old/new SHA-256 and new-byte metadata; it
-never needs to echo full source content. The apply step rechecks hashes, writes
-atomically, verifies final hashes, and rolls back earlier writes when a later
-write fails.
+For `prepare_repository_change`, `write` carries complete replacement content.
+`edit` carries an existing-file SHA-256 and exact `replacements` of
+`oldText`/`newText`; an empty `newText` deletes the anchored text. Every anchor
+must occur exactly once in the original snapshot, and overlapping anchors are
+rejected. `delete` carries an existing tracked-file SHA-256 and no content.
+The server computes the final file, preserves bytes outside the anchors, and
+feeds it through the same content guards and diff review as a full write.
+Missing, untracked, directory, symlink, ignored, sensitive, binary,
+credential-like, and oversized targets remain denied. A single operation is
+limited to 20 files and each profile keeps its existing aggregate byte budget.
+The preparation result includes `reviewHash`, `instanceId`, and `expiresAt`.
+
+The apply step rechecks the review hash, every current file hash, and tracked
+status under the checkout mutation lock. Writes remain atomic. Each delete is first moved to a unique
+same-directory tombstone, the original path is verified absent, and tombstones
+are removed only after all operations and final hash checks succeed. Any
+observed failure restores tombstones or captured content and removes created
+files before returning `failed`.
+This is operation-level rollback only; it does not recursively delete
+directories or integrate with an operating-system trash.
+
+`search_repository` performs bounded literal matching over visible tracked,
+dirty, and untracked files. It returns stable path/line/column matches,
+single-line previews, file hashes, scan counts, and continuation metadata.
+It accepts up to 20 profile-allowed roots, 200 results, 5,000 candidate files,
+and 32 MiB of accepted text per call; query strings are never executed.
 
 Diff previews are capped at 16,000 characters. The server reports the full
 character and UTF-8 byte totals, the next offset, and every path omitted from the
@@ -100,12 +121,58 @@ at 256,000 characters. Review diffs larger than the 8,000,000-character storage
 ceiling are rejected with a request to split the change. `read_repository_files`
 reads up to 20 profile-allowed text files in one bounded request, defaults to
 16,000 characters per file, and returns hashes, byte totals, completion state,
-and pagination offsets. The source reader and text-change flow reject binary
-extensions, NUL-containing content, ignored runtime directories, sensitive
-environment or credential names, and credential-like/private-key content even
-when the broad `repository` profile would otherwise match the path. Use
-`responseMode: "structured"` when the client already consumes
-`structuredContent`, avoiding duplicate JSON text.
+and pagination offsets. Line ranges are 1-based and inclusive, capped at 500
+lines, and return `nextLine` when the requested range needs another call. When
+a requested path is outside the selected profile, the structured error names
+every attempted path and explains the explicit permission flow; no content is
+read before access is granted. The source reader and
+text-change flow reject binary extensions, NUL-containing content, ignored
+runtime directories, sensitive environment or credential names (except the safe-template `.env.example` and guarded root `.envrc` exceptions), and
+credential-like/private-key content even when the broad `repository` profile
+would otherwise match the path.
+
+### Profile read permissions
+
+`grant_repository_read_access` is the only path that can widen a focused read
+profile. It is approval-gated (`approve: true`) and accepts only exact safe
+paths. Ask the user before invoking it; do not treat a model-generated tool
+call as implicit consent.
+
+- `scope: "temporary"` returns a short-lived `permissionToken` (15 minutes)
+  bound to the selected profile and exact paths. Pass that token to
+  `read_repository_files`; it is consumed after one successful read and cannot
+  be reused for another request.
+- `scope: "permanent"` records the exact paths for that profile in a
+  user-local allowlist outside the checkout. The default file is
+  `$XDG_CONFIG_HOME/operator-synaciel-repository/read-allowlist.json`, or
+  `~/.config/operator-synaciel-repository/read-allowlist.json` when
+  `XDG_CONFIG_HOME` is unset. Set `OPERATOR_SYNACIEL_MCP_READ_ALLOWLIST` to an
+  absolute path outside the checkout to choose another location.
+- The allowlist is owner-readable only, bound to the current canonical checkout
+  and profile, and capped at 200 paths per profile. It never overrides
+  traversal, ignored-runtime, sensitive-name (except safe-template `.env.example` and guarded root `.envrc`), binary,
+  or credential-like content checks. No file contents or permission secrets are
+  stored in it.
+
+The root `.env.example` is an explicit safe-template exception. The root
+`.envrc` is a separate exact safe exception only when its content is the
+guarded Nix entrypoint (`if command -v nix >/dev/null 2>&1; then`, followed by
+`use flake` and `fi`). The `config` and broad `repository` profiles may
+read or review those exact safe paths, while nested `.envrc` paths, unsafe
+`.envrc` content, and real `.env` variants remain denied. Filename safety
+does not bypass the credential-like-content check, so a template containing a
+non-placeholder secret-like assignment is still rejected.
+
+If the MCP client supports form elicitation, a denied `read_repository_files`
+call can ask the user inline and continue with the selected scope. Clients
+without elicitation support receive the named-path error and must provide the
+explicitly user-approved `scope` on the approval-gated tool call.
+
+`prepare_repository_change` uses a separate write-profile boundary. Its
+directory-denial errors also name the attempted path, but read permissions never
+widen write access. If a change genuinely belongs outside a focused write
+profile, ask the user first and retry with the broader `repository` profile;
+the normal hash review and approval-gated apply step still remain required.
 
 Prepared plans and commit operations expire after 30 minutes and are evicted
 under a 64 MiB retained-review budget. Verification results are cached for 30
@@ -130,24 +197,37 @@ enforces commit policy at commit time; the Codex hook provides immediate
 feedback during an agent turn. It does not run for arbitrary shell commands,
 so manual shell writes should be followed by the explicit Biome command.
 
+The `SessionStart` and `SubagentStart` hooks also run a bounded, read-only Nix
+dev-shell check. They surface compatible `flake.nix` guidance and report
+missing or unconfirmed compatibility without entering the shell or rewriting
+commands; see [[operations/local-development|Local development]] for the
+current flake's runtime limitation.
+
 ## Tool output contracts
 
-All eleven repository MCP tools advertise a native `outputSchema` in
+All thirteen repository MCP tools advertise a native `outputSchema` in
 `tools/list`. Successful calls return the canonical object in
-`structuredContent` and retain a compact JSON text block for clients that still
-consume text content. The schemas describe the existing status unions rather
-than changing the guarded workflow behavior.
+`structuredContent` and retain one compact human-readable text summary for
+text clients.
 
 The output families are:
 
 - `repository_workflow_status` returns readiness, tooling, Git hook, and
-  capability status, with a short-lived cache and `checkedAt`/`cacheHit` metadata.
+  capability status, server instance ID, and `checkedAt`/`cacheHit` metadata.
+- `search_repository` returns bounded literal matches, hashes, scan counts, and
+  continuation metadata.
 - `read_repository_files` returns bounded, profile-checked source snapshots for
   up to 20 files with per-file hashes, byte totals, and pagination offsets.
+- `grant_repository_read_access` returns an approval-gated temporary token or
+  records exact paths in the user-local allowlist; it never returns file
+  content.
 - `prepare_repository_change` returns either a prepared plan with hashes and
-  an apply token or a rejected result.
+  an apply token, review hash, instance ID, and expiry, or a structured
+  rejection; edit and delete summaries carry their action metadata.
 - `apply_repository_change` returns an applied result, verification-failure
-  result, conflict, or failed result.
+  result, conflict, failed result, or structured
+  rejection. Repeating a completed apply with the same plan/token/review hash
+  returns the original result. `finalFileHashes` uses `null` for deleted paths.
 - `verify_repository_change` returns a verification summary or rejection.
 - `prepare_working_tree_commit` returns either a restricted-path consent
   challenge or a prepared snapshot with bounded diff metadata.
@@ -156,8 +236,9 @@ The output families are:
   or source content.
 - `git_commit_working_tree` and `git_commit_files` return committed or
   partial-commit results; `prepare_commits` returns bounded commit entries.
-- Errors raised before a result is constructed remain MCP errors; returned
-  result statuses remain structured and text-compatible.
+- Expected domain failures include `reasonCode`, `retryable`, and optional
+  `nextAction`/`conflicts` entries with expected and current hashes.
+  Schema-validation failures remain MCP protocol errors.
 
 `outputSchema` is a tool contract. This local repository MCP exposes no
 resources, so there is no resource output schema to advertise.
@@ -178,7 +259,8 @@ the corresponding fixed check when the diagnostic tail is omitted.
   `workers/portfolio-mcp/`), `tools/`, `tests/`, `scripts/`,
   documentation, workflows, restricted developer directories, editor
   configuration, and root manifests. Ignored runtime directories, binary source
-  files, sensitive names, and credential-like content remain denied.
+  files, sensitive names (except safe-template `.env.example` and guarded root `.envrc`), and credential-like content
+  remain denied.
 - `mcp` remains focused on local/public MCP implementation, tests, scripts,
   hooks, workflows, docs, and MCP metadata.
 - `database` remains focused on API migrations, schema, seed, Drizzle, and
@@ -217,6 +299,9 @@ registrations, dependency readiness, Graphify output, vault index, and hooks.
 The status tool is read-only and does not return secrets. A missing Graphify
 output is an onboarding warning, not a reason to mutate the repository through
 the MCP.
+
+Restart long-lived MCP clients after changing the server version, tool list, or
+input/output schemas so they reload the current registration.
 
 The local stdio server uses the tsx source launcher by default. After
 `npm run mcp:build`, setting `OPERATOR_SYNACIEL_MCP_COMPILED=1` selects the

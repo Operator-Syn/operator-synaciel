@@ -10,7 +10,7 @@ export function registerOverviewTool(server: McpServer, api: PortfolioApiClient)
     {
       title: "Get portfolio overview",
       description:
-        "Return Operator-Syn's public identity, capabilities, home content, and portfolio links.",
+        "Return Operator-Syn's public identity, capabilities, home content, and public links, including social/contact targets when present.",
       inputSchema: z.strictObject({}),
       outputSchema: portfolioOverviewOutputSchema,
       annotations: { readOnlyHint: true },

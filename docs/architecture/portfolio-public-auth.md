@@ -24,15 +24,47 @@ portfolio assistant. It is intentionally not the existing admin
    Secure, SameSite=Lax state cookie.
 3. The callback exchanges the code, validates Google issuer, audience, expiry,
    verified email, and nonce, then stores only the stable Google subject,
-   current email/display name, and a hashed 30-day session identifier.
+   current email/display name/profile picture URL, and a hashed 30-day session identifier.
 4. A signed session cookie is returned to the configured `PORTFOLIO_ORIGIN`.
-   No Google access or refresh token is persisted.
+   No Google access or refresh token is persisted. Profile picture URLs are accepted only when
+   they use HTTPS and are hosted by `googleusercontent.com`; the frontend treats them as
+   decorative identity data and falls back to the generic icon if unavailable.
+
+`GET /session` returns `401 { authenticated: false }` when the browser has no
+valid session cookie. The frontend treats that expected incognito/first-visit
+response as signed out and renders the Google sign-in prompt; coded session
+failures remain visible as service errors.
+
+`GET /quota` is an authenticated, read-only view of the same subject's active
+rolling reservations. Its stable `usedTokens`, `budgetTokens`, and
+`remainingTokens` fields now represent weighted quota units: uncached input is
+weighted at 0.25, output (including reasoning) at 1.0, and cache-read input at
+zero. A reservation without complete usage metadata falls back to its
+provisional weighted estimate until it expires. The response includes the
+configured rolling budget, remaining allowance, and earliest reservation expiry
+(`resetAt`), or `null` when there is no active usage. It never returns the
+subject identifier or another user's usage. The assistant refreshes this view
+when a thread opens and after an attempted turn; a manual refresh remains
+available beside the meter.
 5. Turnstile is verified server-side once per session. The auth Worker then
    issues a five-minute ES256 agent token scoped to the user, session, opaque
-   thread ID, audience, quota epoch, and one-time JTI.
+   thread ID, audience, quota epoch, and one-time JTI. Token issuance is not
+   denied by the user's rolling quota-unit budget; that budget is enforced by
+   the agent only when a model turn is about to start.
 6. The agent Worker consumes that JTI on WebSocket upgrade, verifies the
    signature and scope, removes the token from the forwarded URL, and routes
    only the matching Durable Object thread.
+
+If a user's rolling budget is full, the agent returns a bounded assistant
+message after the authenticated WebSocket is established. The public-auth
+token route still succeeds, so the transcript remains readable and the same
+thread can be continued when older reservations roll off. The `agent_control`
+row is an administrator pause switch; the old local neuron estimate is not used
+to deny token issuance because it can disagree with the provider's usage
+dashboard. A manual pause can still make `/agent/token` return `503
+AGENT_PAUSED`, which is distinct from the per-user rolling quota-unit budget. When
+Workers AI itself reports that the model is out of capacity, the agent returns
+**The model is at its maximum daily capacity. Please try again at 00:00 UTC.**
 
 Allowed browser origins come from the Worker environment's `BROWSER_ORIGINS`
 list. Production config names the production portfolio origins plus the
@@ -50,10 +82,19 @@ not replace it with a wildcard.
 ## D1 ownership
 
 The auth database is separate from the portfolio API database. The checked-in
-migration creates users, sessions, OAuth state, threads, one-time agent
-tokens, daily usage windows, and the singleton pause/reset control row. The
-migration is a reviewed artifact only; the deployment workflow never applies
-it automatically.
+migrations create users, sessions, OAuth state, threads, one-time agent tokens,
+rolling quota-unit reservations, and the singleton pause/reset control row. Migration
+`0002_add_actual_token_usage.sql` adds nullable columns that store weighted input
+and output quota-unit components, and `0003_add_google_profile_picture.sql` adds
+the nullable validated profile image URL; older reservations continue to use
+`estimated_tokens` until they are settled. Reservations created before the
+weighted-accounting rollout may therefore retain legacy raw-token values until
+they expire from the one-hour window.
+The original daily usage table remains as a legacy schema artifact but is no
+longer used by runtime quota decisions. The migrations are reviewed artifacts
+only; the deployment workflow never applies them automatically. Apply the
+public-auth migrations through `0003` before deploying the Worker version that
+returns profile image URLs and settles actual usage.
 
 Runtime keys are provisioned manually through Wrangler or the Cloudflare
 dashboard. The source deliberately assembles sensitive key names at runtime so
@@ -84,14 +125,67 @@ private JWK in public-auth and the public JWK in the agent, and rotate both
 together. The local profile should use a separate local-only pair and internal
 key.
 
+## Thread history hydration
+
+The authenticated frontend loads a selected thread's persisted transcript through
+`GET /threads/:id/messages`. The route first resolves the session and
+checks that the thread belongs to that Google subject before calling the private
+agent service binding. The agent reads the Durable Object's persisted
+`AIChatAgent` UI messages and returns them through that service-only
+path; the browser never calls the internal endpoint directly.
+
+The route keeps the legacy no-query `{ messages }` response for existing
+consumers. A reader-first request may add `limit` (bounded to 1–50) and
+`before=<message-id>`; public-auth validates the page parameters, forwards them
+over the private service binding, and returns `{ messages, nextCursor, hasMore }`.
+The frontend loads the newest page first and asks for older pages only when the
+reader reaches the transcript's top edge. The cursor is an opaque message ID
+owned by the agent Durable Object, and an invalid position is returned as a
+bounded 400 error. This remains a read-only route with no D1 pagination table or
+migration: the Durable Object retains the full transcript for model context.
+
+History hydration does not issue, accept, or reuse a one-time WebSocket agent
+token. The session cookie and server-side ownership check are the access
+boundary, while `AGENT_INTERNAL_KEY` protects the auth-to-agent
+service binding. This transcript route is read-only and does not add a D1
+migration: D1 stores thread ownership metadata, and the agent Durable Object
+SQLite remains the message source of truth. The nullable `threads.title` column
+stores a bounded agent-generated summary after a successful evidence-backed reply;
+`GET /threads` returns it and `POST /threads` returns `title: null` for a new
+placeholder thread. The agent writes the title only when the value is still empty,
+and the frontend keeps the ID fallback while the reply is in flight, then refreshes
+the authoritative thread list after completion. Existing untitled threads are not
+backfilled; they are named on their next successful completion. Duplicate generated
+titles are disambiguated in the selector with the shortest unique thread-ID prefix.
+No D1 migration or transcript rewrite is required.
+
+## Thread creation guard
+
+A newly created thread is a placeholder until its first meaningful persisted
+message arrives. The public-auth `POST /threads` route checks the bounded set of
+the user's newest untitled placeholders through the private agent history seam
+(`limit=1`). If any candidate is empty, it returns
+`409 EMPTY_THREAD_ACTIVE` and does not insert another row. If the agent or
+history payload cannot be checked, it fails closed with
+`503 THREAD_STATE_UNAVAILABLE`. This reuses the Durable Object message source
+of truth and requires no D1 schema migration.
+
+The frontend hydrates the selected thread before enabling the toolbar's New
+thread control. It remains disabled while history is loading or unavailable,
+and while the selected thread has no visible activity; submitting the first
+question marks the thread active immediately. Deleting the selected thread can
+still leave no active thread, which permits creating the single initial
+placeholder.
+
 ## Administrative controls
 
 The admin reset endpoint is protected by the existing admin auth Worker and
 increments the user quota epoch, revokes sessions, invalidates outstanding
-agent JTIs, and clears usage windows. A user-specific reset leaves the global
-neuron guard unchanged; a global reset also clears the aggregate estimate and
-resumes the agent. The control endpoint can pause or resume the assistant with
-a bounded reason. These endpoints are not exposed through the public frontend.
+agent JTIs, and clears that subject's rolling reservations. A user-specific
+reset leaves the global neuron guard unchanged; a global reset also clears all
+rolling reservations and the aggregate estimate, then resumes the agent. The
+control endpoint can pause or resume the assistant with a bounded reason. These
+endpoints are not exposed through the public frontend.
 
 See [[architecture/portfolio-agent|Portfolio Assistant Agent]] for model and
 MCP limits, and [[operations/deployment|Production deployment]] for

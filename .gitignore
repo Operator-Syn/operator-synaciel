@@ -37,6 +37,15 @@ bundle-analysis.html
 graphify-out
 .wrangler
 
+# Local Playwright authentication state
+/playwright/.auth/
+
+# Local Playwright browser downloads
+/.playwright-browsers/
+
+# Local direnv state
+/.direnv/
+
 # Generated Obsidian graph indexes
 /.obsidian/graph.json
 /docs/.obsidian/graph.json

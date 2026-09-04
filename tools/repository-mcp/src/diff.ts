@@ -186,3 +186,9 @@ export function readDiffChunk(
 export function previewDiff(document: DiffDocument): DiffChunk {
   return readDiffChunk(document, 0, MAX_DIFF_PREVIEW_CHARACTERS);
 }
+
+export function renderDiffDocument(document: DiffDocument): string {
+  return document.ranges
+    .map((range) => renderSectionRange(range.section, 0, range.end - range.start))
+    .join("\n\n");
+}

@@ -9,7 +9,6 @@ import HomeCoordinates from "../../homePage/HomeCoordinates";
 import HomeFooter from "../../homePage/HomeFooter";
 import HomeIdentityPanel from "../../homePage/HomeIdentityPanel";
 import HomeSelectedWork from "../../homePage/HomeSelectedWork";
-import HomeSettings from "../../homePage/HomeSettings";
 import HomeToolsTable from "../../homePage/HomeToolsTable";
 import useHomepageMotion from "../../homePage/useHomepageMotion";
 import { LoadingBlock } from "../../loadingState/LoadingState";
@@ -284,7 +283,6 @@ export default function Home() {
           <HomeFooter isLoading={sectionsQuery.isLoading} links={sections.social.items} />
         </div>
       </CookingArea>
-      <HomeSettings />
     </>
   );
 }

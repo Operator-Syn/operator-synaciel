@@ -103,6 +103,8 @@ Loading is a visual state, not a visible word repeated across the interface. Pub
 - Keep status announcements available to assistive technology through visually hidden
   `role="status"` content and `aria-busy`; do not expose loading copy in the visual layout.
 - Respect `prefers-reduced-motion`: retain the state distinction while removing continuous movement.
+- Static custom cursor glyphs remain available for fine pointers when reduced motion is enabled;
+  the preference suppresses movement and animation, not pointer affordances.
 - Do not change API contracts, route behavior, cursor mappings, or interaction handlers to add loading feedback.
 
 ## Route transitions
@@ -123,7 +125,11 @@ handoff, and 230ms to reveal the destination. The cover uses the editorial
 easing curve, the handoff holds at full cover, and the reveal uses a symmetric
 curtain easing curve so it departs smoothly. Snippet folder changes use the
 lighter 220ms workspace transition. Its cue is opacity only; it never translates
-the workspace horizontally, changes document width, or adds layout flow.
+the workspace horizontally, changes document width, or adds layout flow. When
+reduced motion is active through the visitor setting or operating system
+preference, route changes remain immediate and the curtain is omitted; the Motion
+setting explains this state. The persistent dock stays above the content curtain
+so its controls remain reachable.
 Dedicated document routes use the full page transition. Modal, hash, download, canonical-replace, and external-link actions
 stay outside this contract.
 
@@ -207,9 +213,9 @@ On mobile, the header and label rail compress deliberately but the image stage r
 ## Overlay and disclosure motion
 
 Overlay motion is anchored to the control that opened it: the media modal enters
-from the center, fixed FAB panels unfold from the bottom-right trigger, the
-mobile navbar descends from the header, and the mobile document contents panel
-unfolds above its trigger. Modal entrance/exit uses 280ms/180ms; disclosures use
+from the center, the shared floating-control dock unfolds its active panel above
+the owning trigger, the mobile navbar descends from the header, and the mobile
+document contents panel unfolds above its trigger. Modal entrance/exit uses 280ms/180ms; disclosures use
 220ms/160ms. These surfaces use opacity and transforms without entering layout
 flow.
 
@@ -222,8 +228,12 @@ their separate contracts.
 
 ## Visitor preferences
 
-The Home-only settings utility and Quick Navigation share one safe-area-aware
-viewport edge anchor while remaining fixed and out of page layout. Dalan remains
+The Home-only settings utility, Quick Navigation, and site-wide assistant share
+one safe-area-aware floating-control dock. Closed triggers stay horizontal with a
+deliberate gap; opening one panel yields the inactive trigger so the active panel
+gets the full dock edge and no panel or focus target can cover another. Escape and
+close actions restore focus to the trigger, while native browser titles remain the
+compact hover labels. Dalan remains
 the default palette; Of Times Old is a newly
 composed lighter pastel-blue monochrome palette informed by the historical blue
 only as reference. Vesper Index is a newly composed rose-led twilight palette
@@ -232,6 +242,78 @@ typography, and geometry.
 Preferences are browser-local and apply across routes. The reduced-motion
 control can add an explicit preference, while turning it off still honors the
 operating system's `prefers-reduced-motion` setting.
+The assistant panel is viewport-bounded and treats long transcript content as a
+layout edge case rather than a second horizontal reading surface. The panel
+keeps its header, thread controls, and composer geometry stable while the
+transcript owns the single vertical scroll surface. The chat wrapper and message
+list stay in normal flow inside that region, so a long message can never be
+split by a sticky footer or paint below it. Transcript messages and source links
+wrap at any safe break, and the transcript uses the shared neutral scrollbar
+treatment without horizontal overflow. At phone widths or short windows
+(`max-width: 640px` or `max-height: 560px`), the authenticated assistant opens
+as a safe-area-aware full-screen dialog. Its header is compact, the thread
+selector and actions stay on one row, and the quota is a closed compact
+disclosure so the transcript remains the dominant region. The mobile dialog has
+one visible close action and temporarily removes the floating trigger; the
+desktop compact and explicitly expanded presentations remain available above
+that responsive boundary. The toolbar remains visible above the transcript with
+an opaque neutral backing and ruled lower edge; the composer is a fixed-height
+footer outside the scroll region, so the next question stays reachable without a
+nested scrollbar. The authenticated session is a block-sized containment
+surface so the transcript remains bounded through long histories and reconnect
+fallbacks. The toolbar and composer paint full-width opaque bands with the
+shared surface token, preventing transcript text from bleeding through their
+layers. User messages align to the trailing edge with the signal-soft surface;
+assistant messages align to the leading edge on a raised neutral surface. On
+first load, the transcript moves to the latest message while preserving a
+visitor's deliberate scroll position on subsequent updates. While an assistant
+response is streaming, markdown updates are coalesced into small visual commits
+and a restrained inline caret replaces a repeated card or scroll animation. The
+transcript follows only while it is pinned to the bottom; an upward reader
+gesture pauses following and exposes a keyboard-accessible **Jump to latest
+assistant response** control. The composer uses the scoped
+`--assistant-composer-min-block-size` token (`4.75rem` above `400px`, `4.5rem` at
+or below `400px`) and lets the textarea grow from its empty/two-row baseline to
+an `8rem` cap. Native vertical resizing is disabled; overflow is hidden until
+the cap is reached so an empty composer does not expose a scrollbar. Pressing
+Enter submits the current question; Shift+Enter inserts a new line, and Enter
+during IME composition is left to the composing input method.
+When the active transcript has no visible messages, it also offers a small set of
+keyboard-accessible starter questions; selecting one submits it through the same
+composer path as typed text. If the authenticated archive has no threads, the
+frontend provisions one automatically and shows a responsive, non-actionable
+placeholder while it is being prepared; it does not offer a duplicate New thread
+action in that state. When motion is enabled, opening the panel uses the
+overlay-enter token and the FAB, toolbar actions, send action, and composer focus
+use short signal-color and pressed-state feedback; all of those effects become
+immediate when reduced motion is active.
+
+Destructive thread actions use the reusable `Modal` primitive rather than
+`window.alert` or `window.confirm`. The modal renders through a portal, locks
+page scrolling, exposes `aria-modal` and a labelled dialog/alertdialog, traps
+Tab focus, closes on Escape, and restores focus to the originating trigger.
+Connection recovery keeps the panel geometry stable and presents a bounded
+reconnection status while the thread remains available.
+
+Automatic context compaction is disabled; the assistant sends the full retained
+thread until the model/provider context limit is reached. Legacy context markers
+from older threads remain read-only. Empty assistant stream placeholders are
+omitted from the transcript; if a stream fails, the panel shows the safe failure
+copy and a **Try again** action without disabling a new question.
+
+Workers AI reasoning parts stay separate from answer text. The
+normal transcript renders only answer `text` parts; a response with a
+`reasoning` part exposes a closed native `Show model reasoning` disclosure for
+visitors who deliberately want to inspect it. Thread exports include that
+same bounded public reasoning trace for audit, plus sanitized tool-activity
+parts and a top-level tool-call index. Arguments, raw MCP payloads, provider
+metadata, and credentials remain excluded from the downloadable JSON.
+Provider-style `<tool_call>` markers that arrive in conversational answer text
+are rendered as bounded, presentation-only tool-call rows rather than raw
+markup; they do not invoke a tool. The row shows `Working…` with an accessible
+busy state while the answer stream is active and changes to `Recorded` when the
+stream closes. Its spinner respects reduced-motion settings.
+
 The built-in themes are Dalan, Of Times Old, Vesper Index, and The Ancient Blue
 Ledger. The latter is a permanent light ledger palette; selecting it changes
 semantic colors and shadow tints only, preserving the established composition

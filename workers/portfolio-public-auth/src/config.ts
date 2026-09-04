@@ -5,15 +5,9 @@ export const OAUTH_STATE_COOKIE = "__Host-portfolio_oauth_state";
 export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 export const OAUTH_STATE_MAX_AGE_SECONDS = 10 * 60;
 export const AGENT_ACCESS_TTL_SECONDS = 5 * 60;
-export const DAILY_TURN_LIMIT = 20;
-export const THREAD_BURST_LIMIT = 5;
-export const THREAD_BURST_WINDOW_SECONDS = 10 * 60;
+export const ROLLING_TOKEN_BUDGET = 1_000_000;
+export const ROLLING_TOKEN_WINDOW_SECONDS = 60 * 60;
 export const THREAD_RETENTION_SECONDS = 30 * 24 * 60 * 60;
-export const WORKERS_AI_DAILY_NEURON_BUDGET = 10_000;
-export const WORKERS_AI_AUTO_PAUSE_RATIO = 0.8;
-export const WORKERS_AI_AUTO_PAUSE_LIMIT =
-  WORKERS_AI_DAILY_NEURON_BUDGET * WORKERS_AI_AUTO_PAUSE_RATIO;
-export const ESTIMATED_NEURONS_PER_TURN = 350;
 
 export type PublicAuthEnvironment = {
   AUTH_DB: D1Database;
@@ -47,6 +41,7 @@ export type UserRow = {
   sub: string;
   email: string;
   display_name: string | null;
+  picture_url: string | null;
   quota_epoch: number;
   disabled_at: number | null;
 };

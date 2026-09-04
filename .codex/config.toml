@@ -20,11 +20,13 @@ tool_timeout_sec = 660
 default_tools_approval_mode = "writes"
 enabled_tools = [
   "repository_workflow_status",
+  "search_repository",
   "prepare_repository_change",
   "apply_repository_change",
   "verify_repository_change",
   "read_repository_change_diff",
   "read_repository_files",
+  "grant_repository_read_access",
   "read_working_tree_diff",
   "prepare_working_tree_commit",
   "git_commit_working_tree",
@@ -33,6 +35,9 @@ enabled_tools = [
 ]
 
 [mcp_servers."operator-synaciel-repository".tools.apply_repository_change]
+approval_mode = "prompt"
+
+[mcp_servers."operator-synaciel-repository".tools.grant_repository_read_access]
 approval_mode = "prompt"
 
 [mcp_servers."operator-synaciel-repository".tools.git_commit_working_tree]

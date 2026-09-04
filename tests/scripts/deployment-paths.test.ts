@@ -6,7 +6,7 @@ import { test } from "node:test";
 const repositoryRoot = resolve(import.meta.dirname, "../..");
 const legacyPackageName = "gh" + "-pages";
 const legacyDomain = ["operator-eury", "github", "io"].join(".");
-const legacyRootCommand = ["npm", "run", "deploy"].join(" ");
+const legacyRootCommand = /\bnpm run deploy(?:\s|`|$)/;
 const ignoredDirectories = new Set([
   ".git",
   "dist",
@@ -84,6 +84,10 @@ test("keeps the legacy root GitHub Pages deployment retired", async () => {
     join(repositoryRoot, ".github/workflows/deploy-production-workers.yml"),
     "utf8",
   );
+  const publicAuthDeployScript = await readFile(
+    join(repositoryRoot, "scripts/deploy-public-auth.mjs"),
+    "utf8",
+  );
   const publicAuthWorkerConfiguration = await readFile(
     join(repositoryRoot, "workers/portfolio-public-auth/wrangler.toml"),
     "utf8",
@@ -102,6 +106,19 @@ test("keeps the legacy root GitHub Pages deployment retired", async () => {
   assert.equal(
     rootPackage.scripts?.["mcp:portfolio:deploy"],
     "npm run deploy --workspace=@syn-forge/portfolio-mcp --",
+  );
+  assert.equal(
+    rootPackage.scripts?.["deploy:portfolio-agent"],
+    'wrangler deploy --env="" --config workers/portfolio-agent/wrangler.toml',
+  );
+  assert.equal(
+    rootPackage.scripts?.["migrate:public-auth"],
+    "node scripts/deploy-public-auth.mjs --migrate-only",
+  );
+  assert.equal(rootPackage.scripts?.["deploy:public-auth"], "node scripts/deploy-public-auth.mjs");
+  assert.equal(
+    rootPackage.scripts?.["deploy:portfolio-assistant"],
+    "npm run deploy:portfolio-agent -- --dry-run && npm run deploy:public-auth -- --dry-run && npm run migrate:public-auth && npm run deploy:portfolio-agent && npm run deploy:public-auth -- --skip-migration",
   );
 
   assert.equal(webPackage.scripts?.["pages:dev"], "wrangler pages dev dist");
@@ -192,6 +209,11 @@ test("keeps the legacy root GitHub Pages deployment retired", async () => {
   assert.doesNotMatch(deploymentWorkflow, /db:migrations:(?:apply|list)/);
   assert.doesNotMatch(deploymentWorkflow, /auth-worker/);
   assert.match(deploymentDocumentation, /deploy-production-workers\.yml/);
+  assert.match(deploymentDocumentation, /npm run deploy:portfolio-assistant/);
+  assert.match(publicAuthDeployScript, /--migrate-only/);
+  assert.match(publicAuthDeployScript, /--skip-migration/);
+  assert.match(publicAuthDeployScript, /--dry-run/);
+  assert.match(publicAuthDeployScript, /input: "y\\n"/);
   assert.match(deploymentDocumentation, /CLOUDFLARE_API_TOKEN/);
   assert.match(
     publicAuthWorkerConfiguration,
@@ -246,9 +268,9 @@ test("keeps the legacy root GitHub Pages deployment retired", async () => {
   );
   for (const file of documentationFiles) {
     const contents = await readFile(file, "utf8");
-    assert.equal(
-      contents.includes(legacyRootCommand),
-      false,
+    assert.doesNotMatch(
+      contents,
+      legacyRootCommand,
       `Legacy root deploy command remains in ${file}`,
     );
   }

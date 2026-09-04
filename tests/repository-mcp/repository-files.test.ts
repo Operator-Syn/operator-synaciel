@@ -1,7 +1,27 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, test } from "node:test";
 
-import { readRepositoryFiles } from "../../tools/repository-mcp/src/repository-files.ts";
+import {
+  createRepositoryReadPermissionStore,
+  type ReadPermissionGrant,
+} from "../../tools/repository-mcp/src/read-permissions.ts";
+import {
+  readRepositoryFiles,
+  validateRepositoryReadPath,
+} from "../../tools/repository-mcp/src/repository-files.ts";
+
+const allowlistDirectories: string[] = [];
+
+afterEach(async () => {
+  await Promise.all(
+    allowlistDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true, force: true })),
+  );
+});
 
 test("reads bounded source snapshots in a batch", async () => {
   const first = await readRepositoryFiles({
@@ -63,7 +83,7 @@ test("rejects binary and ignored paths from the broad source profile", async () 
       profile: "repository",
       files: [{ path: "apps/portfolio-web/public/social-image.png" }],
     }),
-    /Binary file paths cannot be read/,
+    /is a binary file and cannot be read/,
   );
   await assert.rejects(
     readRepositoryFiles({
@@ -87,6 +107,124 @@ test("rejects duplicate and out-of-profile source requests", async () => {
   );
   await assert.rejects(
     readRepositoryFiles({ profile: "app", files: [{ path: "package.json" }] }),
-    /not allowed by the app read profile/,
+    /Path "package\.json" is not allowed by the app read profile/,
+  );
+});
+
+test("allows safe environment files while rejecting live variants", async () => {
+  assert.equal(validateRepositoryReadPath(".env.example"), ".env.example");
+  assert.equal(validateRepositoryReadPath(".envrc"), ".envrc");
+  assert.throws(
+    () => validateRepositoryReadPath("nested/.envrc"),
+    /sensitive environment or credential file/,
+  );
+  for (const path of [".env", ".env.local", ".env.production", ".env.example.local"]) {
+    assert.throws(
+      () => validateRepositoryReadPath(path),
+      /sensitive environment or credential file/,
+      path,
+    );
+  }
+
+  const result = await readRepositoryFiles({
+    profile: "repository",
+    files: [{ path: ".envrc" }],
+    maxChars: 512,
+  });
+  assert.match(result.files[0]?.content ?? "", /use flake/);
+});
+
+test("uses a temporary exact-path permission once", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "operator-synaciel-read-permission-"));
+  allowlistDirectories.push(directory);
+  const store = createRepositoryReadPermissionStore({
+    configPath: join(directory, "read-allowlist.json"),
+  });
+  const path = "workers/portfolio-api/src/entrypoint.ts";
+  const grant = await store.grant("app", [path], "temporary");
+  assert.ok(grant.permissionToken);
+
+  const result = await readRepositoryFiles(
+    {
+      profile: "app",
+      files: [{ path }],
+      permissionToken: grant.permissionToken,
+      maxChars: 64,
+    },
+    { permissionStore: store },
+  );
+  assert.equal(result.files[0]?.path, path);
+
+  await assert.rejects(
+    readRepositoryFiles(
+      { profile: "app", files: [{ path }], permissionToken: grant.permissionToken },
+      { permissionStore: store },
+    ),
+    /Path "workers\/portfolio-api\/src\/entrypoint\.ts" is not allowed by the app read profile/,
+  );
+});
+
+test("can ask for an inline temporary permission before reading", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "operator-synaciel-read-inline-"));
+  allowlistDirectories.push(directory);
+  const store = createRepositoryReadPermissionStore({
+    configPath: join(directory, "read-allowlist.json"),
+  });
+  const path = "workers/portfolio-api/src/entrypoint.ts";
+  let requestedPaths: readonly string[] = [];
+
+  const result = await readRepositoryFiles(
+    { profile: "app", files: [{ path }], maxChars: 64 },
+    {
+      permissionStore: store,
+      requestPermission: async (request) => {
+        requestedPaths = request.paths;
+        return "temporary";
+      },
+    },
+  );
+  assert.deepEqual(requestedPaths, [path]);
+  assert.equal(result.files[0]?.path, path);
+});
+
+test("persists only explicit exact-path permissions outside the checkout", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "operator-synaciel-read-allowlist-"));
+  allowlistDirectories.push(directory);
+  const configPath = join(directory, "read-allowlist.json");
+  const store = createRepositoryReadPermissionStore({ configPath });
+  const path = "workers/portfolio-api/src/entrypoint.ts";
+  const grant: ReadPermissionGrant = await store.grant("app", [path], "permanent");
+  assert.equal(grant.permissionToken, undefined);
+  assert.equal(await store.isPermanentlyAllowed("app", path), true);
+  assert.match(await readFile(configPath, "utf8"), /workers\/portfolio-api\/src\/entrypoint\.ts/);
+
+  const reloadedStore = createRepositoryReadPermissionStore({ configPath });
+  assert.equal(await reloadedStore.isPermanentlyAllowed("app", path), true);
+
+  const result = await readRepositoryFiles(
+    { profile: "app", files: [{ path }], maxChars: 64 },
+    { permissionStore: store },
+  );
+  assert.equal(result.files[0]?.path, path);
+});
+
+test("does not grant sensitive or binary paths through the permission store", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "operator-synaciel-read-safe-"));
+  allowlistDirectories.push(directory);
+  const store = createRepositoryReadPermissionStore({
+    configPath: join(directory, "read-allowlist.json"),
+  });
+
+  const templateGrant = await store.grant("repository", [".env.example"], "permanent");
+  assert.deepEqual(templateGrant.paths, [".env.example"]);
+  assert.equal(await store.isPermanentlyAllowed("repository", ".env.example"), true);
+
+  await assert.rejects(
+    store.grant("app", ["workers/portfolio-api/.env"], "temporary"),
+    /No safe repository paths were provided/,
+  );
+  await assert.rejects(
+    store.grant("app", ["workers/portfolio-api/public/logo.png"], "permanent"),
+    /No safe repository paths were provided/,
   );
 });

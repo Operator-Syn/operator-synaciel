@@ -1,0 +1,33 @@
+/* Shared safe-area-aware dock for visitor utilities and the assistant. */
+.floating-control-dock {
+    position: fixed;
+    inset-inline-end: var(--floating-control-inline-end);
+    inset-block-end: var(--floating-control-block-end);
+    z-index: 40;
+    display: flex;
+    align-items: flex-end;
+    gap: var(--floating-control-gap);
+    max-inline-size: calc(100vw - (2 * var(--floating-control-inline-end)));
+    pointer-events: none;
+}
+
+.floating-control-dock > [data-floating-panel] {
+    position: relative;
+    display: grid;
+    justify-items: end;
+    gap: var(--floating-control-gap);
+    pointer-events: none;
+}
+
+.floating-control-dock > [data-floating-panel] > * {
+    pointer-events: auto;
+}
+
+.floating-control-dock[data-active-panel="assistant"]
+    > [data-floating-panel]:not([data-floating-panel="assistant"]),
+.floating-control-dock[data-active-panel="settings"]
+    > [data-floating-panel]:not([data-floating-panel="settings"]),
+.floating-control-dock[data-active-panel="quick-navigation"]
+    > [data-floating-panel]:not([data-floating-panel="quick-navigation"]) {
+    display: none;
+}

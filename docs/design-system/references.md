@@ -47,6 +47,15 @@ descriptions, credential links, and existing pagination.
 Snippets use a technical file-index grammar with path, modified time, size,
 folder navigation, and a Markdown/PDF preview state.
 
+### Assistant
+
+![Compact portfolio assistant reference](references/portfolio-assistant-compact.png)
+
+The assistant reference shows the reader-first compact panel: the transcript
+leads, quota telemetry is reduced to a compact meter, and the expanded mode
+provides a wider viewport-docked reading surface. It is a visual reference
+only; it is not runtime content or an API fixture.
+
 ## Hidden application surfaces
 
 The 2026-08-26 reference captures for the hidden application routes are:

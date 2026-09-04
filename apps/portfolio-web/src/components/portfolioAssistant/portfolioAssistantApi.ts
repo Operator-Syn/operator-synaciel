@@ -1,3 +1,4 @@
+import type { UIMessage } from "ai";
 import { portfolioAssistantConfig } from "./portfolioAssistantConfig.ts";
 
 export type PublicSession = {
@@ -6,6 +7,7 @@ export type PublicSession = {
     sub: string;
     email: string;
     displayName: string | null;
+    pictureUrl: string | null;
   };
   sessionExpiresAt?: number;
   turnstileVerified?: boolean;
@@ -17,6 +19,48 @@ export type AssistantThread = {
   updatedAt: number;
   title: string | null;
 };
+
+export type AssistantMessagePage = {
+  messages: UIMessage[];
+  nextCursor: string | null;
+  hasMore: boolean;
+};
+
+export type AssistantMessagePageOptions = {
+  before?: string;
+  limit?: number;
+};
+
+export type PortfolioAssistantQuota = {
+  usedTokens: number;
+  budgetTokens: number;
+  remainingTokens: number;
+  resetAt: number | null;
+};
+
+export class PortfolioAssistantRequestError extends Error {
+  readonly status: number;
+  readonly code: string | null;
+  readonly retryAfterSeconds: number | null;
+
+  constructor({
+    code,
+    message,
+    retryAfterSeconds,
+    status,
+  }: {
+    code: string | null;
+    message: string;
+    retryAfterSeconds: number | null;
+    status: number;
+  }) {
+    super(message);
+    this.name = "PortfolioAssistantRequestError";
+    this.code = code;
+    this.retryAfterSeconds = retryAfterSeconds;
+    this.status = status;
+  }
+}
 
 export function getPublicAuthOrigin(): string {
   const origin = portfolioAssistantConfig.publicAuthOrigin;
@@ -40,17 +84,59 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as {
-      error?: { message?: string };
+      error?: { code?: string; message?: string };
     } | null;
-    throw new Error(
-      payload?.error?.message ?? "The assistant service could not complete that request.",
-    );
+    const retryAfter = Number.parseInt(response.headers.get("Retry-After") ?? "", 10);
+    throw new PortfolioAssistantRequestError({
+      code: payload?.error?.code ?? null,
+      message: payload?.error?.message ?? "The assistant service could not complete that request.",
+      retryAfterSeconds: Number.isFinite(retryAfter) && retryAfter >= 0 ? retryAfter : null,
+      status: response.status,
+    });
   }
   return (await response.json()) as T;
 }
 
-export function getSession(): Promise<PublicSession> {
-  return requestJson<PublicSession>("/session");
+export async function getSession(): Promise<PublicSession> {
+  try {
+    return await requestJson<PublicSession>("/session");
+  } catch (error) {
+    // `/session` uses 401 with `{ authenticated: false }` for a missing or
+    // expired browser cookie. Treat that expected state as signed out so the
+    // assistant can show its Google sign-in prompt; preserve coded 401s for
+    // genuine service/auth failures.
+    if (error instanceof PortfolioAssistantRequestError && error.status === 401 && !error.code) {
+      return { authenticated: false };
+    }
+    throw error;
+  }
+}
+
+export async function getAssistantQuota(): Promise<PortfolioAssistantQuota> {
+  const result = await requestJson<Partial<PortfolioAssistantQuota>>("/quota", {
+    cache: "no-store",
+  });
+  const { budgetTokens, remainingTokens, resetAt, usedTokens } = result;
+  if (
+    typeof usedTokens !== "number" ||
+    !Number.isFinite(usedTokens) ||
+    typeof budgetTokens !== "number" ||
+    !Number.isFinite(budgetTokens) ||
+    typeof remainingTokens !== "number" ||
+    !Number.isFinite(remainingTokens) ||
+    usedTokens < 0 ||
+    budgetTokens <= 0 ||
+    remainingTokens < 0 ||
+    (resetAt !== null && (typeof resetAt !== "number" || !Number.isFinite(resetAt) || resetAt < 0))
+  ) {
+    throw new Error("The assistant budget could not be loaded.");
+  }
+  return {
+    usedTokens,
+    budgetTokens,
+    remainingTokens,
+    resetAt,
+  };
 }
 
 export function verifyTurnstile(token: string): Promise<{ verified: boolean }> {
@@ -62,6 +148,43 @@ export function verifyTurnstile(token: string): Promise<{ verified: boolean }> {
 
 export function listThreads(): Promise<{ threads: AssistantThread[] }> {
   return requestJson<{ threads: AssistantThread[] }>("/threads");
+}
+
+export async function getThreadMessages(threadId: string): Promise<UIMessage[]> {
+  const result = await requestJson<{ messages: UIMessage[] }>(
+    `/threads/${encodeURIComponent(threadId)}/messages`,
+  );
+  if (!Array.isArray(result.messages)) {
+    throw new Error("Thread history could not be loaded.");
+  }
+  return result.messages;
+}
+
+export async function getThreadMessagesPage(
+  threadId: string,
+  options: AssistantMessagePageOptions = {},
+): Promise<AssistantMessagePage> {
+  const params = new URLSearchParams();
+  if (typeof options.limit === "number" && Number.isFinite(options.limit)) {
+    params.set("limit", String(Math.trunc(options.limit)));
+  }
+  if (options.before) params.set("before", options.before);
+  const query = params.toString();
+  const result = await requestJson<Partial<AssistantMessagePage>>(
+    `/threads/${encodeURIComponent(threadId)}/messages${query ? `?${query}` : ""}`,
+  );
+  if (!Array.isArray(result.messages)) {
+    throw new Error("Thread history could not be loaded.");
+  }
+
+  // Keep rollout compatibility with an older public-auth Worker that still
+  // returns the legacy full-transcript shape while the paged route propagates.
+  const nextCursor = result.nextCursor === undefined ? null : result.nextCursor;
+  const hasMore = result.hasMore === undefined ? false : result.hasMore;
+  if ((nextCursor !== null && typeof nextCursor !== "string") || typeof hasMore !== "boolean") {
+    throw new Error("Thread history could not be loaded.");
+  }
+  return { messages: result.messages, nextCursor, hasMore };
 }
 
 export function createThread(): Promise<AssistantThread> {

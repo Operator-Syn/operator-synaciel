@@ -10,6 +10,7 @@ export type JsonRpcMessage = {
     readonly structuredContent?: Readonly<Record<string, unknown>>;
     readonly tools?: readonly {
       readonly name: string;
+      readonly inputSchema?: Readonly<Record<string, unknown>>;
       readonly outputSchema?: Readonly<Record<string, unknown>>;
     }[];
     readonly instructions?: string;
@@ -125,6 +126,8 @@ export async function startServer(repository: string): Promise<TestServer> {
 }
 
 export function payload(message: JsonRpcMessage): Record<string, unknown> {
+  const structuredContent = message.result?.structuredContent;
+  if (structuredContent) return structuredContent;
   const text = message.result?.content?.[0]?.text;
   if (!text)
     throw new Error(`MCP response did not contain a JSON payload: ${JSON.stringify(message)}`);

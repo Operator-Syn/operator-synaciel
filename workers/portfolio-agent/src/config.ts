@@ -3,18 +3,14 @@ import type { Ai, D1Database, DurableObjectNamespace } from "@cloudflare/workers
 export const AGENT_CLASS_NAME = "PortfolioAgent";
 export const MODEL_ID = "@cf/zai-org/glm-4.7-flash" as const;
 export const MCP_SERVER_NAME = "portfolio";
-export const MAX_MODEL_PASSES = 10;
-export const MAX_MCP_CALLS = 20;
-export const MAX_QUESTION_CHARS = 2_000;
-export const MAX_PERSISTED_MESSAGES = 200;
-export const COMPACTION_TURN_THRESHOLD = 20;
-export const COMPACTION_INPUT_TOKEN_THRESHOLD = 8_000;
-export const COMPACTION_RETAINED_MESSAGES = 6;
-export const THREAD_BURST_LIMIT = 5;
-export const THREAD_BURST_WINDOW_MS = 10 * 60 * 1_000;
-export const DAILY_TURN_LIMIT = 20;
-export const NEURON_ESTIMATE_PER_TURN = 350;
-export const AUTO_PAUSE_LIMIT = 8_000;
+export const MCP_DISCOVERY_TIMEOUT_MS = 60_000;
+export const MCP_CONNECTION_MAX_ATTEMPTS = 3;
+export const MCP_CONNECTION_RETRY_BASE_DELAY_MS = 250;
+export const MCP_CONNECTION_RETRY_MAX_DELAY_MS = 2_000;
+export const ROLLING_TOKEN_BUDGET = 1_000_000;
+export const ROLLING_TOKEN_WINDOW_MS = 60 * 60 * 1_000;
+export const MODEL_CAPACITY_MESSAGE =
+  "The model is at its maximum daily capacity. Please try again at 00:00 UTC.";
 
 export type AgentProps = {
   sub: string;
