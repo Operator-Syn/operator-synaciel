@@ -121,7 +121,7 @@ test("formats generated titles and bounds title-generation context", () => {
   assert.ok(prompt.length <= 4_100);
 });
 
-test("generates thread titles only after a successful evidence-backed completion", async () => {
+test("generates thread titles after any successful visible completion", async () => {
   const [source, titleSource] = await Promise.all([
     readFile(agentPath, "utf8"),
     readFile(
@@ -137,8 +137,16 @@ test("generates thread titles only after a successful evidence-backed completion
 
   assert.doesNotMatch(source, /persistInitialThreadTitle/);
   assert.ok(endIndex > quotaIndex && titleIndex > endIndex);
-  assert.match(source, /finishReason !== "error" && evidenceState\.successfulResults > 0/);
-  assert.match(source, /if \(modelSucceeded\) \{[\s\S]*persistGeneratedThreadTitle/);
+  assert.match(
+    source,
+    /const modelSucceeded = finishReason !== "error" && evidenceState\.successfulResults > 0/,
+  );
+  assert.match(
+    source,
+    /const titleEligible =\s*finishReason !== "error" &&\s*text\.trim\(\)\.length > 0 && !options\?\.abortSignal\?\.aborted/,
+  );
+  assert.match(source, /if \(titleEligible\) \{[\s\S]*persistGeneratedThreadTitle/);
+  assert.doesNotMatch(source, /if \(modelSucceeded\) \{[\s\S]*persistGeneratedThreadTitle/);
   assert.match(source, /persistThreadTitle\(/);
   assert.match(titleSource, /maxOutputTokens: THREAD_TITLE_OUTPUT_TOKEN_LIMIT/);
   assert.match(titleSource, /reasoning: "none"/);
