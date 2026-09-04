@@ -122,7 +122,13 @@ test("formats generated titles and bounds title-generation context", () => {
 });
 
 test("generates thread titles only after a successful evidence-backed completion", async () => {
-  const source = await readFile(agentPath, "utf8");
+  const [source, titleSource] = await Promise.all([
+    readFile(agentPath, "utf8"),
+    readFile(
+      resolve(import.meta.dirname, "../../workers/portfolio-agent/src/thread-title.ts"),
+      "utf8",
+    ),
+  ]);
   const endIndex = source.indexOf("onEnd: async ({ usage, finishReason, text }) =>");
   const titleIndex = source.indexOf("await this.persistGeneratedThreadTitle(text", endIndex);
   const quotaIndex = source.indexOf(
@@ -133,12 +139,11 @@ test("generates thread titles only after a successful evidence-backed completion
   assert.ok(endIndex > quotaIndex && titleIndex > endIndex);
   assert.match(source, /finishReason !== "error" && evidenceState\.successfulResults > 0/);
   assert.match(source, /if \(modelSucceeded\) \{[\s\S]*persistGeneratedThreadTitle/);
-  assert.match(source, /generateText\(/);
-  assert.match(source, /maxOutputTokens: THREAD_TITLE_OUTPUT_TOKEN_LIMIT/);
-  assert.match(source, /maxRetries: 1/);
-  assert.match(source, /THREAD_TITLE_PROVISIONAL_OUTPUT_TOKEN_ALLOWANCE/);
-  assert.match(source, /UPDATE threads SET title = \?1, updated_at = \?2/);
-  assert.match(source, /title IS NULL OR title = ''/);
+  assert.match(source, /persistThreadTitle\(/);
+  assert.match(titleSource, /maxOutputTokens: THREAD_TITLE_OUTPUT_TOKEN_LIMIT/);
+  assert.match(titleSource, /reasoning: "none"/);
+  assert.match(titleSource, /UPDATE threads SET title = \?1, updated_at = \?2/);
+  assert.match(titleSource, /title IS NULL OR title = ''/);
   assert.equal(THREAD_TITLE_OUTPUT_TOKEN_LIMIT, 32);
   assert.equal(THREAD_TITLE_PROVISIONAL_OUTPUT_TOKEN_ALLOWANCE, 64);
   assert.match(THREAD_TITLE_SYSTEM_PROMPT, /plain-text title/i);
