@@ -83,13 +83,20 @@ the browser cannot supply or override this header.
 
 Each accepted chat turn converts the complete Durable Object transcript into model
 messages before each model call. New threads initially display a compact
-`Thread <id-prefix>` fallback. On the first non-empty user text, the agent derives a
-bounded title from the earliest user question and conditionally writes it to the
-existing auth-D1 `threads.title` field before safety, quota, MCP catalog, or model
-work. The update is first-writer-wins, never overwrites an existing title, and is
-best-effort so metadata failure cannot interrupt the response. This deterministic
-step adds no model call or quota usage. The browser may preview the same title
-immediately and reconciles it with the authoritative thread list after the turn.
+`Thread <id-prefix>` fallback. After a model turn completes with usable portfolio
+evidence, the agent asks the same Workers AI model for one bounded plain-text title
+using the earliest non-empty user question and the completed assistant answer. The
+title prompt receives text-only excerpts, uses no MCP tools, and has a 32-token output
+cap; its separate rolling-quota reservation is settled from the provider usage.
+The generated value is normalized to at most 72 characters and conditionally written
+to the existing auth-D1 `threads.title` field only when it is still empty. The
+update is first-writer-wins and best-effort: title-generation, quota, or metadata
+failures never interrupt the completed answer. Rejected, aborted, or unverified
+turns leave the ID fallback. The browser does not preview a title while the answer
+is streaming; it refreshes the authoritative thread list after completion. Existing
+untitled threads are named on their next successful completion and are not backfilled.
+When generated titles collide, the selector appends the shortest unique thread-ID
+prefix for that title without changing the stored value.
 The system prompt treats those loaded messages as
 the current thread context and prior assistant replies as generated drafts, so a
 summarize or continue request does not reset context or inherit an earlier
@@ -179,8 +186,13 @@ results and the frontend keeps bounded, presentation-only working rows for any
 provider-style tool marker; markers are never executed as tools.
 
 The assistant never executes code, changes accounts, writes portfolio data, or
-performs unrelated general-purpose work. The public MCP itself remains
-independently public; this assistant is one authenticated consumer of it.
+performs unrelated general-purpose work. It must not offer to create, host,
+publish, send, modify, or execute external artifacts, change accounts or
+repositories, send email, or create hosted or downloadable links. Canonical
+portfolio URLs may still be cited; unavailable requests receive a clear
+read-only limitation and any relevant verified portfolio evidence instead. The
+public MCP itself remains independently public; this assistant is one
+authenticated consumer of it.
 
 ## WebSocket startup and interruption recovery
 
@@ -258,7 +270,9 @@ legacy synthetic activity is omitted. A top-level `toolCalls` index makes the
 audit list easy to scan. Tool arguments, raw MCP payloads, provider metadata,
 upstream errors, and credentials are never exported. Existing responses that were persisted as ordinary text
 before this separation are not rewritten; start a new thread if an older
-transcript contains planning notes.
+transcript contains planning notes. Earlier planning text is not a pending task
+or user authorization; new turns answer the current question under the
+read-only boundary.
 The export payload advertises `formatVersion: 2` so downstream audit tooling
 can distinguish this reasoning-and-tool-aware shape from older transcript
 exports.
