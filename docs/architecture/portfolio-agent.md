@@ -18,8 +18,7 @@ workspaces:
 
 - `workers/portfolio-public-auth/` owns Google OIDC sign-in, Turnstile
   verification, sessions, thread ownership, quotas, admin controls, and the
-  cookie-authenticated assistant WebSocket gateway. The legacy short-lived token
-  issuer remains only as a rollout and rollback compatibility path.
+  cookie-authenticated assistant WebSocket gateway.
 - `workers/portfolio-agent/` owns the stateful `AIChatAgent` Durable Object,
   Workers AI calls, MCP tool access, and sanitized thread export
   and deletion.
@@ -44,10 +43,10 @@ cookies, authorization headers, and arbitrary query parameters before the
 agent sees the request; it supplies a trusted identity handoff and bounded
 request ID instead.
 
-Production has explicit assistant origins; development requires local endpoint
-overrides and never falls back to production. `VITE_PORTFOLIO_AGENT_URL` is
-retained for the legacy direct-token route during rollout but is not used by
-the active browser connection. Persisted history is loaded independently of the
+Production has an explicit public-auth origin; development requires a local
+public-auth endpoint override and never falls back to production. The agent
+origin is not a browser configuration surface: public-auth reaches it through
+the private service binding. Persisted history is loaded independently of the
 connection gate, so a visitor can still read an owned thread while chat access
 is unavailable. A failed preparation or connection is latched until the
 visitor explicitly retries, and `useAgent` has bounded reconnects and a
@@ -76,15 +75,15 @@ shape remains available for compatibility.
 The frontend requests that action through the ownership-checked public-auth
 `GET /threads/:id/messages` route when a user selects a thread. Public
 auth verifies the session and D1 thread ownership, then uses the service binding
-and shared internal key. The browser does not call the agent's internal route
-or reuse the one-time WebSocket token. History remains a read-only path and does
-not require the rolling-usage migration.
+and shared internal key. The browser does not call the agent's internal route or supply credentials
+to it. History remains a read-only path and does not require the rolling-usage
+migration.
 
 History can be the first operation for a thread, so the internal RPC may
-initialize the Durable Object before a WebSocket token exists and without chat
-claims. The authenticated WebSocket route therefore sends a short-lived,
-Worker-created identity handoff into `onConnect` after it has verified and
-consumed the one-time token. The agent validates the thread ID again and
+initialize the Durable Object before a WebSocket connection exists and without
+chat claims. The authenticated gateway sends a Worker-created identity handoff
+into `onConnect` after public-auth has verified the session, Turnstile state,
+pause state, and thread ownership. The agent validates the thread ID again and
 rehydrates its in-memory and SQLite identity before accepting chat messages;
 the browser cannot supply or override this header.
 
@@ -309,8 +308,8 @@ reservations continue to fall back to their provisional quota-unit estimate.
 A cheap availability check runs before MCP catalog work for already exhausted
 subjects, while the post-conversion reservation remains authoritative for exact
 prompt size and races. A full rolling budget produces a bounded assistant
-message; it does not revoke the session, block `/agent/token`, hide history,
-or require a new thread.
+message; it does not revoke the session, block the gateway, hide history, or
+require a new thread.
 
 Cloudflare's Workers AI usage dashboard and provider response are authoritative
 for account-wide capacity. The previous 8,000-neuron local estimate was only an
