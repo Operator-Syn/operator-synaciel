@@ -90,6 +90,19 @@ function skipped(
 }
 
 /**
+ * A title is eligible only when the model produced a visible, non-error answer.
+ * Evidence success is tracked separately because a completed fallback answer is
+ * still a visible turn that should receive a first-writer-wins title attempt.
+ */
+export function isThreadTitleEligible(
+  finishReason: string,
+  answer: string,
+  aborted = false,
+): boolean {
+  return finishReason !== "error" && answer.trim().length > 0 && !aborted;
+}
+
+/**
  * Generate and persist the first successful title for a thread.
  *
  * The model adapter is injected so this orchestration can be tested without
