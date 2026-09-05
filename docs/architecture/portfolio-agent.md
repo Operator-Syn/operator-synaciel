@@ -89,25 +89,31 @@ the browser cannot supply or override this header.
 
 Each accepted chat turn converts the complete Durable Object transcript into model
 messages before each model call. New threads initially display a compact
-`Thread <id-prefix>` fallback. After a model turn completes with usable portfolio
-evidence, the agent asks the same Workers AI model for one bounded plain-text title
-using the earliest non-empty user question and the completed assistant answer. The
-title-only call disables model reasoning so its 32-token output cap is reserved for
-the title text; its separate rolling-quota reservation is settled from provider
-usage. The generated value is normalized to at most 72 characters and conditionally
-written to the existing auth-D1 `threads.title` field only when it is still empty.
-The update is first-writer-wins and best-effort: title-generation, quota, or metadata
-failures never interrupt the completed answer. Rejected, aborted, or unverified
-turns leave the ID fallback. The title lifecycle is awaited before the response
-stream closes, and the browser does not preview a title while the answer is
-streaming; it refreshes the uncached authoritative thread list after completion.
-Existing untitled threads are named on their next successful completion and are not
-backfilled. When generated titles collide, the selector appends the shortest unique
-thread-ID prefix for that title without changing the stored value.
-The system prompt treats those loaded messages as
-the current thread context and prior assistant replies as generated drafts, so a
-summarize or continue request does not reset context or inherit an earlier
-assistant's incorrect “fresh conversation” claim.
+`Thread <id-prefix>` fallback. After any completed turn produces a non-empty,
+non-error, non-aborted visible assistant answer, regardless of evidence success, the
+agent asks the same Workers AI model for one bounded plain-text title using the
+earliest non-empty user question and the completed assistant answer. The title
+prompt treats the user question as the primary subject and the answer as secondary
+disambiguation, preferring neutral intent labels and excluding owner identity or
+personal facts unless the user asked about them. The title-only call disables model
+reasoning so its 32-token output cap is reserved for the title text; its separate
+rolling-quota reservation is settled from provider usage. The generated value is
+normalized to at most 72 characters and conditionally written to the existing auth-D1
+`threads.title` field only when it is still empty. The update is first-writer-wins
+and best-effort: title-generation, quota, or metadata failures never interrupt the
+completed answer. Rejected, aborted, empty, or error turns leave the ID fallback.
+The title lifecycle is awaited before the response stream closes, and the browser
+does not preview a title while the answer is streaming; it refreshes the uncached
+authoritative thread list after completion. Existing untitled threads are named on
+their next successful completion and are not backfilled. When generated titles
+collide, the selector appends the shortest unique thread-ID prefix for that title
+without changing the stored value. The system prompt identifies the assistant as a
+separate narrator, not Operator-Syn or the portfolio owner: portfolio facts are
+described in third person, and owner-written first-person source text is
+attributed instead of adopted. It treats loaded messages as the current thread
+context and prior assistant replies as generated drafts, so a summarize or
+continue request does not reset context or inherit an earlier assistant's
+incorrect “fresh conversation” claim.
 
 Reasoning parts from Workers AI remain public and the model uses the provider's
 default reasoning setting. The stream adapter sets `sendReasoning: true`, and
