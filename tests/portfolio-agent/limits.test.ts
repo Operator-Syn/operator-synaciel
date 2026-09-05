@@ -141,10 +141,9 @@ test("generates thread titles after any successful visible completion", async ()
     source,
     /const modelSucceeded = finishReason !== "error" && evidenceState\.successfulResults > 0/,
   );
-  assert.match(
-    source,
-    /const titleEligible =\s*finishReason !== "error" &&\s*text\.trim\(\)\.length > 0 && !options\?\.abortSignal\?\.aborted/,
-  );
+  assert.match(source, /const titleEligible = isThreadTitleEligible\(/);
+  assert.match(titleSource, /export function isThreadTitleEligible\(/);
+  assert.match(source, /chat_template_kwargs:\s*\{\s*enable_thinking:\s*false/);
   assert.match(source, /if \(titleEligible\) \{[\s\S]*persistGeneratedThreadTitle/);
   assert.doesNotMatch(source, /if \(modelSucceeded\) \{[\s\S]*persistGeneratedThreadTitle/);
   assert.match(source, /persistThreadTitle\(/);
