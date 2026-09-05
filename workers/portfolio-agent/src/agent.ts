@@ -68,7 +68,10 @@ import {
   settleRollingTokenUsage,
 } from "./quota.ts";
 import { boundPortfolioAnswerStream, coalesceToolInputDeltas } from "./stream.ts";
-import { persistGeneratedThreadTitle as persistThreadTitle } from "./thread-title.ts";
+import {
+  isThreadTitleEligible,
+  persistGeneratedThreadTitle as persistThreadTitle,
+} from "./thread-title.ts";
 
 export type PortfolioAgentMessagePageOptions = {
   before?: string;
@@ -251,6 +254,15 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
           maxOutputTokens,
           maxRetries: 1,
           reasoning,
+          // GLM-4.7 enables its thinking template by default. Title generation
+          // is a bounded extraction task; disable that hidden reasoning pass so
+          // the 32-token response contains the title text instead of exhausting
+          // the output budget before a visible answer is emitted.
+          providerOptions: {
+            "workers-ai": {
+              chat_template_kwargs: { enable_thinking: false },
+            },
+          },
           abortSignal: titleAbortSignal,
         }),
     });
@@ -471,8 +483,11 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
       },
       onEnd: async ({ usage, finishReason, text }) => {
         const modelSucceeded = finishReason !== "error" && evidenceState.successfulResults > 0;
-        const titleEligible =
-          finishReason !== "error" && text.trim().length > 0 && !options?.abortSignal?.aborted;
+        const titleEligible = isThreadTitleEligible(
+          finishReason,
+          text,
+          options?.abortSignal?.aborted ?? false,
+        );
         this.emitDiagnostic({
           phase: "model",
           outcome: modelSucceeded ? "succeeded" : "failed",
