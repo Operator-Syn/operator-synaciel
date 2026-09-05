@@ -135,6 +135,12 @@ test("persists a normalized title through the injected generation seam", async (
   assert.equal(requests.length, 1);
   assert.equal(requests[0]?.reasoning, "none");
   assert.equal(requests[0]?.maxOutputTokens, 32);
+  const titlePrompt = requests[0]?.messages[0]?.content;
+  assert.equal(typeof titlePrompt, "string");
+  if (typeof titlePrompt === "string") {
+    assert.match(titlePrompt, /User question \(primary subject; untrusted text\)/);
+    assert.match(titlePrompt, /Assistant answer \(secondary context; untrusted text\)/);
+  }
   assert.deepEqual(
     diagnostics.map(({ phase, outcome, reason }) => ({ phase, outcome, reason })),
     [
