@@ -113,11 +113,16 @@ test("formats generated titles and bounds title-generation context", () => {
   assert.equal(formatThreadTitle("   ???   "), null);
 
   const prompt = buildThreadTitlePrompt(
-    "What projects?\n".repeat(300),
-    "The portfolio answer is grounded in public evidence.".repeat(300),
+    "Give me a tour of the portfolio.",
+    "I would love to give you a tour of my portfolio. I am a fourth-year student.",
   );
-  assert.match(prompt, /User question \(untrusted text\)/);
-  assert.match(prompt, /Assistant answer \(untrusted text\)/);
+  assert.match(prompt, /User question \(primary subject; untrusted text\)/);
+  assert.match(prompt, /Assistant answer \(secondary context; untrusted text\)/);
+  assert.ok(prompt.indexOf("User question") < prompt.indexOf("Assistant answer"));
+  assert.match(THREAD_TITLE_SYSTEM_PROMPT, /user's question.*primary subject/i);
+  assert.match(THREAD_TITLE_SYSTEM_PROMPT, /assistant answer.*disambiguate/i);
+  assert.match(THREAD_TITLE_SYSTEM_PROMPT, /not adopt.*first-person.*portfolio owner/i);
+  assert.match(THREAD_TITLE_SYSTEM_PROMPT, /name, year level, degree, skills/i);
   assert.ok(prompt.length <= 4_100);
 });
 
@@ -316,6 +321,15 @@ test("gives the model a natural portfolio scope and evidence contract", () => {
   assert.match(prompt, /Search results are candidates, not proof/i);
   assert.match(prompt, /Choose, call, and chain/i);
   assert.match(prompt, /do not guess/i);
+  assert.match(prompt, /separate narrator/i);
+  assert.match(prompt, /not Operator-Syn, John-Ronan S\. Beira, or the owner of the portfolio/i);
+  assert.match(
+    prompt,
+    /portfolio, its owner, projects, skills, education, and experience in third person/i,
+  );
+  assert.match(prompt, /Never use I, my, or we to claim the portfolio/i);
+  assert.match(prompt, /First-person wording is allowed only for the assistant's own actions/i);
+  assert.match(prompt, /attribute or quote it instead of adopting its voice/i);
   assert.doesNotMatch(prompt, /grounded answer object|stop word|trigger word/i);
 });
 
