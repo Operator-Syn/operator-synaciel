@@ -263,10 +263,16 @@ test("maps title reasoning none to Workers AI reasoning_effort null", async () =
     messages: [{ role: "user", content: "Name this thread." }],
     maxOutputTokens: 32,
     reasoning: "none",
+    providerOptions: {
+      "workers-ai": {
+        chat_template_kwargs: { enable_thinking: false },
+      },
+    },
   });
 
   assert.equal(result.text, "TypeScript Projects");
   assert.equal(capturedInputs?.reasoning_effort, null);
+  assert.deepEqual(capturedInputs?.chat_template_kwargs, { enable_thinking: false });
   assert.equal(capturedInputs?.max_tokens, 32);
 });
 
