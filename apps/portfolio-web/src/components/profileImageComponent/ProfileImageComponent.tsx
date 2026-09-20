@@ -33,7 +33,7 @@ export default function ProfileImageComponent({
         width={180}
         height={180}
         sizes="(max-width: 1024px) 11rem, 180px"
-        loading="lazy"
+        loading="eager"
         decoding="async"
         wrapperClassName="block h-full w-full"
         className="h-full w-full object-cover"
