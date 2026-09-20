@@ -43,6 +43,7 @@ import {
 } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import "./PortfolioAssistant.css";
 
 import { useFloatingControls } from "../floatingControls/useFloatingControls";
 import Modal from "../modal/Modal.tsx";
@@ -2548,7 +2549,11 @@ function AuthenticatedAssistant({
   );
 }
 
-export default function PortfolioAssistantFab() {
+type PortfolioAssistantFabProps = {
+  hideFab?: boolean;
+};
+
+export default function PortfolioAssistantFab({ hideFab = false }: PortfolioAssistantFabProps) {
   const { activePanel, closePanel, openPanel } = useFloatingControls();
   const isOpen = activePanel === "assistant";
   const isResponsiveModal = useAssistantResponsiveDialog();
@@ -2564,8 +2569,7 @@ export default function PortfolioAssistantFab() {
   const canExpand =
     !isResponsiveModal && Boolean(session?.authenticated && session.turnstileVerified);
 
-  const openAssistant = async () => {
-    openPanel("assistant");
+  const loadAssistantSession = useCallback(async () => {
     if (portfolioAssistantAvailability === "teaser") {
       setSessionError(null);
       return;
@@ -2586,7 +2590,16 @@ export default function PortfolioAssistantFab() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [configurationError, loading, session]);
+
+  const openAssistant = useCallback(async () => {
+    openPanel("assistant");
+    await loadAssistantSession();
+  }, [loadAssistantSession, openPanel]);
+
+  useEffect(() => {
+    if (isOpen) void loadAssistantSession();
+  }, [isOpen, loadAssistantSession]);
 
   const handleVerified = useCallback(() => {
     setSession((current) => (current ? { ...current, turnstileVerified: true } : current));
@@ -2849,32 +2862,34 @@ export default function PortfolioAssistantFab() {
         </>
       ) : null}
       {!isDialogPresentation ? (
-        <button
-          aria-controls="portfolio-assistant-panel"
-          aria-expanded={isOpen}
-          aria-label={
-            isOpen
-              ? "Close portfolio assistant"
-              : portfolioAssistantAvailability === "teaser"
-                ? "Open portfolio assistant (coming soon)"
-                : "Open portfolio assistant"
-          }
-          className="portfolio-assistant-fab"
-          onClick={() => (isOpen ? closeAssistant() : void openAssistant())}
-          title={
-            portfolioAssistantAvailability === "teaser"
-              ? "Portfolio assistant — coming soon"
-              : "Portfolio assistant"
-          }
-          ref={fabRef}
-          type="button"
-        >
-          {isOpen ? (
-            <X aria-hidden="true" size={20} />
-          ) : (
-            <MessageCircle aria-hidden="true" size={20} />
-          )}
-        </button>
+        !hideFab ? (
+          <button
+            aria-controls="portfolio-assistant-panel"
+            aria-expanded={isOpen}
+            aria-label={
+              isOpen
+                ? "Close portfolio assistant"
+                : portfolioAssistantAvailability === "teaser"
+                  ? "Open portfolio assistant (coming soon)"
+                  : "Open portfolio assistant"
+            }
+            className="portfolio-assistant-fab"
+            onClick={() => (isOpen ? closeAssistant() : void openAssistant())}
+            title={
+              portfolioAssistantAvailability === "teaser"
+                ? "Portfolio assistant — coming soon"
+                : "Portfolio assistant"
+            }
+            ref={fabRef}
+            type="button"
+          >
+            {isOpen ? (
+              <X aria-hidden="true" size={20} />
+            ) : (
+              <MessageCircle aria-hidden="true" size={20} />
+            )}
+          </button>
+        ) : null
       ) : null}
     </div>
   );
