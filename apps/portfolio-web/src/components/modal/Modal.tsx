@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import "../../styles/modal.css";
 import { type ReactNode, type RefObject, useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 
