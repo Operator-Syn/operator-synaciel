@@ -1,14 +1,18 @@
+import { lazy } from "react";
 import type { NavLinkItem } from "../components/navBar/NavBar";
-import Agent from "../components/pages/agentPage/Agent";
-import Ai from "../components/pages/aiPage/Ai";
-import Atelier from "../components/pages/atelierPage/Atelier";
-import Certifications from "../components/pages/certificatesPage/Certificates";
 import Home from "../components/pages/homePage/Home";
-import Netbird from "../components/pages/netbirdPage/Netbird";
-import PrivacyPolicy from "../components/pages/privacyPolicyPage/PrivacyPolicy";
-import Projects from "../components/pages/projectsPage/Projects";
-import Snippets from "../components/pages/snippetsPage/Snippets";
-import TermsAndConditions from "../components/pages/termsAndConditionsPage/TermsAndConditions";
+
+const Agent = lazy(() => import("../components/pages/agentPage/Agent"));
+const Ai = lazy(() => import("../components/pages/aiPage/Ai"));
+const Atelier = lazy(() => import("../components/pages/atelierPage/Atelier"));
+const Certifications = lazy(() => import("../components/pages/certificatesPage/Certificates"));
+const Netbird = lazy(() => import("../components/pages/netbirdPage/Netbird"));
+const PrivacyPolicy = lazy(() => import("../components/pages/privacyPolicyPage/PrivacyPolicy"));
+const Projects = lazy(() => import("../components/pages/projectsPage/Projects"));
+const Snippets = lazy(() => import("../components/pages/snippetsPage/Snippets"));
+const TermsAndConditions = lazy(
+  () => import("../components/pages/termsAndConditionsPage/TermsAndConditions"),
+);
 
 export const brandName = "Operator-Syn";
 
