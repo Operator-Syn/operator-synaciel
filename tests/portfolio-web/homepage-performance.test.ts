@@ -13,7 +13,9 @@ test("homepage uses one aggregate request and keeps critical fallback content", 
   assert.match(source, /HOMEPAGE_STALE_TIME_MS/);
   assert.match(source, /retry: false/);
   assert.match(source, /HERO_BODY_FALLBACK/);
-  assert.match(source, /A portfolio of projects, experiments, and the thinking behind them/);
+  assert.match(source, /LoadingBlock/);
+  assert.match(source, /homepage-hero-title-placeholder/);
+  assert.match(source, /homepage-hero-body-placeholder/);
   assert.doesNotMatch(source, /sections\/\$\{section\.id\}\/items/);
   assert.doesNotMatch(source, /useQueries/);
 });
