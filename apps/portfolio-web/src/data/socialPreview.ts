@@ -10,7 +10,7 @@ export const SOCIAL_PREVIEW_COLORS = {
   surface: "#171918",
   text: "#f2ede3",
   textMuted: "#b7b1a7",
-  textFaint: "#7e7b74",
+  textFaint: "#8d8a83",
   line: "rgb(242 237 227 / 18%)",
   lineStrong: "rgb(242 237 227 / 35%)",
   signal: "#f0a42a",
