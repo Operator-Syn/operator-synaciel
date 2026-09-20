@@ -36,7 +36,10 @@ test("routes unknown paths to a recoverable generic 404 page", async () => {
     readFile(resolve(appRoot, "src/components/globalHeadManager/GlobalHeadManager.tsx"), "utf8"),
   ]);
 
-  assert.match(app, /import NotFound from ".\/components\/pages\/notFoundPage\/NotFound"/);
+  assert.match(
+    app,
+    /const NotFound = lazy\(\(\) => import\("\.\/components\/pages\/notFoundPage\/NotFound"\)\);/,
+  );
   assert.match(app, /<Route path="\*" element={<NotFound \/>} \/>/);
   assert.match(notFound, /useLocation/);
   assert.match(notFound, /robots="noindex, nofollow"/);
