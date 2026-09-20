@@ -1,12 +1,12 @@
 import { Menu, X } from "lucide-react";
-import { type FC, useCallback, useEffect, useRef, useState } from "react";
+import { type ComponentType, useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import TransitionNavLink from "../pageTransition/TransitionNavLink";
 
 export interface NavLinkItem {
   name: string;
   path: string;
-  component?: FC | null;
+  component?: ComponentType | null;
 }
 
 interface NavBarProps {
