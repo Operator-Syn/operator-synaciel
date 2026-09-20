@@ -11,6 +11,20 @@ test("keeps Pages verification metadata in the web workspace public assets", asy
   assert.match(verificationFile.trim(), /^dh=[a-f0-9]+$/);
 });
 
+test("keeps the profile image requestable above the fold", async () => {
+  const [profileImage, asyncImage] = await Promise.all([
+    readFile(
+      resolve(appRoot, "src/components/profileImageComponent/ProfileImageComponent.tsx"),
+      "utf8",
+    ),
+    readFile(resolve(appRoot, "src/components/asyncImageLoader/AsyncImage.tsx"), "utf8"),
+  ]);
+
+  assert.match(profileImage, /loading="eager"/);
+  assert.match(asyncImage, /!isLoaded \? "opacity-0"/);
+  assert.doesNotMatch(asyncImage, /!isLoaded \? "hidden"/);
+});
+
 test("keeps the agent discovery identity and static asset route stable", async () => {
   const [llms, routes] = await Promise.all([
     readFile(resolve(appRoot, "public/llms.txt"), "utf8"),
