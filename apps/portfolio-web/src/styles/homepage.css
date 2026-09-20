@@ -53,6 +53,7 @@
 
     .homepage-hero-body {
         display: grid;
+        min-height: 7.8rem;
         max-width: min(42rem, 100%);
         gap: 0.7rem;
         margin-top: 1.5rem;
