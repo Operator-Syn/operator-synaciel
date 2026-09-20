@@ -10,6 +10,7 @@ export const HomePageController = {
 
     try {
       const data = await model.getHomePageData();
+      c.header("Cache-Control", "public, max-age=300, s-maxage=300");
       return c.json(data);
     } catch (err: unknown) {
       return respondWithInternalError(c, "HomePageController.handleHome", err);
