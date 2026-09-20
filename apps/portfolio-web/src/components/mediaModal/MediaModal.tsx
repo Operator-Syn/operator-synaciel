@@ -1,4 +1,5 @@
 import { ArrowLeft, ArrowRight, ExternalLink, RotateCcw, X, ZoomIn, ZoomOut } from "lucide-react";
+import "../../styles/media-modal.css";
 import {
   type CSSProperties,
   type AnimationEvent as ReactAnimationEvent,
