@@ -1,8 +1,8 @@
-import { useQueries } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Grid2X2 } from "lucide-react";
-import { PUBLIC_DATA_STALE_TIME_MS } from "../../../data/cacheSettings";
+import { HOMEPAGE_STALE_TIME_MS } from "../../../data/cacheSettings";
 import { HOME_PAGE_DESCRIPTION } from "../../../data/socialPreview";
-import type { HomePageTypes, HomeProject } from "../../../types/HomePageTypes";
+import type { HomePageApiResponse, HomePageTypes } from "../../../types/HomePageTypes";
 import CookingArea from "../../cookingArea/CookingArea";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
 import HomeCoordinates from "../../homePage/HomeCoordinates";
@@ -11,14 +11,13 @@ import HomeIdentityPanel from "../../homePage/HomeIdentityPanel";
 import HomeSelectedWork from "../../homePage/HomeSelectedWork";
 import HomeToolsTable from "../../homePage/HomeToolsTable";
 import useHomepageMotion from "../../homePage/useHomepageMotion";
-import { LoadingBlock } from "../../loadingState/LoadingState";
 import TransitionLink from "../../pageTransition/TransitionLink";
 
 interface SectionApiItem {
-  content?: string;
-  image_url?: string;
-  label?: string;
-  target_url?: string;
+  content: string | null;
+  image_url: string | null;
+  label: string | null;
+  target_url: string | null;
 }
 
 interface SectionApiRow {
@@ -29,44 +28,11 @@ interface SectionApiRow {
 }
 
 const apiUrl = import.meta.env.VITE_API_URL;
+const HERO_BODY_FALLBACK = "A portfolio of projects, experiments, and the thinking behind them.";
 
-const fetchSettings = async (): Promise<Record<string, string>> => {
-  const response = await fetch(`${apiUrl}/settings`);
-  if (!response.ok) throw new Error("Failed to fetch site settings");
-  return response.json();
-};
-
-const fetchProfile = async (): Promise<HomePageTypes["profile"]> => {
-  const response = await fetch(`${apiUrl}/profile`);
-  if (!response.ok) throw new Error("Failed to fetch profile");
-  return response.json();
-};
-
-const fetchSections = async (): Promise<SectionApiRow[]> => {
-  const response = await fetch(`${apiUrl}/sections`);
-  if (!response.ok) throw new Error("Failed to fetch sections");
-
-  const sections = (await response.json()) as Array<{
-    id: number;
-    section_type: string;
-    title: string;
-  }>;
-  return Promise.all(
-    sections.map(async (section) => {
-      const itemsResponse = await fetch(`${apiUrl}/sections/${section.id}/items`);
-      if (!itemsResponse.ok) throw new Error(`Failed to fetch items for section ${section.title}`);
-
-      return {
-        ...section,
-        items: (await itemsResponse.json()) as SectionApiItem[],
-      };
-    }),
-  );
-};
-
-const fetchProjects = async (): Promise<HomeProject[]> => {
-  const response = await fetch(`${apiUrl}/projects`);
-  if (!response.ok) throw new Error("Failed to fetch projects");
+const fetchHomePage = async (): Promise<HomePageApiResponse> => {
+  const response = await fetch(`${apiUrl}/home`);
+  if (!response.ok) throw new Error("Failed to fetch homepage data");
   return response.json();
 };
 
@@ -118,7 +84,7 @@ function buildSections(rows: SectionApiRow[]): HomePageTypes["sections"] {
           .filter((item) => item.image_url)
           .map((item) => ({
             imageUrl: item.image_url ?? "",
-            label: item.label || parseBadgeLabel(item.image_url),
+            label: item.label || parseBadgeLabel(item.image_url ?? undefined),
           })),
       });
     }
@@ -147,28 +113,21 @@ function getHeroCopy(site: HomePageTypes["site"]) {
 
 export default function Home() {
   const { isMotionReady } = useHomepageMotion();
-  const queries = useQueries({
-    queries: [
-      { queryKey: ["settings"], queryFn: fetchSettings, staleTime: PUBLIC_DATA_STALE_TIME_MS },
-      { queryKey: ["profile"], queryFn: fetchProfile, staleTime: PUBLIC_DATA_STALE_TIME_MS },
-      { queryKey: ["sections"], queryFn: fetchSections, staleTime: PUBLIC_DATA_STALE_TIME_MS },
-      { queryKey: ["home-projects"], queryFn: fetchProjects, staleTime: PUBLIC_DATA_STALE_TIME_MS },
-    ],
+  const homeQuery = useQuery({
+    queryKey: ["home"],
+    queryFn: fetchHomePage,
+    staleTime: HOMEPAGE_STALE_TIME_MS,
+    retry: false,
   });
 
-  const settingsQuery = queries[0];
-  const profileQuery = queries[1];
-  const sectionsQuery = queries[2];
-  const projectsQuery = queries[3];
-  const site = (settingsQuery.data ?? {}) as HomePageTypes["site"];
-  const profile = (profileQuery.data ?? []) as HomePageTypes["profile"];
-  const sections = buildSections((sectionsQuery.data ?? []) as SectionApiRow[]);
-  const projects = [...((projectsQuery.data ?? []) as HomeProject[])].sort(
+  const site = homeQuery.data?.site ?? {};
+  const profile = homeQuery.data?.profile ?? [];
+  const sections = buildSections(homeQuery.data?.sections ?? []);
+  const projects = [...(homeQuery.data?.projects ?? [])].sort(
     (left, right) => left.display_order - right.display_order,
   );
   const heroCopy = getHeroCopy(site);
-  const isHeroLoading =
-    settingsQuery.isLoading || profileQuery.isLoading || sectionsQuery.isLoading;
+  const isHeroLoading = homeQuery.isLoading;
 
   return (
     <>
@@ -203,41 +162,19 @@ export default function Home() {
                   </span>
                 </div>
                 <h1 className="homepage-hero-title" id="homepage-hero-title">
-                  {isHeroLoading ? (
-                    <span aria-hidden="true" className="homepage-hero-title-placeholder">
-                      <LoadingBlock />
-                    </span>
-                  ) : (
-                    heroCopy.title
-                  )}
+                  {heroCopy.title}
                 </h1>
-                <p className="homepage-hero-kicker">
-                  {isHeroLoading ? (
-                    <span
-                      aria-hidden="true"
-                      className="homepage-hero-kicker-placeholder loading-block"
-                    />
-                  ) : (
-                    heroCopy.kicker
-                  )}
-                </p>
+                <p className="homepage-hero-kicker">{heroCopy.kicker}</p>
                 <div className="homepage-hero-body" data-cursor="text">
-                  {isHeroLoading ? (
-                    <div aria-hidden="true" className="homepage-hero-body-placeholder">
-                      <LoadingBlock />
-                      <LoadingBlock />
-                      <LoadingBlock />
-                      <LoadingBlock />
-                    </div>
-                  ) : sections.pitch.items.length > 0 ? (
+                  {sections.pitch.items.length > 0 ? (
                     sections.pitch.items.map((item, index) => (
                       <p key={`${item.title}-${index}`}>{item.content}</p>
                     ))
                   ) : (
                     <p>
-                      {sectionsQuery.isError
+                      {homeQuery.isError
                         ? "Portfolio notes are temporarily unavailable."
-                        : "A portfolio of projects, experiments, and the thinking behind them."}
+                        : HERO_BODY_FALLBACK}
                     </p>
                   )}
                 </div>
@@ -267,8 +204,8 @@ export default function Home() {
                   status={site.status}
                 />
                 <HomeToolsTable
-                  isError={sectionsQuery.isError}
-                  isLoading={sectionsQuery.isLoading}
+                  isError={homeQuery.isError}
+                  isLoading={homeQuery.isLoading}
                   sections={sections.loadouts}
                 />
               </div>
@@ -276,11 +213,11 @@ export default function Home() {
           </section>
 
           <HomeSelectedWork
-            isError={projectsQuery.isError}
-            isLoading={projectsQuery.isLoading}
+            isError={homeQuery.isError}
+            isLoading={homeQuery.isLoading}
             projects={projects}
           />
-          <HomeFooter isLoading={sectionsQuery.isLoading} links={sections.social.items} />
+          <HomeFooter isLoading={homeQuery.isLoading} links={sections.social.items} />
         </div>
       </CookingArea>
     </>
