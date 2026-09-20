@@ -17,6 +17,7 @@ import {
   getSnippetDocumentRoute,
   SNIPPETS_ROOT_PATH,
 } from "./snippetRoutes";
+import { createSnippetStructuredData } from "./snippetStructuredData";
 import "./SnippetDocument.css";
 
 type SnippetDocumentMetadata = {
@@ -187,20 +188,13 @@ export default function SnippetDocument() {
   const structuredData = useMemo(() => {
     if (!metadata || !canonicalUrl) return undefined;
 
-    return {
-      "@context": "https://schema.org",
-      "@type": "TechArticle",
-      headline: metadata.name,
-      dateModified: metadata.modified,
-      encodingFormat: metadata.format === "md" ? "text/markdown" : "application/pdf",
-      url: canonicalUrl,
-      ...(readingTimeMinutes === null ? {} : { timeRequired: `PT${readingTimeMinutes}M` }),
-      isPartOf: {
-        "@type": "CollectionPage",
-        name: "Code Snippets",
-        url: "https://syn-forge.com/snippets/",
-      },
-    };
+    return createSnippetStructuredData({
+      canonicalUrl,
+      format: metadata.format,
+      modified: metadata.modified,
+      name: metadata.name,
+      readingTimeMinutes,
+    });
   }, [canonicalUrl, metadata, readingTimeMinutes]);
 
   const pageTitle = metadata?.name || "Snippet document";
