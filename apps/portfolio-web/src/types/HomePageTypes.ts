@@ -44,3 +44,22 @@ export interface HomePageTypes {
   };
   projects: HomeProject[];
 }
+
+export interface HomePageApiSection {
+  id: number;
+  title: string;
+  section_type: string;
+  items: Array<{
+    content: string | null;
+    image_url: string | null;
+    label: string | null;
+    target_url: string | null;
+  }>;
+}
+
+export interface HomePageApiResponse {
+  site: HomePageTypes["site"];
+  profile: HomePageTypes["profile"];
+  sections: HomePageApiSection[];
+  projects: HomeProject[];
+}
