@@ -11,6 +11,7 @@ import HomeIdentityPanel from "../../homePage/HomeIdentityPanel";
 import HomeSelectedWork from "../../homePage/HomeSelectedWork";
 import HomeToolsTable from "../../homePage/HomeToolsTable";
 import useHomepageMotion from "../../homePage/useHomepageMotion";
+import { LoadingBlock } from "../../loadingState/LoadingState";
 import TransitionLink from "../../pageTransition/TransitionLink";
 
 interface SectionApiItem {
@@ -162,11 +163,33 @@ export default function Home() {
                   </span>
                 </div>
                 <h1 className="homepage-hero-title" id="homepage-hero-title">
-                  {heroCopy.title}
+                  {isHeroLoading ? (
+                    <span aria-hidden="true" className="homepage-hero-title-placeholder">
+                      <LoadingBlock />
+                    </span>
+                  ) : (
+                    heroCopy.title
+                  )}
                 </h1>
-                <p className="homepage-hero-kicker">{heroCopy.kicker}</p>
+                <p className="homepage-hero-kicker">
+                  {isHeroLoading ? (
+                    <span
+                      aria-hidden="true"
+                      className="homepage-hero-kicker-placeholder loading-block"
+                    />
+                  ) : (
+                    heroCopy.kicker
+                  )}
+                </p>
                 <div className="homepage-hero-body" data-cursor="text">
-                  {sections.pitch.items.length > 0 ? (
+                  {isHeroLoading ? (
+                    <div aria-hidden="true" className="homepage-hero-body-placeholder">
+                      <LoadingBlock />
+                      <LoadingBlock />
+                      <LoadingBlock />
+                      <LoadingBlock />
+                    </div>
+                  ) : sections.pitch.items.length > 0 ? (
                     sections.pitch.items.map((item, index) => (
                       <p key={`${item.title}-${index}`}>{item.content}</p>
                     ))
