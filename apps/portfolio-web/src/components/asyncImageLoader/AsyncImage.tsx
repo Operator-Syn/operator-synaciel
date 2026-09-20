@@ -52,7 +52,7 @@ export default function AsyncImage({
         data-cursor={cursorState}
         decoding={props.decoding ?? "async"}
         draggable={draggable}
-        className={`${className} ${!isLoaded ? "hidden" : "animate-[image-fade-in_400ms_ease-out]"}`}
+        className={`${className} ${!isLoaded ? "opacity-0" : "animate-[image-fade-in_400ms_ease-out]"}`}
         onLoad={() => setIsLoaded(true)}
         onError={() => setIsLoaded(true)}
       />
