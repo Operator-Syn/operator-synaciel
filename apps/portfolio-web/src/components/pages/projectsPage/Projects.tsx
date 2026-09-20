@@ -1,4 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import "../../../styles/project-archive.css";
 import { type ReactNode, useCallback, useState } from "react";
 import { PUBLIC_DATA_STALE_TIME_MS } from "../../../data/cacheSettings";
 import { isReducedMotionEnabled } from "../../../preferences/sitePreferences";
