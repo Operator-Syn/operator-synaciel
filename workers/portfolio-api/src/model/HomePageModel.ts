@@ -5,11 +5,14 @@ interface SettingRow {
   key: string;
   value: string;
 }
+
 interface ProfileRow {
   label: string;
   value: string;
 }
+
 interface SectionJoinedRow {
+  id: number;
   title: string;
   section_type: string;
   label: string | null;
@@ -18,27 +21,33 @@ interface SectionJoinedRow {
   target_url: string | null;
 }
 
-interface HomePagePitchItem {
+interface HomePageSection {
+  id: number;
   title: string;
-  content: string;
+  section_type: string;
+  items: Array<{
+    content: string | null;
+    image_url: string | null;
+    label: string | null;
+    target_url: string | null;
+  }>;
 }
 
-interface HomePageSocialItem {
-  label: string | null;
-  image_url: string | null;
-  target_url: string | null;
+interface ProjectRow {
+  id: number;
+  title: string;
+  type: "video" | "image";
+  short_description: string;
+  project_link: string;
+  display_order: number;
 }
 
-interface HomePageLoadoutItem {
-  category: string;
-  badges: string[];
-}
-
-interface HomePageSections {
-  pitch: { items: HomePagePitchItem[] };
-  social: { items: HomePageSocialItem[] };
-  loadouts: HomePageLoadoutItem[];
-}
+const PUBLIC_SETTING_KEYS = [
+  "headerPhrase",
+  "mobileHeaderPhrase",
+  "profileImage",
+  "status",
+] as const;
 
 export class HomePageModel {
   private db: D1Database;
@@ -48,68 +57,73 @@ export class HomePageModel {
   }
 
   async getHomePageData() {
-    const [settings, profile, rows] = await Promise.all([
-      this.db.prepare("SELECT key, value FROM site_settings").all<SettingRow>(),
+    const placeholders = PUBLIC_SETTING_KEYS.map(() => "?").join(", ");
+    const [settings, profile, rows, projects] = await Promise.all([
+      this.db
+        .prepare(`SELECT key, value FROM site_settings WHERE key IN (${placeholders})`)
+        .bind(...PUBLIC_SETTING_KEYS)
+        .all<SettingRow>(),
       this.db
         .prepare("SELECT label, value FROM profile_info ORDER BY display_order, id")
         .all<ProfileRow>(),
       this.db
         .prepare(`
-        SELECT s.title, s.section_type, i.label, i.content, i.image_url, i.target_url
+        SELECT s.id, s.title, s.section_type, i.label, i.content, i.image_url, i.target_url
         FROM sections s
         LEFT JOIN section_items i ON s.id = i.section_id
         ORDER BY s.display_order ASC, s.id ASC, i.display_order ASC, i.id ASC
       `)
         .all<SectionJoinedRow>(),
+      this.db
+        .prepare(
+          "SELECT id, title, type, short_description, project_link, display_order FROM Projects ORDER BY display_order ASC, id ASC LIMIT 3",
+        )
+        .all<ProjectRow>(),
     ]);
 
     return {
-      site: Object.fromEntries(settings.results.map((r) => [r.key, r.value])),
+      site: Object.fromEntries(settings.results.map((row) => [row.key, row.value])),
       profile: profile.results,
       sections: this.transformSections(rows.results),
+      projects: projects.results.slice(0, 3).map((project) => ({
+        id: Number(project.id),
+        title: String(project.title),
+        type: project.type === "video" ? "video" : "image",
+        short_description: String(project.short_description),
+        project_link: String(project.project_link),
+        display_order: Number(project.display_order),
+      })),
     };
   }
 
-  private transformSections(rows: SectionJoinedRow[]) {
-    const data: HomePageSections = {
-      pitch: { items: [] },
-      social: { items: [] },
-      loadouts: [],
-    };
+  private transformSections(rows: SectionJoinedRow[]): HomePageSection[] {
+    const sections = new Map<number, HomePageSection>();
 
-    rows.forEach((row) => {
-      switch (row.section_type) {
-        case "pitch":
-          if (row.content) {
-            data.pitch.items.push({
-              title: row.title,
-              content: row.content,
-            });
-          }
-          break;
+    for (const row of rows) {
+      const section = sections.get(row.id) ?? {
+        id: Number(row.id),
+        title: row.title,
+        section_type: row.section_type,
+        items: [],
+      };
 
-        case "social":
-          data.social.items.push({
-            label: row.label,
-            image_url: row.image_url,
-            target_url: row.target_url,
-          });
-          break;
-
-        case "loadout":
-          {
-            // Find or create the category (e.g., "Operating Systems")
-            let cat = data.loadouts.find((l) => l.category === row.title);
-            if (!cat) {
-              cat = { category: row.title, badges: [] };
-              data.loadouts.push(cat);
-            }
-            if (row.image_url) cat.badges.push(row.image_url);
-          }
-          break;
+      if (
+        row.content !== null ||
+        row.image_url !== null ||
+        row.label !== null ||
+        row.target_url !== null
+      ) {
+        section.items.push({
+          content: row.content,
+          image_url: row.image_url,
+          label: row.label,
+          target_url: row.target_url,
+        });
       }
-    });
 
-    return data;
+      sections.set(row.id, section);
+    }
+
+    return [...sections.values()];
   }
 }
