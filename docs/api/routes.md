@@ -35,7 +35,7 @@ These GET routes are registered before the private auth middleware:
 | Certificate archive v2 | `GET /api/v2/certificates/archive` |
 | Snippets | `GET /api/snippets`, `GET /api/snippets/:id`, `GET /api/snippets/:id/content` |
 | Snippets document v2 | `GET /api/v2/snippets/:id`, `GET /api/v2/snippets/:id/preview`, `GET /api/v2/snippets/:id/content` |
-| Home content | `GET /api/settings`, `GET /api/profile`, `GET /api/sections`, `GET /api/sections/:sectionId/items` |
+| Home content | `GET /api/home` (cacheable aggregate), `GET /api/settings`, `GET /api/profile`, `GET /api/sections`, `GET /api/sections/:sectionId/items` |
 | Project media | `GET /api/projects/media`, `GET /api/projects/media/:key{.+}` |
 | Certificate media | `GET /api/certificates/media`, `GET /api/certificates/media/:key{.+}` |
 | Certificates (legacy/public) | `GET /api/certificates`, `GET /api/certificates/:id`, `GET /api/certificates/:certId/items` |
