@@ -11,6 +11,7 @@ import { ProfileController } from "./controller/HomePage/ProfileController";
 import { SectionsController } from "./controller/HomePage/SectionsController";
 import { SectionItemsController } from "./controller/HomePage/SectionsItemsController";
 import { SettingsController } from "./controller/HomePage/SettingsController";
+import { HomePageController } from "./controller/HomePageController";
 import { createMediaController, MediaController } from "./controller/Media/MediaController";
 import { OrderingController } from "./controller/OrderingController";
 import { GalleryController } from "./controller/ProjectPage/GalleryController";
@@ -38,10 +39,9 @@ const ADMIN_WRITE_ORIGINS = new Set([
 const noStoreByDefault: MiddlewareHandler<{ Bindings: Bindings }> = async (c, next) => {
   await next();
 
-  if (!c.res.headers.has("Cache-Control")) {
-    c.header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
-  }
+  if (c.res.headers.has("Cache-Control")) return;
 
+  c.header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
   c.header("Pragma", "no-cache");
   c.header("Expires", "0");
 };
@@ -75,6 +75,7 @@ app.get("/", (c) => c.redirect("https://www.syn-forge.com", 301));
 //   PUBLIC APIS (No Auth Required)
 // ==========================================
 
+app.get("/api/home", HomePageController.handleHome);
 app.get("/api/projects", ProjectsController.list);
 app.get(`${API_V2_PREFIX}/projects/archive`, ProjectsPageController.handleProjects);
 app.get(`${API_V2_PREFIX}/certificates/archive`, CertificatesPageController.handleCertificates);
