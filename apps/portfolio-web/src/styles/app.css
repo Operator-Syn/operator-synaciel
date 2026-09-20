@@ -6,12 +6,8 @@
 @import "./homepage-motion.css";
 @import "./coordinate-rail.css";
 @import "./homepage.css";
-@import "./project-archive.css";
-@import "./certificate-archive.css";
 @import "./interaction-states.css";
 @import "./cursors.css";
-@import "./media-modal.css";
-@import "./modal.css";
 @import "./quick-navigation.css";
 @import "./responsive.css";
 @import "./page-transition.css";
@@ -19,5 +15,3 @@
 @import "./home-settings.css";
 @import "./motion.css";
 @import "./theme-transition.css";
-@import "../components/pages/aiPage/Ai.css";
-@import "../components/portfolioAssistant/PortfolioAssistant.css";
