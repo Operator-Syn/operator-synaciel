@@ -88,3 +88,19 @@ test("keeps The Ancient Blue Ledger semantic foregrounds readable on every surfa
   assert.ok(contrastRatio(backgrounds.canvas, foregrounds.signal) >= 4.5);
   assert.ok(contrastRatio(backgrounds.canvas, foregrounds.signalStrong) >= 4.5);
 });
+
+test("keeps Dalan metadata readable on every default surface", () => {
+  const backgrounds = {
+    canvas: "#101111",
+    surface: "#171918",
+    raised: "#202321",
+  };
+  const faint = "#8d8a83";
+
+  for (const [backgroundName, background] of Object.entries(backgrounds)) {
+    assert.ok(
+      contrastRatio(faint, background) >= 4.5,
+      `faint metadata on ${backgroundName} is below WCAG AA`,
+    );
+  }
+});
