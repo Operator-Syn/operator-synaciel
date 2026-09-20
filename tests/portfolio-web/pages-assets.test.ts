@@ -19,6 +19,7 @@ test("keeps the agent discovery identity and static asset route stable", async (
 
   assert.match(llms, /^Syn-Forge is the software developer portfolio of Operator-Syn\.$/m);
   assert.doesNotMatch(llms, /John-Ronan/);
+  assert.match(llms, /\[[^\]]+\]\(https:\/\//);
 
   const routesConfig = JSON.parse(routes) as {
     include: string[];
