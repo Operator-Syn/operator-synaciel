@@ -84,7 +84,7 @@ export const DEFAULT_CUSTOM_THEME_COLORS: Record<CustomThemeColorRole, HexColor>
   surfaceRaised: "#202321",
   text: "#f2ede3",
   textMuted: "#b7b1a7",
-  textFaint: "#7e7b74",
+  textFaint: "#8d8a83",
   line: "#f2ede32e",
   lineStrong: "#f2ede359",
   signal: "#f0a42a",
