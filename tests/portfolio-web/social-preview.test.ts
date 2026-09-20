@@ -18,6 +18,12 @@ const repositoryRoot = resolve(import.meta.dirname, "../../apps/portfolio-web");
 const socialPreviewAssetPaths = SOCIAL_PREVIEW_ROUTES.map((route) =>
   getSocialPreviewImagePath(route.pathname),
 );
+const jsonLdScriptPattern =
+  /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+
+function extractJsonLdBlocks(html: string) {
+  return [...html.matchAll(jsonLdScriptPattern)].map((match) => JSON.parse(match[1]));
+}
 
 test("normalizes route paths and falls back safely", () => {
   assert.equal(normalizeSocialPreviewPath("projects/?source=share"), "/projects");
@@ -31,6 +37,19 @@ test("normalizes route paths and falls back safely", () => {
     getSocialPreviewMetadata("/snippets/document/22/database-migrations.md").route,
     "snippets",
   );
+});
+
+test("keeps static structured data valid JSON", async () => {
+  const index = await readFile(resolve(repositoryRoot, "index.html"), "utf8");
+  const blocks = extractJsonLdBlocks(index);
+
+  assert.equal(blocks.length, 1);
+  const person = blocks[0] as Record<string, unknown>;
+  assert.equal(person["@context"], "https://schema.org");
+  assert.equal(person["@type"], "Person");
+  assert.ok(Array.isArray(person.alternateName));
+  assert.ok((person.alternateName as string[]).includes("SynForge"));
+  assert.ok(Array.isArray(person.sameAs));
 });
 
 test("keeps the homepage description aligned with the SERP target", async () => {
