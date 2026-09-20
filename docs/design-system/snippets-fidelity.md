@@ -104,7 +104,9 @@ file format, size, and R2 storage path.
 The build-time sitemap expands the static route list with document URLs when
 the configured public API is available. `apps/portfolio-web/public/robots.txt` points crawlers
 at the generated sitemap. The document route emits canonical metadata and
-Article/TechArticle JSON-LD for direct indexing and sharing.
+Article/TechArticle JSON-LD for direct indexing and sharing. JSON-LD must remain
+strict JSON in the initial HTML, and backend timestamps are normalized to
+ISO-8601 before `dateModified` is serialized.
 
 If a future requirement makes the slug independent of a mutable file name, add
 a staged nullable slug column and a uniqueness rule after backfilling existing
@@ -127,7 +129,9 @@ Verify the route at desktop and narrow/touch widths:
 - bounded preview height with internal scrolling;
 - Read more navigation and stale-slug normalization;
 - Download, Copy, Close, Escape, and reduced-motion behavior;
-- document title, canonical URL, robots metadata, and JSON-LD.
+- document title, canonical URL, robots metadata, and JSON-LD;
+- every initial-HTML and rendered-head JSON-LD block parses as JSON, with
+  snippet `dateModified` values using ISO-8601.
 
 The source checks are `npm run typecheck`, `npm run lint`,
 `npm run format:biome:check`, `npm run check:biome:github`, and
