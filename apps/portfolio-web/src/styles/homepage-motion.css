@@ -1,4 +1,4 @@
-/* Homepage entry choreography selectors. Keyframes live in motion.css. */
+/* Homepage entry choreography selectors. Critical hero content remains visible immediately. */
 @layer components {
     .homepage-shell {
         width: 100%;
@@ -6,8 +6,6 @@
 
     .homepage-motion-ready .coordinate-rail,
     .homepage-motion-ready .homepage-hero-index,
-    .homepage-motion-ready .homepage-hero-kicker,
-    .homepage-motion-ready .homepage-hero-body,
     .homepage-motion-ready .homepage-hero-actions,
     .homepage-motion-ready .homepage-hero-side,
     .homepage-motion-ready .homepage-work,
@@ -15,25 +13,12 @@
         animation: homepage-entry-rise var(--motion-entry-duration) var(--motion-ease) both;
     }
 
-    .homepage-motion-ready .homepage-hero-title {
-        animation: homepage-title-reveal 600ms var(--motion-ease) both;
-    }
-
     .homepage-motion-ready .homepage-hero-index {
         animation-delay: 60ms;
     }
 
-    .homepage-motion-ready .homepage-hero-title {
-        animation-delay: 90ms;
-    }
-
-    .homepage-motion-ready .homepage-hero-side,
-    .homepage-motion-ready .homepage-hero-kicker {
+    .homepage-motion-ready .homepage-hero-side {
         animation-delay: 220ms;
-    }
-
-    .homepage-motion-ready .homepage-hero-body {
-        animation-delay: 280ms;
     }
 
     .homepage-motion-ready .homepage-hero-actions {
