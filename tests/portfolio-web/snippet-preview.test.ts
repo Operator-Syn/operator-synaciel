@@ -10,6 +10,10 @@ import {
   slugifySnippetName,
 } from "../../apps/portfolio-web/src/components/pages/snippetsPage/snippetRoutes.ts";
 import {
+  createSnippetStructuredData,
+  normalizeSchemaDate,
+} from "../../apps/portfolio-web/src/components/pages/snippetsPage/snippetStructuredData.ts";
+import {
   createSnippetExcerpt,
   SNIPPET_PREVIEW_MAX_CHARACTERS,
 } from "../../workers/portfolio-api/src/model/SnippetsPage/SnippetsPageModel.ts";
@@ -73,6 +77,39 @@ test("creates readable stable document routes without a schema slug", () => {
     getSnippetDocumentRoute(22, "Database Migrations.md"),
     "/snippets/document/22/database-migrations.md/",
   );
+});
+
+test("normalizes snippet schema dates to ISO-8601", () => {
+  assert.equal(normalizeSchemaDate("2026-06-11 14:46:14"), "2026-06-11T14:46:14Z");
+  assert.equal(normalizeSchemaDate("2026-06-11T14:46:14+08:00"), "2026-06-11T06:46:14.000Z");
+  assert.equal(normalizeSchemaDate("not-a-date"), undefined);
+});
+
+test("serializes complete snippet structured data", () => {
+  const structuredData = createSnippetStructuredData({
+    canonicalUrl: "https://syn-forge.com/snippets/document/22/database-migrations.md/",
+    format: "md",
+    modified: "2026-06-11 14:46:14",
+    name: "Database Migrations.md",
+    readingTimeMinutes: 2,
+  });
+
+  assert.equal(JSON.parse(JSON.stringify(structuredData)).dateModified, "2026-06-11T14:46:14Z");
+  assert.equal(structuredData["@context"], "https://schema.org");
+  assert.equal(structuredData["@type"], "TechArticle");
+  assert.equal(structuredData.timeRequired, "PT2M");
+});
+
+test("omits invalid snippet schema dates", () => {
+  const structuredData = createSnippetStructuredData({
+    canonicalUrl: "https://syn-forge.com/snippets/document/22/invalid/",
+    format: "pdf",
+    modified: "not-a-date",
+    name: "Invalid date fixture",
+    readingTimeMinutes: null,
+  });
+
+  assert.equal("dateModified" in structuredData, false);
 });
 
 test("estimates Markdown reading time from reader-facing words", () => {
