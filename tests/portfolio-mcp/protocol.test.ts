@@ -537,7 +537,7 @@ test("keeps snippet links stable and flattens only files", () => {
   assert.equal(slugifySnippetName("Agent Notes.md"), "agent-notes.md");
   assert.equal(
     getSnippetPageUrl({ id: 7, name: "Agent Notes.md" }),
-    "https://syn-forge.com/snippets/document/7/agent-notes.md/",
+    "https://syn-forge.com/snippets/document/7/agent-notes.md",
   );
   assert.deepEqual(
     flattenSnippetTree([
