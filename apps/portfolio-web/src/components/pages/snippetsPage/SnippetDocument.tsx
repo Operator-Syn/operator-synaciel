@@ -260,7 +260,7 @@ export default function SnippetDocument() {
                 <FileCode2 aria-hidden="true" size={38} />
                 <h1 id="snippet-document-title">Snippet not found</h1>
                 <p>This document is no longer available at this address.</p>
-                <TransitionLink className="snippet-document-link" to={`${SNIPPETS_ROOT_PATH}/`}>
+                <TransitionLink className="snippet-document-link" to={SNIPPETS_ROOT_PATH}>
                   <ArrowLeft aria-hidden="true" size={17} />
                   Back to snippets
                 </TransitionLink>
@@ -278,7 +278,7 @@ export default function SnippetDocument() {
                   <div className="snippet-document-actions">
                     <TransitionLink
                       className="snippet-document-link secondary"
-                      to={`${SNIPPETS_ROOT_PATH}/`}
+                      to={SNIPPETS_ROOT_PATH}
                     >
                       <ArrowLeft aria-hidden="true" size={17} />
                       Back to index
