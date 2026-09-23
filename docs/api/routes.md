@@ -97,7 +97,7 @@ canonical document pages:
   dedicated document route. The legacy `/api/snippets/:id/content` download
   route remains unchanged for existing clients.
 
-The document URL is `/snippets/document/<id>/<slug>/`; the slug is derived
+The canonical document URL is `/snippets/document/<id>/<slug>`; the slug is derived
 from the current file name and is normalized when a stale name is requested.
 No offset or cursor parameter is involved in snippet document reads, and no
 D1 migration is required because path and excerpt values are derived at read
