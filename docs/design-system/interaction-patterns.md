@@ -166,7 +166,7 @@ a full document reader.
 - The preview header exposes the format, full path, Download, Close, and
   Read more actions. The archive uses `/api/v2/snippets/:id/preview` for
   Markdown excerpts and reserves complete content for Download or the
-  canonical `/snippets/document/<id>/<slug>/` route.
+  canonical `/snippets/document/<id>/<slug>` route.
 - The preview body has a fixed responsive boundary with its own vertical
   scroll. A long excerpt therefore does not grow the workspace or push the
   index out of view. Empty, loading, and error states remain inside this
