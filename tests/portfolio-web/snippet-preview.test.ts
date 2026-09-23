@@ -75,7 +75,7 @@ test("creates readable stable document routes without a schema slug", () => {
   assert.equal(slugifySnippetName("Database Migrations.md"), "database-migrations.md");
   assert.equal(
     getSnippetDocumentRoute(22, "Database Migrations.md"),
-    "/snippets/document/22/database-migrations.md/",
+    "/snippets/document/22/database-migrations.md",
   );
 });
 
@@ -87,7 +87,7 @@ test("normalizes snippet schema dates to ISO-8601", () => {
 
 test("serializes complete snippet structured data", () => {
   const structuredData = createSnippetStructuredData({
-    canonicalUrl: "https://syn-forge.com/snippets/document/22/database-migrations.md/",
+    canonicalUrl: "https://syn-forge.com/snippets/document/22/database-migrations.md",
     format: "md",
     modified: "2026-06-11 14:46:14",
     name: "Database Migrations.md",
@@ -102,7 +102,7 @@ test("serializes complete snippet structured data", () => {
 
 test("omits invalid snippet schema dates", () => {
   const structuredData = createSnippetStructuredData({
-    canonicalUrl: "https://syn-forge.com/snippets/document/22/invalid/",
+    canonicalUrl: "https://syn-forge.com/snippets/document/22/invalid",
     format: "pdf",
     modified: "not-a-date",
     name: "Invalid date fixture",
