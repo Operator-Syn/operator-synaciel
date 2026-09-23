@@ -5,6 +5,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 import Sitemap from "vite-plugin-sitemap";
 import { assertPagesBuildHasTurnstileSiteKey } from "./src/components/portfolioAssistant/portfolioAssistantBuildGuard.ts";
+import { SITEMAP_STATIC_ROUTES } from "./src/data/canonicalRoutes.ts";
 
 const appRoot = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(appRoot, "../..");
@@ -15,18 +16,6 @@ type SnippetRouteNode = {
   type: "dir" | "file";
   children?: SnippetRouteNode[];
 };
-
-const staticRoutes = [
-  "/projects",
-  "/certificates",
-  "/snippets",
-  "/privacy-policy",
-  "/terms-and-conditions",
-  "/netbird",
-  "/atelier",
-  "/ai",
-  "/agent",
-];
 
 function slugifySnippetName(name: string) {
   const trimmed = name.trim();
@@ -48,8 +37,7 @@ function flattenSnippetRoutes(nodes: SnippetRouteNode[], routes: string[] = []):
         "/snippets/document/" +
           encodeURIComponent(String(node.id)) +
           "/" +
-          encodeURIComponent(slugifySnippetName(node.name)) +
-          "/",
+          encodeURIComponent(slugifySnippetName(node.name)),
       );
       continue;
     }
@@ -102,7 +90,7 @@ export default defineConfig(async ({ mode }) => {
       tailwindcss(),
       Sitemap({
         hostname: "https://syn-forge.com",
-        dynamicRoutes: [...staticRoutes, ...snippetRoutes],
+        dynamicRoutes: [...SITEMAP_STATIC_ROUTES, ...snippetRoutes],
       }),
     ],
     base: "/",
