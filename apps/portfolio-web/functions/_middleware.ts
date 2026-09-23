@@ -5,6 +5,7 @@ import {
   SOCIAL_PREVIEW_HEIGHT,
   SOCIAL_PREVIEW_WIDTH,
 } from "../src/data/socialPreview.ts";
+import { createCanonicalRouteRedirect } from "./canonicalRedirect.ts";
 
 function escapeHtml(value: string) {
   return value.replace(
@@ -108,6 +109,9 @@ function rewriteDocumentHead(response: PagesResponse, requestUrl: string) {
 }
 
 export const onRequest: PagesFunction = async (context) => {
+  const redirect = createCanonicalRouteRedirect(context.request.url);
+  if (redirect) return redirect as unknown as PagesResponse;
+
   const response = await context.next();
   return isHtmlResponse(response) ? rewriteDocumentHead(response, context.request.url) : response;
 };
