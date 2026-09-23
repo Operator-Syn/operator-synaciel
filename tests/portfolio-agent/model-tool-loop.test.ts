@@ -85,7 +85,7 @@ const results: Record<(typeof portfolioToolNames)[number], unknown> = {
       name: "Agent Notes.md",
       format: "md",
       content: "Public notes",
-      page_url: "https://syn-forge.com/snippets/document/7/agent-notes.md/",
+      page_url: "https://syn-forge.com/snippets/document/7/agent-notes.md",
     },
   },
 };
