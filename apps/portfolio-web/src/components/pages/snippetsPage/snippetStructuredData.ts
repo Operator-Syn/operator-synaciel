@@ -47,7 +47,7 @@ export function createSnippetStructuredData({
     isPartOf: {
       "@type": "CollectionPage",
       name: "Code Snippets",
-      url: "https://syn-forge.com/snippets/",
+      url: "https://syn-forge.com/snippets",
     },
   };
 }
