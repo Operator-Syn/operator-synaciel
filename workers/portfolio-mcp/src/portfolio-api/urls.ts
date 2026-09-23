@@ -23,7 +23,7 @@ export function slugifySnippetName(name: string): string {
 }
 
 export function getSnippetPageUrl(metadata: Pick<SnippetMetadata, "id" | "name">): string {
-  return `${PORTFOLIO_SITE_ORIGIN}/snippets/document/${encodeURIComponent(String(metadata.id))}/${encodeURIComponent(slugifySnippetName(metadata.name))}/`;
+  return `${PORTFOLIO_SITE_ORIGIN}/snippets/document/${encodeURIComponent(String(metadata.id))}/${encodeURIComponent(slugifySnippetName(metadata.name))}`;
 }
 
 export function getSnippetDownloadUrl(id: number): string {
