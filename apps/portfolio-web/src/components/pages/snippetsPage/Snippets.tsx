@@ -124,7 +124,7 @@ const getRoutePathFromInternalPath = (internalPath: string) => {
     .map((segment) => encodeURIComponent(slugifyPathSegment(segment)))
     .join("/");
 
-  return `/snippets/${relativePath ? `${relativePath}/` : ""}`;
+  return `/snippets${relativePath ? `/${relativePath}` : ""}`;
 };
 
 const getCanonicalRoutePath = (pathname: string) =>
@@ -420,7 +420,7 @@ export default function Snippets() {
         "@type": "ListItem",
         position: 2,
         name: "Snippets",
-        item: "https://syn-forge.com/snippets/",
+        item: "https://syn-forge.com/snippets",
       },
       ...breadcrumbSegments.map((segment, index) => ({
         "@type": "ListItem",
