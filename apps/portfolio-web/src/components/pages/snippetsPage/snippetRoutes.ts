@@ -20,8 +20,7 @@ export function getSnippetDocumentRoute(id: number, name: string): string {
     "/" +
     encodeURIComponent(String(id)) +
     "/" +
-    encodeURIComponent(slugifySnippetName(name)) +
-    "/"
+    encodeURIComponent(slugifySnippetName(name))
   );
 }
 
