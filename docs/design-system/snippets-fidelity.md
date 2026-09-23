@@ -55,7 +55,7 @@ surface.
 - The preview body has a bounded height and its own vertical scroll container.
   The workspace itself remains stable while a long excerpt is inspected.
 - A truncated preview exposes a Read more action. It links to the canonical
-  `/snippets/document/<id>/<slug>/` route rather than expanding the archive
+  `/snippets/document/<id>/<slug>` route rather than expanding the archive
   in place.
 - The dedicated document route requests metadata from
   `GET /api/v2/snippets/:id` and full inline content from
