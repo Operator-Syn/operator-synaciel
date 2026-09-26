@@ -15,8 +15,26 @@ const SnippetDocument = lazy(() => import("./components/pages/snippetsPage/Snipp
 
 function RouteLoadingFallback() {
   return (
-    <LoadingRegion className="app-route-loading" label="Loading page">
-      <LoadingBlock className="app-route-loading-block" />
+    <LoadingRegion className="app-route-loading page-frame" label="Loading page">
+      <div className="app-route-loading-heading">
+        <LoadingBlock className="app-route-loading-eyebrow" />
+        <LoadingBlock className="app-route-loading-title" />
+        <LoadingBlock className="app-route-loading-summary" />
+      </div>
+
+      <div className="app-route-loading-list">
+        {["one", "two", "three"].map((row) => (
+          <div className="app-route-loading-row" key={row}>
+            <LoadingBlock className="app-route-loading-index" />
+            <LoadingBlock className="app-route-loading-media" />
+            <div className="app-route-loading-copy">
+              <LoadingBlock className="app-route-loading-line app-route-loading-line-title" />
+              <LoadingBlock className="app-route-loading-line" />
+              <LoadingBlock className="app-route-loading-line app-route-loading-line-short" />
+            </div>
+          </div>
+        ))}
+      </div>
     </LoadingRegion>
   );
 }
