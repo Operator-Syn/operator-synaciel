@@ -1,13 +1,42 @@
+import { createContext } from "react";
 import type { NavigateFunction, NavigateOptions, To } from "react-router-dom";
 import { isReducedMotionEnabled } from "../../preferences/sitePreferences";
 import {
-  clearRouteTransitionIntent,
-  getPageTransitionPlan,
-  markRouteTransitionIntent,
-  NESTED_TRANSITION_DURATION_MS,
   PAGE_TRANSITION_DURATION_MS,
-  type PageTransitionPlan,
+  PAGE_TRANSITION_NAVIGATION_DELAY_MS,
 } from "./routeTransition";
+
+export type PageTransitionNavigationCoordinator = (
+  navigate: NavigateFunction,
+  fromPathname: string,
+  to: To,
+  options?: NavigateOptions,
+) => void | Promise<void>;
+
+export const PageTransitionNavigationContext =
+  createContext<PageTransitionNavigationCoordinator | null>(null);
+
+export type PageTransitionTimerScheduler = {
+  setTimeout(callback: () => void, delayMs: number): number;
+  clearTimeout(timerId: number): void;
+};
+
+export function schedulePageTransitionNavigation(
+  scheduler: PageTransitionTimerScheduler,
+  navigateAtHandoff: () => void,
+  finishTransition: () => void,
+) {
+  const handoffTimerId = scheduler.setTimeout(
+    navigateAtHandoff,
+    PAGE_TRANSITION_NAVIGATION_DELAY_MS,
+  );
+  const finishTimerId = scheduler.setTimeout(finishTransition, PAGE_TRANSITION_DURATION_MS);
+
+  return () => {
+    scheduler.clearTimeout(handoffTimerId);
+    scheduler.clearTimeout(finishTimerId);
+  };
+}
 
 export function prefersReducedMotion() {
   return isReducedMotionEnabled();
@@ -21,37 +50,10 @@ export function getDestinationPath(to: To, currentPathname: string) {
   return url.pathname + url.search + url.hash;
 }
 
-function navigateWithoutTransition(navigate: NavigateFunction, to: To, options: NavigateOptions) {
-  return navigate(to, { ...options, viewTransition: false });
-}
-
-function finishAfterFallback(id: string | null, plan: PageTransitionPlan) {
-  if (!id || typeof window === "undefined") return;
-
-  window.setTimeout(
-    () => clearRouteTransitionIntent(id),
-    plan.scope === "nested" ? NESTED_TRANSITION_DURATION_MS : PAGE_TRANSITION_DURATION_MS,
-  );
-}
-
-export function navigateThroughTransition(
+export function navigateWithoutTransition(
   navigate: NavigateFunction,
-  fromPathname: string,
   to: To,
   options: NavigateOptions = {},
 ) {
-  const destination = getDestinationPath(to, fromPathname);
-  if (!destination) return navigate(to, options);
-
-  const destinationPathname = new URL(destination, window.location.origin).pathname;
-  const plan = getPageTransitionPlan(fromPathname, destinationPathname);
-
-  if (plan.scope === "none" || options.viewTransition === false || prefersReducedMotion()) {
-    return navigate(to, options);
-  }
-
-  const id = markRouteTransitionIntent(plan);
-  const result = navigateWithoutTransition(navigate, to, options);
-  finishAfterFallback(id, plan);
-  return result;
+  return navigate(to, { ...options, viewTransition: false });
 }
