@@ -134,6 +134,54 @@
     }
 }
 
+@keyframes page-transition-curtain-forward-covered {
+    0% {
+        transform: translate3d(0, 0, 0);
+        animation-timing-function: linear;
+    }
+
+    58.93% {
+        transform: translate3d(0, 0, 0);
+        animation-timing-function: var(--motion-ease-curtain-reveal);
+    }
+
+    100% {
+        transform: translate3d(-100%, 0, 0);
+    }
+}
+
+@keyframes page-transition-curtain-backward-covered {
+    0% {
+        transform: translate3d(0, 0, 0);
+        animation-timing-function: linear;
+    }
+
+    58.93% {
+        transform: translate3d(0, 0, 0);
+        animation-timing-function: var(--motion-ease-curtain-reveal);
+    }
+
+    100% {
+        transform: translate3d(100%, 0, 0);
+    }
+}
+
+@keyframes page-transition-curtain-neutral-covered {
+    0% {
+        transform: scaleX(1);
+        animation-timing-function: linear;
+    }
+
+    58.93% {
+        transform: scaleX(1);
+        animation-timing-function: var(--motion-ease-curtain-reveal);
+    }
+
+    100% {
+        transform: scaleX(0);
+    }
+}
+
 @keyframes page-transition-nested-forward {
     from {
         opacity: 0.6;
@@ -174,6 +222,24 @@
         .page-transition-curtain[data-transition-direction="neutral"] {
         visibility: visible;
         animation: page-transition-curtain-neutral 560ms linear both;
+    }
+
+    html:not([data-reduced-motion="on"])
+        .page-transition-root[data-transition-fallback="page"]
+        .page-transition-curtain[data-transition-phase="covered"][data-transition-direction="forward"] {
+        animation-name: page-transition-curtain-forward-covered;
+    }
+
+    html:not([data-reduced-motion="on"])
+        .page-transition-root[data-transition-fallback="page"]
+        .page-transition-curtain[data-transition-phase="covered"][data-transition-direction="backward"] {
+        animation-name: page-transition-curtain-backward-covered;
+    }
+
+    html:not([data-reduced-motion="on"])
+        .page-transition-root[data-transition-fallback="page"]
+        .page-transition-curtain[data-transition-phase="covered"][data-transition-direction="neutral"] {
+        animation-name: page-transition-curtain-neutral-covered;
     }
 
     html:not([data-reduced-motion="on"])
