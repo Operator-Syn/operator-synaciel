@@ -2,14 +2,18 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test } from "node:test";
+import { schedulePageTransitionNavigation } from "../../apps/portfolio-web/src/components/pageTransition/pageTransitionNavigation.ts";
 import {
   getPageTransitionPlan,
   getPageTransitionScope,
   getRouteRailIndex,
   NESTED_TRANSITION_DURATION_MS,
   normalizeRoutePath,
+  PAGE_TRANSITION_COVER_DURATION_MS,
   PAGE_TRANSITION_DURATION_MS,
   PAGE_TRANSITION_HANDOFF_DURATION_MS,
+  PAGE_TRANSITION_NAVIGATION_DELAY_MS,
+  PAGE_TRANSITION_REVEAL_DURATION_MS,
 } from "../../apps/portfolio-web/src/components/pageTransition/routeTransition.ts";
 
 const repositoryRoot = resolve(import.meta.dirname, "../../apps/portfolio-web");
@@ -34,6 +38,94 @@ test("keeps the intentional transition timing contract", () => {
   assert.equal(PAGE_TRANSITION_DURATION_MS, 560);
   assert.equal(PAGE_TRANSITION_HANDOFF_DURATION_MS, 80);
   assert.equal(NESTED_TRANSITION_DURATION_MS, 220);
+});
+
+function createTransitionScheduler() {
+  let now = 0;
+  let nextId = 0;
+  const timers = new Map<number, { callback: () => void; dueAt: number }>();
+
+  return {
+    setTimeout(callback: () => void, delayMs: number) {
+      const id = ++nextId;
+      timers.set(id, { callback, dueAt: now + delayMs });
+      return id;
+    },
+    clearTimeout(id: number) {
+      timers.delete(id);
+    },
+    advanceBy(durationMs: number) {
+      const targetTime = now + durationMs;
+
+      while (true) {
+        const nextTimer = [...timers.entries()]
+          .filter(([, timer]) => timer.dueAt <= targetTime)
+          .sort((left, right) => left[1].dueAt - right[1].dueAt || left[0] - right[0])[0];
+
+        if (!nextTimer) break;
+
+        const [id, timer] = nextTimer;
+        timers.delete(id);
+        now = timer.dueAt;
+        timer.callback();
+      }
+
+      now = targetTime;
+    },
+  };
+}
+
+test("changes routes at the covered handoff and finishes at 560ms", () => {
+  assert.equal(PAGE_TRANSITION_COVER_DURATION_MS, 250);
+  assert.equal(PAGE_TRANSITION_NAVIGATION_DELAY_MS, 330);
+  assert.equal(PAGE_TRANSITION_REVEAL_DURATION_MS, 230);
+
+  const scheduler = createTransitionScheduler();
+  const events: string[] = [];
+
+  schedulePageTransitionNavigation(
+    scheduler,
+    () => events.push("navigate"),
+    () => events.push("finish"),
+  );
+
+  scheduler.advanceBy(PAGE_TRANSITION_NAVIGATION_DELAY_MS - 1);
+  assert.deepEqual(events, []);
+
+  scheduler.advanceBy(1);
+  assert.deepEqual(events, ["navigate"]);
+
+  scheduler.advanceBy(PAGE_TRANSITION_REVEAL_DURATION_MS - 1);
+  assert.deepEqual(events, ["navigate"]);
+
+  scheduler.advanceBy(1);
+  assert.deepEqual(events, ["navigate", "finish"]);
+});
+
+test("cancels stale handoff and cleanup timers when a transition is interrupted", () => {
+  const scheduler = createTransitionScheduler();
+  const events: string[] = [];
+
+  const cancelFirst = schedulePageTransitionNavigation(
+    scheduler,
+    () => events.push("first navigate"),
+    () => events.push("first finish"),
+  );
+
+  scheduler.advanceBy(100);
+  cancelFirst();
+
+  schedulePageTransitionNavigation(
+    scheduler,
+    () => events.push("second navigate"),
+    () => events.push("second finish"),
+  );
+
+  scheduler.advanceBy(PAGE_TRANSITION_NAVIGATION_DELAY_MS);
+  assert.deepEqual(events, ["second navigate"]);
+
+  scheduler.advanceBy(PAGE_TRANSITION_REVEAL_DURATION_MS);
+  assert.deepEqual(events, ["second navigate", "second finish"]);
 });
 
 test("maps primary routes to their rail order", () => {
@@ -98,6 +190,12 @@ test("keeps route transitions on the CSS fallback driver", async () => {
   assert.match(boundarySource, /className="page-transition-curtain"/);
   assert.match(boundarySource, /aria-hidden="true"/);
   assert.match(boundarySource, /key=\{activePageTransition\.id\}/);
+  assert.match(boundarySource, /phase = plan\.scope === "page" \? "covered" : "cover"/);
+  assert.match(boundarySource, /options\.viewTransition === false/);
+  assert.match(boundarySource, /prefersReducedMotion\(\)/);
+  assert.match(stylesSource, /page-transition-curtain-forward-covered/);
+  assert.match(stylesSource, /page-transition-curtain-backward-covered/);
+  assert.match(stylesSource, /page-transition-curtain-neutral-covered/);
   assert.match(stylesSource, /data-transition-fallback="page"/);
   assert.match(stylesSource, /data-transition-fallback="nested"/);
   assert.match(stylesSource, /page-transition-curtain/);
