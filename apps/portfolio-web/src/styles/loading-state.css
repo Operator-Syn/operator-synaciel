@@ -30,6 +30,84 @@
 }
 
 @layer components {
+    .app-route-loading {
+        display: grid;
+        align-content: start;
+        gap: clamp(1.5rem, 3vw, 2.5rem);
+        min-height: max(28rem, calc(100svh - 9rem));
+        padding-block: 1.5rem 3rem;
+    }
+
+    .app-route-loading-heading {
+        display: grid;
+        gap: 0.85rem;
+        padding-block: 0.75rem 1.25rem;
+    }
+
+    .app-route-loading-eyebrow {
+        width: 4.25rem;
+        height: 0.7rem;
+    }
+
+    .app-route-loading-title {
+        width: min(100%, 43rem);
+        height: clamp(2.75rem, 7vw, 5.2rem);
+    }
+
+    .app-route-loading-summary {
+        width: min(76%, 34rem);
+        height: 0.95rem;
+    }
+
+    .app-route-loading-list {
+        border-block: 1px solid var(--color-line);
+    }
+
+    .app-route-loading-row {
+        display: grid;
+        grid-template-columns: 4.25rem minmax(10rem, 0.82fr) minmax(14rem, 1.18fr);
+        align-items: center;
+        min-width: 0;
+        min-height: 9.5rem;
+        gap: clamp(1rem, 3vw, 2.75rem);
+        border-bottom: 1px solid var(--color-line);
+        padding: 0.9rem clamp(0.65rem, 1vw, 1rem);
+    }
+
+    .app-route-loading-row:last-child {
+        border-bottom: 0;
+    }
+
+    .app-route-loading-index {
+        width: 2.75rem;
+        height: 2rem;
+    }
+
+    .app-route-loading-media {
+        width: 100%;
+        aspect-ratio: 2.7 / 1;
+    }
+
+    .app-route-loading-copy {
+        display: grid;
+        gap: 0.75rem;
+        min-width: 0;
+    }
+
+    .app-route-loading-line {
+        width: 100%;
+        height: 0.85rem;
+    }
+
+    .app-route-loading-line-title {
+        width: min(78%, 20rem);
+        height: 1.3rem;
+    }
+
+    .app-route-loading-line-short {
+        width: 68%;
+    }
+
     .loading-region {
         position: relative;
     }
@@ -672,6 +750,28 @@
 
     .snippet-document-loading-reading {
         padding: 1.5rem 1rem 4rem;
+    }
+}
+
+@media (max-width: 760px) {
+    .app-route-loading {
+        min-height: max(28rem, calc(100svh - 8rem));
+        padding-block: 1rem 2rem;
+    }
+
+    .app-route-loading-row {
+        grid-template-columns: 2.75rem minmax(0, 1fr);
+        gap: 0.85rem 1rem;
+        min-height: 0;
+    }
+
+    .app-route-loading-media,
+    .app-route-loading-copy {
+        grid-column: 2;
+    }
+
+    .app-route-loading-media {
+        max-width: 26rem;
     }
 }
 
