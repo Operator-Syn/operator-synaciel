@@ -28,6 +28,8 @@ const transitionBoundaryPath = resolve(
 const routeIntentPath = resolve(repositoryRoot, "src/components/pageTransition/routeTransition.ts");
 const transitionStylesPath = resolve(repositoryRoot, "src/styles/page-transition.css");
 const motionTokensPath = resolve(repositoryRoot, "src/styles/tokens.css");
+const appSourcePath = resolve(repositoryRoot, "src/App.tsx");
+const loadingStylesPath = resolve(repositoryRoot, "src/styles/loading-state.css");
 
 test("normalizes route paths without changing the root", () => {
   assert.equal(normalizeRoutePath("/projects///"), "/projects");
@@ -38,6 +40,31 @@ test("keeps the intentional transition timing contract", () => {
   assert.equal(PAGE_TRANSITION_DURATION_MS, 560);
   assert.equal(PAGE_TRANSITION_HANDOFF_DURATION_MS, 80);
   assert.equal(NESTED_TRANSITION_DURATION_MS, 220);
+});
+
+test("shows a responsive loading shell while lazy route modules load", async () => {
+  const [appSource, loadingStyles] = await Promise.all([
+    readFile(appSourcePath, "utf8"),
+    readFile(loadingStylesPath, "utf8"),
+  ]);
+
+  assert.match(appSource, /<Suspense fallback={<RouteLoadingFallback \/>}>/);
+  assert.match(
+    appSource,
+    /<LoadingRegion className="app-route-loading page-frame" label="Loading page">/,
+  );
+  assert.match(appSource, /app-route-loading-row/);
+  assert.match(loadingStyles, /\.app-route-loading\s*\{[\s\S]*?min-height:/);
+  assert.match(loadingStyles, /\.app-route-loading-title\s*\{[\s\S]*?height:/);
+  assert.match(loadingStyles, /\.app-route-loading-row\s*\{[\s\S]*?grid-template-columns:/);
+  assert.match(
+    loadingStyles,
+    /@media \(max-width: 760px\)[\s\S]*?\.app-route-loading-row\s*\{[\s\S]*?grid-template-columns:/,
+  );
+  assert.match(
+    loadingStyles,
+    /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.loading-region::before/,
+  );
 });
 
 function createTransitionScheduler() {
