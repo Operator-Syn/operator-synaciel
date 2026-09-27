@@ -9,17 +9,13 @@
     inset-inline: 0;
     inset-block-end: 0;
     visibility: hidden;
-    overflow: hidden;
     pointer-events: none;
     contain: paint;
     border-block: 1px solid var(--color-line-strong);
     background-color: var(--color-surface);
 }
 
-/* Hand-tuned tail offsets keep the wipe tactile without becoming jagged. */
 .page-transition-curtain[data-transition-direction="forward"] {
-    inset-inline-end: clamp(1.25rem, 6.5vw, 16rem);
-    clip-path: polygon(0 0, 100% 0, 98% 16%, 98.8% 37%, 96.4% 58%, 97.2% 80%, 95% 100%, 0 100%);
     background-image: linear-gradient(
         to right,
         var(--color-surface-raised) 0%,
@@ -29,12 +25,22 @@
 }
 
 .page-transition-curtain[data-transition-direction="backward"] {
-    inset-inline-start: clamp(1.25rem, 6.5vw, 16rem);
-    clip-path: polygon(0 0, 100% 0, 100% 100%, 5% 100%, 2.8% 80%, 3.6% 58%, 1.2% 37%, 2% 16%);
     background-image: linear-gradient(
         to left,
         var(--color-surface-raised) 0%,
         var(--color-surface) 36%,
+        var(--color-canvas) 100%
+    );
+}
+
+.page-transition-curtain[data-transition-direction="neutral"] {
+    transform-origin: center;
+    background-image: linear-gradient(
+        to right,
+        var(--color-canvas) 0%,
+        var(--color-surface) 28%,
+        var(--color-surface-raised) 50%,
+        var(--color-surface) 72%,
         var(--color-canvas) 100%
     );
 }
@@ -55,129 +61,66 @@
     inset-inline-end: 0;
 }
 
-.page-transition-curtain[data-transition-direction="neutral"] {
-    transform-origin: center;
-    background-image: linear-gradient(
-        to right,
-        var(--color-canvas) 0%,
-        var(--color-surface) 28%,
-        var(--color-surface-raised) 50%,
-        var(--color-surface) 72%,
-        var(--color-canvas) 100%
-    );
-}
-
 .page-transition-curtain[data-transition-direction="neutral"]::before {
     inset-inline-start: 50%;
 }
 
-@keyframes page-transition-curtain-forward {
-    0% {
-        transform: translate3d(100%, 0, 0);
-        animation-timing-function: var(--motion-ease);
+@keyframes page-transition-curtain-cover-forward {
+    from {
+        transform: translateX(100%);
     }
 
-    44.64% {
-        transform: translate3d(0, 0, 0);
-        animation-timing-function: linear;
-    }
-
-    58.93% {
-        transform: translate3d(0, 0, 0);
-        animation-timing-function: var(--motion-ease-curtain-reveal);
-    }
-
-    100% {
-        transform: translate3d(-100%, 0, 0);
+    to {
+        transform: translateX(0);
     }
 }
 
-@keyframes page-transition-curtain-backward {
-    0% {
-        transform: translate3d(-100%, 0, 0);
-        animation-timing-function: var(--motion-ease);
+@keyframes page-transition-curtain-cover-backward {
+    from {
+        transform: translateX(-100%);
     }
 
-    44.64% {
-        transform: translate3d(0, 0, 0);
-        animation-timing-function: linear;
-    }
-
-    58.93% {
-        transform: translate3d(0, 0, 0);
-        animation-timing-function: var(--motion-ease-curtain-reveal);
-    }
-
-    100% {
-        transform: translate3d(100%, 0, 0);
+    to {
+        transform: translateX(0);
     }
 }
 
-@keyframes page-transition-curtain-neutral {
-    0% {
-        transform: scaleX(0);
-        animation-timing-function: var(--motion-ease);
-    }
-
-    44.64% {
-        transform: scaleX(1);
-        animation-timing-function: linear;
-    }
-
-    58.93% {
-        transform: scaleX(1);
-        animation-timing-function: var(--motion-ease-curtain-reveal);
-    }
-
-    100% {
+@keyframes page-transition-curtain-cover-neutral {
+    from {
         transform: scaleX(0);
     }
-}
 
-@keyframes page-transition-curtain-forward-covered {
-    0% {
-        transform: translate3d(0, 0, 0);
-        animation-timing-function: linear;
-    }
-
-    58.93% {
-        transform: translate3d(0, 0, 0);
-        animation-timing-function: var(--motion-ease-curtain-reveal);
-    }
-
-    100% {
-        transform: translate3d(-100%, 0, 0);
-    }
-}
-
-@keyframes page-transition-curtain-backward-covered {
-    0% {
-        transform: translate3d(0, 0, 0);
-        animation-timing-function: linear;
-    }
-
-    58.93% {
-        transform: translate3d(0, 0, 0);
-        animation-timing-function: var(--motion-ease-curtain-reveal);
-    }
-
-    100% {
-        transform: translate3d(100%, 0, 0);
-    }
-}
-
-@keyframes page-transition-curtain-neutral-covered {
-    0% {
+    to {
         transform: scaleX(1);
-        animation-timing-function: linear;
+    }
+}
+
+@keyframes page-transition-curtain-reveal-forward {
+    from {
+        transform: translateX(0);
     }
 
-    58.93% {
+    to {
+        transform: translateX(-100%);
+    }
+}
+
+@keyframes page-transition-curtain-reveal-backward {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(100%);
+    }
+}
+
+@keyframes page-transition-curtain-reveal-neutral {
+    from {
         transform: scaleX(1);
-        animation-timing-function: var(--motion-ease-curtain-reveal);
     }
 
-    100% {
+    to {
         transform: scaleX(0);
     }
 }
@@ -205,41 +148,60 @@
 @media (prefers-reduced-motion: no-preference) {
     html:not([data-reduced-motion="on"])
         .page-transition-root[data-transition-fallback="page"]
-        .page-transition-curtain[data-transition-direction="forward"] {
+        .page-transition-curtain[data-transition-phase="cover"][data-transition-direction="forward"] {
         visibility: visible;
-        animation: page-transition-curtain-forward 560ms linear both;
+        animation: page-transition-curtain-cover-forward 250ms var(--motion-ease) both;
     }
 
     html:not([data-reduced-motion="on"])
         .page-transition-root[data-transition-fallback="page"]
-        .page-transition-curtain[data-transition-direction="backward"] {
+        .page-transition-curtain[data-transition-phase="cover"][data-transition-direction="backward"] {
         visibility: visible;
-        animation: page-transition-curtain-backward 560ms linear both;
+        animation: page-transition-curtain-cover-backward 250ms var(--motion-ease) both;
     }
 
     html:not([data-reduced-motion="on"])
         .page-transition-root[data-transition-fallback="page"]
-        .page-transition-curtain[data-transition-direction="neutral"] {
+        .page-transition-curtain[data-transition-phase="cover"][data-transition-direction="neutral"] {
         visibility: visible;
-        animation: page-transition-curtain-neutral 560ms linear both;
+        animation: page-transition-curtain-cover-neutral 250ms var(--motion-ease) both;
     }
 
     html:not([data-reduced-motion="on"])
         .page-transition-root[data-transition-fallback="page"]
-        .page-transition-curtain[data-transition-phase="covered"][data-transition-direction="forward"] {
-        animation-name: page-transition-curtain-forward-covered;
-    }
-
-    html:not([data-reduced-motion="on"])
-        .page-transition-root[data-transition-fallback="page"]
-        .page-transition-curtain[data-transition-phase="covered"][data-transition-direction="backward"] {
-        animation-name: page-transition-curtain-backward-covered;
+        .page-transition-curtain[data-transition-phase="covered"] {
+        visibility: visible;
+        transform: translateX(0);
     }
 
     html:not([data-reduced-motion="on"])
         .page-transition-root[data-transition-fallback="page"]
         .page-transition-curtain[data-transition-phase="covered"][data-transition-direction="neutral"] {
-        animation-name: page-transition-curtain-neutral-covered;
+        transform: scaleX(1);
+    }
+
+    html:not([data-reduced-motion="on"])
+        .page-transition-root[data-transition-fallback="page"]
+        .page-transition-curtain[data-transition-phase="reveal"][data-transition-direction="forward"] {
+        visibility: visible;
+        animation: page-transition-curtain-reveal-forward 230ms var(--motion-ease-curtain-reveal)
+            both;
+    }
+
+    html:not([data-reduced-motion="on"])
+        .page-transition-root[data-transition-fallback="page"]
+        .page-transition-curtain[data-transition-phase="reveal"][data-transition-direction="backward"] {
+        visibility: visible;
+        animation: page-transition-curtain-reveal-backward 230ms var(--motion-ease-curtain-reveal)
+            both;
+    }
+
+    html:not([data-reduced-motion="on"])
+        .page-transition-root[data-transition-fallback="page"]
+        .page-transition-curtain[data-transition-phase="reveal"][data-transition-direction="neutral"] {
+        visibility: visible;
+        animation: page-transition-curtain-reveal-neutral 230ms var(--motion-ease-curtain-reveal)
+            both;
     }
 
     html:not([data-reduced-motion="on"])
