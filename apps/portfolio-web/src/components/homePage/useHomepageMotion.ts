@@ -4,10 +4,8 @@ export default function useHomepageMotion() {
   const [isMotionReady, setIsMotionReady] = useState(false);
 
   useEffect(() => {
-    const frameId = window.requestAnimationFrame(() => {
-      setIsMotionReady(true);
-    });
-
+    if (document.documentElement.dataset.pageTransitionId) return;
+    const frameId = window.requestAnimationFrame(() => setIsMotionReady(true));
     return () => window.cancelAnimationFrame(frameId);
   }, []);
 
