@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test } from "node:test";
-import { schedulePageTransitionNavigation } from "../../apps/portfolio-web/src/components/pageTransition/pageTransitionNavigation.ts";
+import { schedulePageTransitionHandoff } from "../../apps/portfolio-web/src/components/pageTransition/pageTransitionNavigation.ts";
 import {
   getPageTransitionPlan,
   getPageTransitionScope,
@@ -12,7 +12,7 @@ import {
   PAGE_TRANSITION_COVER_DURATION_MS,
   PAGE_TRANSITION_DURATION_MS,
   PAGE_TRANSITION_HANDOFF_DURATION_MS,
-  PAGE_TRANSITION_NAVIGATION_DELAY_MS,
+  PAGE_TRANSITION_PRE_REVEAL_DURATION_MS,
   PAGE_TRANSITION_REVEAL_DURATION_MS,
 } from "../../apps/portfolio-web/src/components/pageTransition/routeTransition.ts";
 
@@ -30,6 +30,8 @@ const transitionStylesPath = resolve(repositoryRoot, "src/styles/page-transition
 const motionTokensPath = resolve(repositoryRoot, "src/styles/tokens.css");
 const appSourcePath = resolve(repositoryRoot, "src/App.tsx");
 const loadingStylesPath = resolve(repositoryRoot, "src/styles/loading-state.css");
+const homepageMotionPath = resolve(repositoryRoot, "src/components/homePage/useHomepageMotion.ts");
+const asyncImagePath = resolve(repositoryRoot, "src/components/asyncImageLoader/AsyncImage.tsx");
 
 test("normalizes route paths without changing the root", () => {
   assert.equal(normalizeRoutePath("/projects///"), "/projects");
@@ -37,8 +39,11 @@ test("normalizes route paths without changing the root", () => {
 });
 
 test("keeps the intentional transition timing contract", () => {
+  assert.equal(PAGE_TRANSITION_COVER_DURATION_MS, 250);
   assert.equal(PAGE_TRANSITION_DURATION_MS, 560);
   assert.equal(PAGE_TRANSITION_HANDOFF_DURATION_MS, 80);
+  assert.equal(PAGE_TRANSITION_PRE_REVEAL_DURATION_MS, 330);
+  assert.equal(PAGE_TRANSITION_REVEAL_DURATION_MS, 230);
   assert.equal(NESTED_TRANSITION_DURATION_MS, 220);
 });
 
@@ -102,57 +107,39 @@ function createTransitionScheduler() {
   };
 }
 
-test("changes routes at the covered handoff and finishes at 560ms", () => {
-  assert.equal(PAGE_TRANSITION_COVER_DURATION_MS, 250);
-  assert.equal(PAGE_TRANSITION_NAVIGATION_DELAY_MS, 330);
-  assert.equal(PAGE_TRANSITION_REVEAL_DURATION_MS, 230);
-
+test("holds the fully covered route for 80ms before revealing", () => {
   const scheduler = createTransitionScheduler();
   const events: string[] = [];
 
-  schedulePageTransitionNavigation(
-    scheduler,
-    () => events.push("navigate"),
-    () => events.push("finish"),
+  schedulePageTransitionHandoff(scheduler, PAGE_TRANSITION_HANDOFF_DURATION_MS, () =>
+    events.push("reveal"),
   );
 
-  scheduler.advanceBy(PAGE_TRANSITION_NAVIGATION_DELAY_MS - 1);
+  scheduler.advanceBy(PAGE_TRANSITION_HANDOFF_DURATION_MS - 1);
   assert.deepEqual(events, []);
-
   scheduler.advanceBy(1);
-  assert.deepEqual(events, ["navigate"]);
-
-  scheduler.advanceBy(PAGE_TRANSITION_REVEAL_DURATION_MS - 1);
-  assert.deepEqual(events, ["navigate"]);
-
-  scheduler.advanceBy(1);
-  assert.deepEqual(events, ["navigate", "finish"]);
+  assert.deepEqual(events, ["reveal"]);
 });
 
-test("cancels stale handoff and cleanup timers when a transition is interrupted", () => {
+test("cancels a pending reveal handoff when a transition is interrupted", () => {
   const scheduler = createTransitionScheduler();
   const events: string[] = [];
 
-  const cancelFirst = schedulePageTransitionNavigation(
+  const cancelFirst = schedulePageTransitionHandoff(
     scheduler,
-    () => events.push("first navigate"),
-    () => events.push("first finish"),
+    PAGE_TRANSITION_HANDOFF_DURATION_MS,
+    () => events.push("first reveal"),
   );
-
-  scheduler.advanceBy(100);
+  scheduler.advanceBy(PAGE_TRANSITION_HANDOFF_DURATION_MS / 2);
   cancelFirst();
 
-  schedulePageTransitionNavigation(
-    scheduler,
-    () => events.push("second navigate"),
-    () => events.push("second finish"),
+  schedulePageTransitionHandoff(scheduler, PAGE_TRANSITION_HANDOFF_DURATION_MS, () =>
+    events.push("second reveal"),
   );
-
-  scheduler.advanceBy(PAGE_TRANSITION_NAVIGATION_DELAY_MS);
-  assert.deepEqual(events, ["second navigate"]);
-
-  scheduler.advanceBy(PAGE_TRANSITION_REVEAL_DURATION_MS);
-  assert.deepEqual(events, ["second navigate", "second finish"]);
+  scheduler.advanceBy(PAGE_TRANSITION_HANDOFF_DURATION_MS - 1);
+  assert.deepEqual(events, []);
+  scheduler.advanceBy(1);
+  assert.deepEqual(events, ["second reveal"]);
 });
 
 test("maps primary routes to their rail order", () => {
@@ -184,14 +171,23 @@ test("uses rail order for direction and neutral direction for utility routes", (
 });
 
 test("keeps route transitions on the CSS fallback driver", async () => {
-  const [navigationSource, boundarySource, routeSource, stylesSource, tokensSource] =
-    await Promise.all([
-      readFile(transitionEnginePath, "utf8"),
-      readFile(transitionBoundaryPath, "utf8"),
-      readFile(routeIntentPath, "utf8"),
-      readFile(transitionStylesPath, "utf8"),
-      readFile(motionTokensPath, "utf8"),
-    ]);
+  const [
+    navigationSource,
+    boundarySource,
+    routeSource,
+    stylesSource,
+    tokensSource,
+    homepageMotionSource,
+    asyncImageSource,
+  ] = await Promise.all([
+    readFile(transitionEnginePath, "utf8"),
+    readFile(transitionBoundaryPath, "utf8"),
+    readFile(routeIntentPath, "utf8"),
+    readFile(transitionStylesPath, "utf8"),
+    readFile(motionTokensPath, "utf8"),
+    readFile(homepageMotionPath, "utf8"),
+    readFile(asyncImagePath, "utf8"),
+  ]);
 
   assert.doesNotMatch(
     navigationSource,
@@ -203,26 +199,23 @@ test("keeps route transitions on the CSS fallback driver", async () => {
     stylesSource,
     /::view-transition|view-transition-name|page-transition-stage-/,
   );
-  assert.match(stylesSource, /clip-path: polygon/);
-  assert.match(
-    stylesSource,
-    /data-transition-direction="forward"\]\s*\{[\s\S]*?inset-inline-end:\s*clamp\(1\.25rem,\s*6\.5vw,\s*16rem\)[\s\S]*?clip-path:\s*polygon/,
-  );
-  assert.match(
-    stylesSource,
-    /data-transition-direction="backward"\]\s*\{[\s\S]*?inset-inline-start:\s*clamp\(1\.25rem,\s*6\.5vw,\s*16rem\)[\s\S]*?clip-path:\s*polygon/,
-  );
-  assert.match(stylesSource, /98% 16%[\s\S]*?95% 100%/);
-  assert.match(stylesSource, /5% 100%[\s\S]*?2\.8% 80%/);
+  assert.doesNotMatch(stylesSource, /clip-path:\s*polygon/);
+  assert.match(stylesSource, /inset-inline:\s*0/);
+  assert.match(stylesSource, /data-transition-phase="covered"/);
+  assert.match(stylesSource, /transform:\s*translateX\(0\)/);
+  assert.match(stylesSource, /page-transition-curtain-cover-forward/);
+  assert.match(stylesSource, /page-transition-curtain-cover-backward/);
+  assert.match(stylesSource, /page-transition-curtain-reveal-forward/);
+  assert.match(stylesSource, /page-transition-curtain-reveal-backward/);
   assert.match(boundarySource, /className="page-transition-curtain"/);
   assert.match(boundarySource, /aria-hidden="true"/);
   assert.match(boundarySource, /key=\{activePageTransition\.id\}/);
-  assert.match(boundarySource, /phase = plan\.scope === "page" \? "covered" : "cover"/);
+  assert.match(boundarySource, /phase:\s*plan\.scope === "page" \? "covered" : "cover"/);
   assert.match(boundarySource, /options\.viewTransition === false/);
   assert.match(boundarySource, /prefersReducedMotion\(\)/);
-  assert.match(stylesSource, /page-transition-curtain-forward-covered/);
-  assert.match(stylesSource, /page-transition-curtain-backward-covered/);
-  assert.match(stylesSource, /page-transition-curtain-neutral-covered/);
+  assert.match(stylesSource, /page-transition-curtain-cover-forward/);
+  assert.match(stylesSource, /page-transition-curtain-cover-backward/);
+  assert.match(stylesSource, /page-transition-curtain-cover-neutral/);
   assert.match(stylesSource, /data-transition-fallback="page"/);
   assert.match(stylesSource, /data-transition-fallback="nested"/);
   assert.match(stylesSource, /page-transition-curtain/);
@@ -234,6 +227,10 @@ test("keeps route transitions on the CSS fallback driver", async () => {
   assert.match(stylesSource, /background-image: linear-gradient/);
   assert.match(stylesSource, /var\(--color-surface-raised\)/);
   assert.match(stylesSource, /var\(--color-canvas\)/);
+  assert.match(
+    tokensSource,
+    /--motion-ease-curtain-reveal:\s*cubic-bezier\(0\.65,\s*0,\s*0\.35,\s*1\)/,
+  );
   assert.match(
     stylesSource,
     /data-transition-direction="forward"\]\s*\{[\s\S]*?background-image:\s*linear-gradient\(\s*to right/s,
@@ -247,29 +244,22 @@ test("keeps route transitions on the CSS fallback driver", async () => {
     /data-transition-direction="neutral"\]\s*\{[\s\S]*?background-image:\s*linear-gradient/,
   );
   assert.match(stylesSource, /background: var\(--color-signal\)/);
-  assert.match(stylesSource, /transform: translate3d/);
-  assert.match(stylesSource, /44\.64%/);
-  assert.match(stylesSource, /58\.93%/);
-  assert.match(stylesSource, /560ms/);
-  assert.match(
-    tokensSource,
-    /--motion-ease-curtain-reveal:\s*cubic-bezier\(0\.65,\s*0,\s*0\.35,\s*1\)/,
-  );
-  assert.match(stylesSource, /animation: page-transition-curtain-forward 560ms linear both/);
-  assert.match(stylesSource, /animation: page-transition-curtain-backward 560ms linear both/);
-  assert.match(stylesSource, /animation: page-transition-curtain-neutral 560ms linear both/);
-
-  const forwardCurtainKeyframes = stylesSource.match(
-    /keyframes\s+page-transition-curtain-forward[\s\S]*?keyframes\s+page-transition-curtain-backward/,
-  );
-  assert.ok(forwardCurtainKeyframes);
-  assert.match(
-    forwardCurtainKeyframes[0],
-    /0%[\s\S]*?animation-timing-function:\s*var\(--motion-ease\)[\s\S]*?58\.93%[\s\S]*?animation-timing-function:\s*var\(--motion-ease-curtain-reveal\)/,
-  );
+  assert.match(stylesSource, /page-transition-curtain-cover-forward 250ms/);
+  assert.match(stylesSource, /page-transition-curtain-cover-backward 250ms/);
+  assert.match(stylesSource, /page-transition-curtain-reveal-forward 230ms/);
+  assert.match(stylesSource, /page-transition-curtain-reveal-backward 230ms/);
+  assert.match(stylesSource, /page-transition-curtain-cover-neutral 250ms/);
+  assert.match(stylesSource, /page-transition-curtain-reveal-neutral 230ms/);
+  assert.doesNotMatch(stylesSource, /44\.64%|58\.93%/);
+  assert.match(boundarySource, /onAnimationEnd=\{handleCurtainAnimationEnd\}/);
+  assert.match(boundarySource, /schedulePageTransitionHandoff/);
+  assert.match(boundarySource, /PAGE_TRANSITION_PRE_REVEAL_DURATION_MS/);
+  assert.match(homepageMotionSource, /document\.documentElement\.dataset\.pageTransitionId/);
+  assert.match(asyncImageSource, /PageTransitionActiveContext/);
+  assert.match(asyncImageSource, /suppressLoadFadeRef/);
 
   const nestedTransitionStyles = stylesSource.match(
-    /@keyframes page-transition-nested-forward[\s\S]*?@media \(prefers-reduced-motion: reduce\)/,
+    /@keyframes page-transition-nested-forward[\s\S]*?(?=@media \(prefers-reduced-motion: no-preference\))/,
   );
   assert.ok(nestedTransitionStyles);
   assert.match(nestedTransitionStyles[0], /opacity: 0\.6/);
