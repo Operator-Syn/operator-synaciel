@@ -21,7 +21,7 @@ test("keeps the profile image requestable above the fold", async () => {
   ]);
 
   assert.match(profileImage, /loading="eager"/);
-  assert.match(asyncImage, /!isLoaded \? "opacity-0"/);
+  assert.match(asyncImage, /!isLoaded\s*\?\s*"opacity-0"/);
   assert.doesNotMatch(asyncImage, /!isLoaded \? "hidden"/);
 });
 
