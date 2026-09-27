@@ -1,10 +1,18 @@
-import { type ImgHTMLAttributes, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type ImgHTMLAttributes,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { PageTransitionActiveContext } from "../pageTransition/pageTransitionNavigation";
 
 interface AsyncImageProps extends ImgHTMLAttributes<HTMLImageElement> {
   src: string;
   alt: string;
   wrapperClassName?: string;
-  loader?: ReactNode; // Accepts a custom loader component or JSX
+  loader?: ReactNode;
   cursorState?: string;
 }
 
@@ -13,37 +21,47 @@ export default function AsyncImage({
   alt,
   className = "",
   wrapperClassName = "",
-  loader, // <--- Destructure it
+  loader,
   cursorState: cursorStateOverride,
   draggable = false,
   ...props
 }: AsyncImageProps) {
+  const isPageTransitionActive = useContext(PageTransitionActiveContext);
   const [isLoaded, setIsLoaded] = useState(false);
+  const suppressLoadFadeRef = useRef(isPageTransitionActive);
   const imgRef = useRef<HTMLImageElement>(null);
+
+  if (isPageTransitionActive) suppressLoadFadeRef.current = true;
 
   useEffect(() => {
     setIsLoaded(false);
     const image = imgRef.current;
-    if (image?.complete && image.getAttribute("src") === src) {
-      setIsLoaded(true);
-    }
+    if (image?.complete && image.getAttribute("src") === src) setIsLoaded(true);
   }, [src]);
 
-  // Check if we should show the default CSS placeholder
-  // We ONLY show the generic CSS gray box if content is NOT loaded AND no custom loader was provided.
   const showDefaultCssPlaceholder = !isLoaded && !loader;
   const cursorState = cursorStateOverride ?? (draggable ? "grab" : "default");
+  const imageClassName = [
+    className,
+    !isLoaded
+      ? "opacity-0"
+      : suppressLoadFadeRef.current
+        ? ""
+        : "animate-[image-fade-in_400ms_ease-out]",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const wrapperClass = [
+    "relative inline-block leading-none",
+    wrapperClassName,
+    showDefaultCssPlaceholder ? "loading-placeholder" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <span
-      data-cursor={cursorState}
-      aria-busy={!isLoaded}
-      className={`relative inline-block leading-none ${wrapperClassName} ${showDefaultCssPlaceholder ? "loading-placeholder" : ""}`}
-    >
-      {/* A. CUSTOM LOADER: Render this while waiting, if provided */}
+    <span data-cursor={cursorState} aria-busy={!isLoaded} className={wrapperClass}>
       {!isLoaded && loader && <span className="async-loader-content">{loader}</span>}
-
-      {/* B. REAL IMAGE: Hidden until loaded */}
       <img
         {...props}
         ref={imgRef}
@@ -52,7 +70,7 @@ export default function AsyncImage({
         data-cursor={cursorState}
         decoding={props.decoding ?? "async"}
         draggable={draggable}
-        className={`${className} ${!isLoaded ? "opacity-0" : "animate-[image-fade-in_400ms_ease-out]"}`}
+        className={imageClassName}
         onLoad={() => setIsLoaded(true)}
         onError={() => setIsLoaded(true)}
       />
