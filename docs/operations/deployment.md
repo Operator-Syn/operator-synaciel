@@ -412,8 +412,8 @@ project with:
 | Production branch | The branch selected for production in Pages |
 | Production custom domain | syn-forge.com |
 
-Set these production Pages environment variables. They are public build-time
-values, not secrets:
+Set these production Pages environment variables. They are public values,
+not secrets. VITE_API_URL is also required at runtime by the sitemap Function:
 
 ~~~text
 VITE_API_URL=https://personal-portfolio.syn-forge.com/api
@@ -435,9 +435,19 @@ published silently.
 
 Pages discovers apps/portfolio-web/functions/. The checked-in
 apps/portfolio-web/public/_routes.json is copied into the build output and
-keeps static assets, llms.txt, robots.txt, and the sitemap outside the Pages
-middleware where configured. Do not replace this Functions deployment with a
-static-only upload.
+keeps static assets, llms.txt, and robots.txt outside the Pages middleware
+where configured. `/sitemap.xml` runs through the middleware and fetches the
+current public snippet tree from `VITE_API_URL` on every GET or HEAD request.
+It includes the homepage, fixed page routes, and canonical document URLs using
+the same slug builder as the frontend. Snippet additions, renames, deletions,
+and valid modification dates appear without rebuilding Pages. Projects and
+certificates currently have index routes, not individual document routes.
+The XML response uses `Cache-Control: no-store`; missing runtime configuration,
+API failures, four-second timeouts, and malformed trees return an uncached 503
+with `Retry-After: 60` rather than a partial sitemap. Vite no longer generates
+a sitemap snapshot. Local Vite and static preview servers do not run this
+Function; use Pages development with a `VITE_API_URL` binding for HTTP checks.
+Do not replace this Functions deployment with a static-only upload.
 
 On first setup, choose Save and Deploy in the Pages dashboard. Subsequent
 production pushes to the selected branch trigger Git-integrated builds. Review
