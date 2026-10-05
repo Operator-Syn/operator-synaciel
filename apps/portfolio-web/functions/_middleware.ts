@@ -1,4 +1,5 @@
 import type { PagesFunction, Response as PagesResponse } from "@cloudflare/workers-types";
+import { createSitemapResponse } from "../src/data/sitemap.ts";
 import {
   getSocialPreviewImageUrl,
   getSocialPreviewMetadata,
@@ -108,7 +109,14 @@ function rewriteDocumentHead(response: PagesResponse, requestUrl: string) {
   return rewriter.transform(response as unknown as Response) as unknown as PagesResponse;
 }
 
-export const onRequest: PagesFunction = async (context) => {
+export const onRequest: PagesFunction<{ VITE_API_URL?: string }> = async (context) => {
+  if (new URL(context.request.url).pathname === "/sitemap.xml") {
+    return (await createSitemapResponse(
+      context.request as unknown as Request,
+      context.env.VITE_API_URL,
+    )) as unknown as PagesResponse;
+  }
+
   const redirect = createCanonicalRouteRedirect(context.request.url);
   if (redirect) return redirect as unknown as PagesResponse;
 
