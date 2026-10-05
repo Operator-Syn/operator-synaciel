@@ -17,5 +17,11 @@
     "skipLibCheck": true,
     "types": ["@cloudflare/workers-types", "node"]
   },
-  "include": ["**/*.ts", "../src/data/socialPreview.ts"]
+  "include": [
+    "**/*.ts",
+    "../src/data/socialPreview.ts",
+    "../src/data/sitemap.ts",
+    "../src/data/canonicalRoutes.ts",
+    "../src/components/pages/snippetsPage/snippetRoutes.ts"
+  ]
 }
