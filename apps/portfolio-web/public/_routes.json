@@ -1,6 +1,7 @@
 {
   "version": 1,
   "include": [
+    "/sitemap.xml",
     "/",
     "/projects",
     "/projects/*",
@@ -35,7 +36,6 @@
     "/assets/*",
     "/cursors/*",
     "/llms.txt",
-    "/robots.txt",
-    "/sitemap.xml"
+    "/robots.txt"
   ]
 }
