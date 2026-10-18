@@ -97,26 +97,25 @@ export async function checkMcpConfig() {
     .flat()
     .flatMap((entry) => entry.hooks ?? []);
   const impeccableHookEntries = codexHookEntries.filter((entry) =>
-    entry.command?.includes("impeccable/scripts/impeccable"),
+    entry.command?.includes("scripts/impeccable-hook.mjs"),
   );
   if (
-    impeccableHookEntries.length === 0 ||
+    impeccableHookEntries.length < 2 ||
     impeccableHookEntries.some(
       ({ command, commandWindows }) =>
         !command?.includes(launcherNeedle) ||
         !command.includes('cd "$root"') ||
-        !command.includes("impeccable/scripts/impeccable") ||
+        !command.includes("scripts/impeccable-hook.mjs") ||
         !commandWindows?.includes(launcherNeedle) ||
         !commandWindows.includes("Join-Path $root") ||
-        !commandWindows.includes("impeccable/scripts/impeccable.cmd"),
+        !commandWindows.includes("scripts/impeccable-hook.mjs"),
     )
   ) {
     errors.push("Codex Impeccable hooks must resolve the Git root at runtime.");
   }
   if (
     !codexHooks.includes("check-biome-hook.mjs") ||
-    !codexHooks.includes("mcp__operator_synaciel_repository__apply_repository_change") ||
-    !codexHooks.includes("additionalContextLimit")
+    !codexHooks.includes("mcp__operator_synaciel_repository__apply_repository_change")
   ) {
     errors.push(
       "Codex PostToolUse hooks must provide repository Biome feedback after edits and MCP applies.",
