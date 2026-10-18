@@ -524,7 +524,7 @@
         }
     }
 
-    @media (prefers-reduced-motion: reduce) {
+    @scope (html[data-motion-mode="reduced"]) {
         .snippet-document-link,
         .snippet-document-toc-link,
         .snippet-document-toc-mobile-trigger,
