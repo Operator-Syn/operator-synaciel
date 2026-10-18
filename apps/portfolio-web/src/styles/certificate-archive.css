@@ -458,7 +458,7 @@
     }
 }
 
-@media (prefers-reduced-motion: no-preference) {
+@scope (html[data-motion-mode="full"]) {
     html:not([data-reduced-motion="on"])
         .certificate-archive-card:focus-within
         .certificate-archive-index,
@@ -482,17 +482,21 @@
     }
 }
 
-@media (hover: hover) and (prefers-reduced-motion: no-preference) {
-    html:not([data-reduced-motion="on"]) .certificate-archive-card:hover .certificate-archive-index,
-    html:not([data-reduced-motion="on"])
-        .certificate-archive-card:hover
-        .certificate-archive-copy
-        h2 {
-        transform: translateY(-2px);
+@media (hover: hover) {
+    @scope (html[data-motion-mode="full"]) {
+        html:not([data-reduced-motion="on"])
+            .certificate-archive-card:hover
+            .certificate-archive-index,
+        html:not([data-reduced-motion="on"])
+            .certificate-archive-card:hover
+            .certificate-archive-copy
+            h2 {
+            transform: translateY(-2px);
+        }
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@scope (html[data-motion-mode="reduced"]) {
     .certificate-archive-card::before,
     .certificate-archive-index,
     .certificate-archive-copy h2,
