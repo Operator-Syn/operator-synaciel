@@ -239,17 +239,18 @@ composed lighter pastel-blue monochrome palette informed by the historical blue
 only as reference. Vesper Index is a newly composed rose-led twilight palette
 informed by Twilight-5. Switching themes preserves the same content, spacing,
 typography, and geometry.
-Preferences are browser-local and apply across routes. The reduced-motion
-control can add an explicit preference, while turning it off still honors the
-operating system's `prefers-reduced-motion` setting.
+Preferences are browser-local and apply across routes. Motion defaults to
+System, which follows the operating system's `prefers-reduced-motion` setting.
+Reduced motion limits site motion; Force motion opts into transitions and
+animation even when the operating system requests less.
 The assistant panel is viewport-bounded and treats long transcript content as a
 layout edge case rather than a second horizontal reading surface. The panel
 keeps its header, thread controls, and composer geometry stable while the
 transcript owns the single vertical scroll surface. The chat wrapper and message
 list stay in normal flow inside that region, so a long message can never be
 split by a sticky footer or paint below it. Transcript messages and source links
-wrap at any safe break, and the transcript uses the shared neutral scrollbar
-treatment without horizontal overflow. At phone widths or short windows
+wrap at any safe break, and the transcript uses the active theme's scrollbar
+colors without horizontal overflow. At phone widths or short windows
 (`max-width: 640px` or `max-height: 560px`), the authenticated assistant opens
 as a safe-area-aware full-screen dialog. Its header is compact, the thread
 selector and actions stay on one row, and the quota is a closed compact
