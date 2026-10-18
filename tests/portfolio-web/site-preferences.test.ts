@@ -30,7 +30,7 @@ function createStorage(initial: Record<string, string> = {}): StorageLike {
   };
 }
 
-test("defaults to Dalan with motion preference off", () => {
+test("defaults to Dalan and follows the system motion preference", () => {
   assert.equal(DEFAULT_SITE_THEME, "dalan");
   assert.equal(isSiteTheme("dalan"), true);
   assert.equal(isSiteTheme("of-times-old"), true);
@@ -39,7 +39,7 @@ test("defaults to Dalan with motion preference off", () => {
   assert.equal(isSiteTheme("unknown"), false);
   assert.deepEqual(readSitePreferences(null), {
     theme: "dalan",
-    reducedMotion: false,
+    motionPreference: "system",
     customTheme: null,
   });
 });
@@ -52,50 +52,60 @@ test("reads and persists browser-local visitor preferences", () => {
 
   assert.deepEqual(readSitePreferences(storage), {
     theme: "of-times-old",
-    reducedMotion: true,
+    motionPreference: "reduced",
     customTheme: null,
   });
 
   persistSitePreferences(
-    { theme: "vesper-index", reducedMotion: false, customTheme: null },
+    { theme: "vesper-index", motionPreference: "force", customTheme: null },
     storage,
   );
 
   assert.deepEqual(readSitePreferences(storage), {
     theme: "vesper-index",
-    reducedMotion: false,
+    motionPreference: "force",
     customTheme: null,
   });
 });
 
-test("applies theme and explicit motion state to the document root", () => {
+test("applies theme and the selected motion mode to the document root", () => {
   const root = {
-    dataset: { reducedMotion: "on" },
+    dataset: { motionMode: "reduced", reducedMotion: "on" },
     style: {
       removeProperty: () => {},
       setProperty: () => {},
     },
   } as unknown as RootLike;
 
-  applySitePreferences({ theme: "of-times-old", reducedMotion: false, customTheme: null }, root);
+  applySitePreferences(
+    { theme: "of-times-old", motionPreference: "force", customTheme: null },
+    root,
+  );
 
   assert.equal(root.dataset.theme, "of-times-old");
-  assert.equal(root.dataset.reducedMotion, undefined);
-
-  applySitePreferences({ theme: "vesper-index", reducedMotion: false, customTheme: null }, root);
-  assert.equal(root.dataset.theme, "vesper-index");
+  assert.equal(root.dataset.motionMode, "full");
   assert.equal(root.dataset.reducedMotion, undefined);
 
   applySitePreferences(
-    { theme: "ancient-blue-ledger", reducedMotion: false, customTheme: null },
+    { theme: "vesper-index", motionPreference: "force", customTheme: null },
+    root,
+  );
+  assert.equal(root.dataset.theme, "vesper-index");
+  assert.equal(root.dataset.motionMode, "full");
+  assert.equal(root.dataset.reducedMotion, undefined);
+
+  applySitePreferences(
+    { theme: "ancient-blue-ledger", motionPreference: "force", customTheme: null },
     root,
   );
   assert.equal(root.dataset.theme, "ancient-blue-ledger");
+  assert.equal(root.dataset.motionMode, "full");
   assert.equal(root.dataset.reducedMotion, undefined);
 
-  applySitePreferences({ theme: "dalan", reducedMotion: true, customTheme: null }, root);
+  applySitePreferences({ theme: "dalan", motionPreference: "reduced", customTheme: null }, root);
 
   assert.equal(root.dataset.theme, "dalan");
+  assert.equal(root.dataset.motionMode, "reduced");
   assert.equal(root.dataset.reducedMotion, "on");
 });
 
@@ -115,11 +125,8 @@ test("keeps the Home settings utility inside the shared floating dock", async ()
   assert.match(styles, /\.home-settings\s*\{[\s\S]*pointer-events: none/);
   assert.match(styles, /\.home-settings-panel\s*\{[\s\S]*position: absolute/);
   assert.match(styles, /\.home-settings-panel\[data-state="open"\]/);
-  assert.match(styles, /data-reduced-motion="on"/);
-  assert.match(
-    settings,
-    /Page wipes and animated feedback are disabled while reduced motion is active/,
-  );
+  assert.match(styles, /html\[data-motion-mode="reduced"\]/);
+  assert.match(settings, /Force motion overrides your device’s reduced-motion setting/);
 });
 
 test("exposes built-in alternate themes in Home Settings", async () => {
