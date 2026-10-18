@@ -3,7 +3,7 @@
     width: 100%;
     max-width: none;
     margin-inline: 0;
-    padding-bottom: clamp(5rem, 8vw, 8rem);
+    padding-bottom: 2rem;
 }
 
 .legal-policy-coordinates {
@@ -514,7 +514,7 @@
     max-height: 24rem;
     overflow-y: auto;
     padding: 0 0.7rem 0.8rem;
-    scrollbar-color: var(--color-line-strong) transparent;
+    scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
     scrollbar-width: thin;
 }
 
@@ -699,7 +699,7 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@scope (html[data-motion-mode="reduced"]) {
     .legal-policy-page .privacy-policy-summary-item,
     .legal-policy-page .privacy-policy-section {
         animation: none;
