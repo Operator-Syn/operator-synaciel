@@ -40,6 +40,14 @@
     --color-canvas-overlay-strong: rgb(16 17 17 / 96%);
     --color-canvas-overlay-navigation: rgb(16 17 17 / 86%);
     --color-signal-soft: rgb(240 164 42 / 12%);
+    --color-scrollbar-thumb: var(--color-signal);
+    --color-scrollbar-track: var(--color-surface-raised);
+    /* Blocking dialogs intentionally sit above navigation and transitions. */
+    --layer-floating-controls: 40;
+    --layer-theme-transition: 45;
+    --layer-route-transition: 50;
+    --layer-navigation: 70;
+    --layer-modal: 80;
     --focus-ring: var(--color-signal-strong);
     --content-width: 1440px;
     --page-gutter: clamp(1rem, 6.25vw, 6.25rem);
