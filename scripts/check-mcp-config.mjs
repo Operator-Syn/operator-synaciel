@@ -85,10 +85,31 @@ export async function checkMcpConfig() {
     );
     return "";
   });
+  let codexHookManifest;
+  try {
+    codexHookManifest = JSON.parse(codexHooks);
+  } catch (error) {
+    errors.push(
+      `Could not parse .codex/hooks.json: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  const codexHookEntries = Object.values(codexHookManifest?.hooks ?? {})
+    .flat()
+    .flatMap((entry) => entry.hooks ?? []);
+  const impeccableHookEntries = codexHookEntries.filter((entry) =>
+    entry.command?.includes("impeccable/scripts/impeccable"),
+  );
   if (
-    !codexHooks.includes("impeccable/scripts/hook.mjs") ||
-    !codexHooks.includes(launcherNeedle) ||
-    !codexHooks.includes("root=")
+    impeccableHookEntries.length === 0 ||
+    impeccableHookEntries.some(
+      ({ command, commandWindows }) =>
+        !command?.includes(launcherNeedle) ||
+        !command.includes('cd "$root"') ||
+        !command.includes("impeccable/scripts/impeccable") ||
+        !commandWindows?.includes(launcherNeedle) ||
+        !commandWindows.includes("Join-Path $root") ||
+        !commandWindows.includes("impeccable/scripts/impeccable.cmd"),
+    )
   ) {
     errors.push("Codex Impeccable hooks must resolve the Git root at runtime.");
   }
