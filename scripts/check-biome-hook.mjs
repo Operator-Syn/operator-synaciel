@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const BIOME_CHECK_COMMAND = ["npm", "run", "check:biome:github"];
 export const MAX_FEEDBACK_CHARS = 12_000;
+export const MAX_TOOL_RESULT_CHARS = 6_000;
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -23,6 +24,22 @@ function truncateFeedback(value) {
   const headLength = Math.ceil(available * 0.65);
   const tailLength = available - headLength;
   return value.slice(0, headLength) + marker + value.slice(-tailLength);
+}
+
+function formatToolResponse(value) {
+  if (value === undefined || value === null) return "";
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  if (typeof text !== "string") return "";
+
+  const trimmed = text.trim();
+  if (!trimmed) return "";
+  if (trimmed.length <= MAX_TOOL_RESULT_CHARS) return trimmed;
+
+  const marker =
+    "\n... tool result truncated; rerun the operation to inspect the full result ...\n";
+  const available = MAX_TOOL_RESULT_CHARS - marker.length;
+  const headLength = Math.ceil(available * 0.65);
+  return trimmed.slice(0, headLength) + marker + trimmed.slice(-(available - headLength));
 }
 
 function parseHookInput(rawInput) {
@@ -66,30 +83,33 @@ export function runBiomeCheck({ cwd = repositoryRoot, spawn = spawnSync } = {}) 
   }
 }
 
-export function buildBiomeHookFeedback({ toolName, output }) {
+export function buildBiomeHookFeedback({ toolName, output, toolResponse }) {
   const shownToolName = displayToolName(toolName);
   const diagnostics = truncateFeedback(
     typeof output === "string" && output.trim()
       ? output.trim()
       : "Biome returned no diagnostic output.",
   );
+  const toolResult = formatToolResponse(toolResponse);
+
+  // Keep diagnostics inside the blocked tool result. PostToolUse additional
+  // context is recorded as a separate developer message before the tool output,
+  // and providers that require adjacent call/output pairs reject that history as
+  // a missing tool output. A blocked reason replaces the tool result, so retain
+  // the original response before the diagnostics.
+  const reason = [];
+  if (toolResult) reason.push(toolResult, "");
+  reason.push(
+    `Biome failed after ${shownToolName}. The operation already completed; do not repeat it blindly.`,
+    "Fix the reported diagnostics, then rerun npm run check:biome:github.",
+    "Continue the original task after the check passes.",
+    "",
+    diagnostics,
+  );
 
   return {
     decision: "block",
-    reason:
-      "Biome check failed after " +
-      shownToolName +
-      ". Fix the reported diagnostics before continuing.",
-    hookSpecificOutput: {
-      hookEventName: "PostToolUse",
-      additionalContext: [
-        `Biome failed after ${shownToolName}. The operation already completed; do not repeat it blindly.`,
-        "Fix the reported diagnostics, then rerun npm run check:biome:github.",
-        "Continue the original task after the check passes.",
-        "",
-        diagnostics,
-      ].join("\n"),
-    },
+    reason: reason.join("\n"),
   };
 }
 
@@ -105,6 +125,7 @@ if (isMain) {
         buildBiomeHookFeedback({
           toolName: input.tool_name,
           output: result.output,
+          toolResponse: input.tool_response,
         }),
       ),
     );
