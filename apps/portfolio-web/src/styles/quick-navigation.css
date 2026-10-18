@@ -13,7 +13,7 @@
 
 .quick-navigation-panel {
     position: absolute;
-    inset-inline-end: 0;
+    inset-inline-end: var(--floating-control-panel-inset-inline-end, 0);
     inset-block-end: calc(100% + var(--floating-control-gap));
     width: min(22rem, calc(100vw - 2rem));
     pointer-events: none;
@@ -72,33 +72,10 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@scope (html[data-motion-mode="reduced"]) {
     .quick-navigation-panel,
     .navigation-menu {
         transition: none;
         transform: none;
-    }
-}
-
-@media (max-width: 1400px) {
-    .quick-navigation-toggle {
-        width: 3rem;
-        justify-content: center;
-        gap: 0;
-        padding-inline: 0.5rem;
-    }
-
-    .quick-navigation-toggle > svg:last-child {
-        display: none;
-    }
-}
-
-@media (max-width: 1023px) {
-    .navigation-shell[data-navigation-hidden="true"] {
-        transform: translateY(-100%);
-    }
-
-    .navigation-shell[data-navigation-hidden="true"]:focus-within {
-        transform: translateY(0);
     }
 }
