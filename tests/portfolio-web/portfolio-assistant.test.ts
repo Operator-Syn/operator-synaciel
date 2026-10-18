@@ -289,7 +289,7 @@ test("mounts the portfolio assistant globally with bounded authenticated chat co
   assert.match(cssSource, /\.portfolio-assistant-quota-meter\s*\{/);
   assert.match(cssSource, /\.portfolio-assistant-quota-refresh\s*\{/);
   assert.match(cssSource, /transition:/);
-  assert.match(cssSource, /prefers-reduced-motion/);
+  assert.match(cssSource, /data-motion-mode="reduced"/);
   assert.doesNotMatch(fabSource, /auth_token/);
   assert.doesNotMatch(apiSource, /localStorage|sessionStorage/);
 });
@@ -440,7 +440,7 @@ test("keeps streaming reveal quiet and intentional", async () => {
   assert.doesNotMatch(cssSource, /portfolio-assistant-typing-pulse/);
   assert.match(
     cssSource,
-    /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.portfolio-assistant-typing-dots i/,
+    /@scope \(html\[data-motion-mode="reduced"\]\)[\s\S]*?\.portfolio-assistant-typing-dots i/,
   );
   assert.match(fabSource, /useStreamingMessageSnapshot/);
   assert.match(fabSource, /ASSISTANT_STREAM_COMMIT_DELAY_MS = 48/);
