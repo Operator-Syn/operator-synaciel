@@ -68,7 +68,7 @@ test("shows a responsive loading shell while lazy route modules load", async () 
   );
   assert.match(
     loadingStyles,
-    /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.loading-region::before/,
+    /@scope \(html\[data-motion-mode="reduced"\]\)[\s\S]*?\.loading-region::before/,
   );
 });
 
@@ -220,7 +220,7 @@ test("keeps route transitions on the CSS fallback driver", async () => {
   assert.match(stylesSource, /data-transition-fallback="nested"/);
   assert.match(stylesSource, /page-transition-curtain/);
   assert.match(stylesSource, /position: fixed/);
-  assert.match(stylesSource, /z-index: 20/);
+  assert.match(stylesSource, /z-index: var\(--layer-route-transition\)/);
   assert.match(stylesSource, /inset-block-start: 4\.5rem/);
   assert.match(stylesSource, /pointer-events: none/);
   assert.match(stylesSource, /background-color: var\(--color-surface\)/);
@@ -259,7 +259,7 @@ test("keeps route transitions on the CSS fallback driver", async () => {
   assert.match(asyncImageSource, /suppressLoadFadeRef/);
 
   const nestedTransitionStyles = stylesSource.match(
-    /@keyframes page-transition-nested-forward[\s\S]*?(?=@media \(prefers-reduced-motion: no-preference\))/,
+    /@keyframes page-transition-nested-forward[\s\S]*?(?=@scope \(html\[data-motion-mode="full"\]\))/,
   );
   assert.ok(nestedTransitionStyles);
   assert.match(nestedTransitionStyles[0], /opacity: 0\.6/);
