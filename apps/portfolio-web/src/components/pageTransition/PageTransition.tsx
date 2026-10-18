@@ -24,10 +24,15 @@ import {
   markRouteTransitionIntent,
   NESTED_TRANSITION_DURATION_MS,
   normalizeRoutePath,
+  PAGE_TRANSITION_COVER_DURATION_MS,
   PAGE_TRANSITION_HANDOFF_DURATION_MS,
   PAGE_TRANSITION_PRE_REVEAL_DURATION_MS,
+  PAGE_TRANSITION_REVEAL_DURATION_MS,
   type PageTransitionPlan,
 } from "./routeTransition";
+
+const COVER_ANIMATION_FALLBACK_MS = PAGE_TRANSITION_COVER_DURATION_MS + 180;
+const REVEAL_ANIMATION_FALLBACK_MS = PAGE_TRANSITION_REVEAL_DURATION_MS + 180;
 
 type PageTransitionProps = { children: ReactNode };
 type ActiveFallback = {
@@ -66,12 +71,21 @@ export default function PageTransition({ children }: PageTransitionProps) {
   const fallbackTimerRef = useRef<number | null>(null);
   const pendingNavigationRef = useRef<PendingNavigation | null>(null);
   const cancelHandoffRef = useRef<(() => void) | null>(null);
+  const handoffWatchdogRef = useRef<number | null>(null);
   const bypassPathnameRef = useRef<string | null>(null);
   const [activeFallback, setActiveFallback] = useState<ActiveFallback | null>(null);
+
+  const clearHandoffWatchdog = useCallback(() => {
+    if (handoffWatchdogRef.current !== null) {
+      window.clearTimeout(handoffWatchdogRef.current);
+      handoffWatchdogRef.current = null;
+    }
+  }, []);
 
   const cancelActiveTransition = useCallback(() => {
     cancelHandoffRef.current?.();
     cancelHandoffRef.current = null;
+    clearHandoffWatchdog();
     pendingNavigationRef.current = null;
     if (fallbackTimerRef.current !== null) {
       window.clearTimeout(fallbackTimerRef.current);
@@ -80,36 +94,62 @@ export default function PageTransition({ children }: PageTransitionProps) {
     clearRouteTransitionIntent(fallbackIdRef.current);
     fallbackIdRef.current = null;
     setActiveFallback(null);
-  }, []);
+  }, [clearHandoffWatchdog]);
 
-  const scheduleReveal = useCallback((id: string, delayMs: number) => {
-    cancelHandoffRef.current?.();
-    cancelHandoffRef.current = schedulePageTransitionHandoff(
-      {
-        setTimeout: (callback, delay) => window.setTimeout(callback, delay),
-        clearTimeout: (timerId) => window.clearTimeout(timerId),
-      },
-      delayMs,
-      () => {
+  const finishPageTransition = useCallback(
+    (id: string) => {
+      if (fallbackIdRef.current === id) {
+        cancelHandoffRef.current?.();
         cancelHandoffRef.current = null;
-        if (fallbackIdRef.current !== id) return;
-        setActiveFallback((current) =>
-          current?.id === id ? { ...current, phase: "reveal" } : current,
-        );
-      },
-    );
-  }, []);
+        clearHandoffWatchdog();
+        pendingNavigationRef.current = null;
+        fallbackIdRef.current = null;
+        setActiveFallback((current) => (current?.id === id ? null : current));
+      }
+      clearRouteTransitionIntent(id);
+    },
+    [clearHandoffWatchdog],
+  );
 
-  const finishPageTransition = useCallback((id: string) => {
-    if (fallbackIdRef.current === id) {
+  const scheduleReveal = useCallback(
+    (id: string, delayMs: number) => {
       cancelHandoffRef.current?.();
-      cancelHandoffRef.current = null;
-      pendingNavigationRef.current = null;
-      fallbackIdRef.current = null;
-      setActiveFallback((current) => (current?.id === id ? null : current));
-    }
-    clearRouteTransitionIntent(id);
-  }, []);
+      cancelHandoffRef.current = schedulePageTransitionHandoff(
+        {
+          setTimeout: (callback, delay) => window.setTimeout(callback, delay),
+          clearTimeout: (timerId) => window.clearTimeout(timerId),
+        },
+        delayMs,
+        () => {
+          cancelHandoffRef.current = null;
+          if (fallbackIdRef.current !== id) return;
+          setActiveFallback((current) =>
+            current?.id === id ? { ...current, phase: "reveal" } : current,
+          );
+          clearHandoffWatchdog();
+          handoffWatchdogRef.current = window.setTimeout(() => {
+            handoffWatchdogRef.current = null;
+            if (fallbackIdRef.current === id) finishPageTransition(id);
+          }, REVEAL_ANIMATION_FALLBACK_MS);
+        },
+      );
+    },
+    [clearHandoffWatchdog, finishPageTransition],
+  );
+
+  const handoffToDestination = useCallback(
+    (id: string) => {
+      const pendingNavigation = pendingNavigationRef.current;
+      if (!pendingNavigation || pendingNavigation.id !== id || pendingNavigation.navigating) return;
+      clearHandoffWatchdog();
+      pendingNavigation.navigating = true;
+      setActiveFallback((current) =>
+        current?.id === id ? { ...current, phase: "covered" } : current,
+      );
+      pendingNavigation.navigate();
+    },
+    [clearHandoffWatchdog],
+  );
 
   const navigateWithTransition = useCallback<PageTransitionNavigationCoordinator>(
     (routerNavigate, fromPathname, to, options = {}) => {
@@ -139,8 +179,14 @@ export default function PageTransition({ children }: PageTransitionProps) {
       };
       fallbackIdRef.current = id;
       setActiveFallback({ id, plan, phase: "cover" });
+      clearHandoffWatchdog();
+      handoffWatchdogRef.current = window.setTimeout(() => {
+        handoffWatchdogRef.current = null;
+        if (fallbackIdRef.current !== id) return;
+        handoffToDestination(id);
+      }, COVER_ANIMATION_FALLBACK_MS);
     },
-    [cancelActiveTransition],
+    [cancelActiveTransition, clearHandoffWatchdog, handoffToDestination],
   );
 
   const handleClickCapture = useCallback(
@@ -174,13 +220,7 @@ export default function PageTransition({ children }: PageTransitionProps) {
         activePageTransition.phase === "cover" &&
         event.animationName === `page-transition-curtain-cover-${direction}`
       ) {
-        const pendingNavigation = pendingNavigationRef.current;
-        if (pendingNavigation?.id !== activePageTransition.id) return;
-        pendingNavigation.navigating = true;
-        setActiveFallback((current) =>
-          current?.id === activePageTransition.id ? { ...current, phase: "covered" } : current,
-        );
-        pendingNavigation.navigate();
+        handoffToDestination(activePageTransition.id);
         return;
       }
 
@@ -191,7 +231,7 @@ export default function PageTransition({ children }: PageTransitionProps) {
         finishPageTransition(activePageTransition.id);
       }
     },
-    [activeFallback, finishPageTransition],
+    [activeFallback, finishPageTransition, handoffToDestination],
   );
 
   useLayoutEffect(() => {
