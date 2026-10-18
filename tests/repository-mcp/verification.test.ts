@@ -6,6 +6,7 @@ import {
   SAFE_VERIFICATION_COMMANDS,
 } from "../../tools/repository-mcp/src/policy.ts";
 import {
+  boundVerificationOutput,
   clearVerificationCache,
   runVerificationProfile,
 } from "../../tools/repository-mcp/src/verification.ts";
@@ -29,6 +30,19 @@ test("mcp-fast verification is fixed and cacheable", () => {
     () => runVerificationProfile("mcp-fast", ["mcp_test"]),
     /not allowed by the mcp-fast profile/,
   );
+});
+
+test("verification output stays within the published schema limit", () => {
+  const short = boundVerificationOutput("ok", "");
+  assert.equal(short, "ok");
+
+  const oversized = boundVerificationOutput("x".repeat(20_000), "");
+  assert.equal(oversized.length, 12_000);
+  assert.match(oversized, /\[output truncated\]$/);
+
+  const combined = boundVerificationOutput("x".repeat(20_000), "stderr tail");
+  assert.equal(combined.length, 12_000);
+  assert.match(combined, /\[output truncated\]$/);
 });
 
 test("repository verification covers all fixed workspace checks", () => {
