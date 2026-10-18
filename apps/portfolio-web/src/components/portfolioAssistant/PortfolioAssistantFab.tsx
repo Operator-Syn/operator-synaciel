@@ -45,6 +45,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import "./PortfolioAssistant.css";
 
+import { focusFloatingControlTrigger } from "../floatingControls/focusFloatingControl";
 import { useFloatingControls } from "../floatingControls/useFloatingControls";
 import Modal from "../modal/Modal.tsx";
 import {
@@ -91,6 +92,10 @@ import {
   splitAssistantToolCalls,
   splitStreamingMarkdown,
 } from "./portfolioAssistantMessages.ts";
+import {
+  observeTurnstileWidgetSize,
+  type TurnstileWidgetSize,
+} from "./portfolioAssistantTurnstileSize.ts";
 
 declare global {
   interface Window {
@@ -694,6 +699,8 @@ function TurnstileGate({ onVerified }: { onVerified: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [widgetSize, setWidgetSize] = useState<TurnstileWidgetSize | null>(null);
+  const [widgetRendered, setWidgetRendered] = useState(false);
 
   useEffect(() => {
     if (!turnstileSiteKey) {
@@ -709,52 +716,104 @@ function TurnstileGate({ onVerified }: { onVerified: () => void }) {
       script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
       script.async = true;
       script.defer = true;
-      document.head.appendChild(script);
     }
-    const handleLoad = () => setReady(true);
+    const handleLoad = () => {
+      if (window.turnstile) {
+        setReady(true);
+      } else {
+        setError("Cloudflare's security check could not start. Refresh the page to try again.");
+      }
+    };
+    const handleError = () =>
+      setError("Cloudflare's security check could not load. Refresh the page to try again.");
     script.addEventListener("load", handleLoad);
+    script.addEventListener("error", handleError);
     if (window.turnstile) setReady(true);
-    return () => script.removeEventListener("load", handleLoad);
+    if (!existing) document.head.appendChild(script);
+    return () => {
+      script.removeEventListener("load", handleLoad);
+      script.removeEventListener("error", handleError);
+    };
   }, []);
 
   useEffect(() => {
-    if (!ready || !containerRef.current || !turnstileSiteKey || !window.turnstile) return;
-    const widgetId = window.turnstile.render(containerRef.current, {
-      sitekey: turnstileSiteKey,
-      theme: "dark",
-      size:
-        typeof window !== "undefined" && window.matchMedia("(max-width: 400px)").matches
-          ? "compact"
-          : "normal",
-      callback: (token) => {
-        void verifyTurnstile(token)
-          .then(onVerified)
-          .catch((verificationError: unknown) => {
-            setError(
-              verificationError instanceof Error
-                ? verificationError.message
-                : "Bot verification failed.",
-            );
-          });
-      },
-      "expired-callback": () => setError("The bot check expired. Please try again."),
-      "error-callback": () => setError("The bot check could not load. Please try again."),
-    });
-    return () => {
-      if (widgetId && window.turnstile?.remove) window.turnstile.remove(widgetId);
-    };
-  }, [onVerified, ready]);
+    const container = containerRef.current;
+    if (!container) return;
+    return observeTurnstileWidgetSize(container, setWidgetSize);
+  }, []);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const turnstile = window.turnstile;
+    if (!ready || !widgetSize || !container || !turnstileSiteKey || !turnstile) return;
+
+    setWidgetRendered(false);
+    setError(null);
+    try {
+      const widgetId = turnstile.render(container, {
+        sitekey: turnstileSiteKey,
+        theme: "dark",
+        size: widgetSize,
+        callback: (token) => {
+          void verifyTurnstile(token)
+            .then(onVerified)
+            .catch((verificationError: unknown) => {
+              setError(
+                verificationError instanceof Error
+                  ? verificationError.message
+                  : "Bot verification failed.",
+              );
+            });
+        },
+        "expired-callback": () =>
+          setError("The security check expired. Complete it again to continue."),
+        "error-callback": () =>
+          setError("Cloudflare's security check failed. Refresh the page to try again."),
+      });
+      setWidgetRendered(true);
+      return () => {
+        if (widgetId && window.turnstile?.remove) window.turnstile.remove(widgetId);
+      };
+    } catch {
+      setError(
+        "Cloudflare's security check could not be displayed. Refresh the page to try again.",
+      );
+    }
+  }, [onVerified, ready, widgetSize]);
 
   return (
     <div className="portfolio-assistant-turnstile">
-      <p className="eyebrow">One-time access check</p>
-      <p className="portfolio-assistant-muted">
-        Complete the Cloudflare check once per session before opening the assistant.
+      <h3>Verify to continue</h3>
+      <p className="portfolio-assistant-turnstile-copy">
+        Complete this security check to open the portfolio assistant.
       </p>
       {turnstileSiteKey ? (
-        <div className="portfolio-assistant-turnstile-widget" ref={containerRef} />
+        <div
+          aria-busy={!error && !widgetRendered}
+          className="portfolio-assistant-turnstile-widget"
+          data-widget-size={widgetSize ?? "normal"}
+          ref={containerRef}
+        >
+          {!error && !widgetRendered ? (
+            <div
+              aria-hidden="true"
+              className="portfolio-assistant-turnstile-skeleton"
+              data-widget-size={widgetSize ?? "normal"}
+            >
+              <span className="portfolio-assistant-turnstile-skeleton-checkbox" />
+              <span className="portfolio-assistant-turnstile-skeleton-lines">
+                <span className="portfolio-assistant-skeleton-line is-long" />
+                <span className="portfolio-assistant-skeleton-line is-medium" />
+              </span>
+            </div>
+          ) : null}
+        </div>
       ) : null}
-      {error ? <p className="portfolio-assistant-error">{error}</p> : null}
+      {error ? (
+        <p className="portfolio-assistant-error" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -778,20 +837,27 @@ function AssistantComingSoon() {
 
 function AssistantSessionLoadingState() {
   return (
-    <div aria-busy="true" className="portfolio-assistant-session-loading">
-      <span aria-hidden="true" className="portfolio-assistant-loading-mark">
-        <i />
-        <i />
-        <i />
-      </span>
-      <div>
-        <p className="eyebrow">Session handshake / 00</p>
-        <h3>Opening a private channel.</h3>
-        <p>Checking your session before the archive is opened.</p>
+    <div
+      aria-atomic="true"
+      aria-busy="true"
+      aria-live="polite"
+      className="portfolio-assistant-session-loading"
+    >
+      <div className="portfolio-assistant-session-loading-copy">
+        <h3>
+          <span aria-hidden="true" className="portfolio-assistant-loading-mark">
+            <i />
+            <i />
+            <i />
+          </span>
+          Checking access
+        </h3>
+        <p>Preparing the portfolio assistant.</p>
       </div>
       <div aria-hidden="true" className="portfolio-assistant-loading-skeleton">
-        <span className="portfolio-assistant-skeleton-line is-short" />
+        <span className="portfolio-assistant-skeleton-line is-long" />
         <span className="portfolio-assistant-skeleton-line is-medium" />
+        <span className="portfolio-assistant-skeleton-line is-short" />
       </div>
     </div>
   );
@@ -1855,6 +1921,7 @@ function AssistantChat({
   const [quota, setQuota] = useState<PortfolioAssistantQuota | null>(null);
   const [quotaError, setQuotaError] = useState<string | null>(null);
   const [isQuotaLoading, setIsQuotaLoading] = useState(true);
+  const [hasCompletedInitialQuotaLoad, setHasCompletedInitialQuotaLoad] = useState(false);
   const refreshQuota = useCallback(async () => {
     setIsQuotaLoading(true);
     try {
@@ -1868,6 +1935,7 @@ function AssistantChat({
       );
     } finally {
       setIsQuotaLoading(false);
+      setHasCompletedInitialQuotaLoad(true);
     }
   }, []);
   useEffect(() => {
@@ -2068,6 +2136,18 @@ function AssistantChat({
     event.preventDefault();
     submitQuestion(draft);
   };
+
+  if (!hasCompletedInitialQuotaLoad) {
+    return (
+      <AssistantChatLoadingState
+        detail="Checking the rolling budget before opening chat controls."
+        label="Preparing assistant session…"
+        messages={renderedMessages}
+        userDisplayName={userDisplayName}
+        userPictureUrl={userPictureUrl}
+      />
+    );
+  }
 
   return (
     <div className="portfolio-assistant-chat">
@@ -2613,7 +2693,7 @@ export default function PortfolioAssistantFab({ hideFab = false }: PortfolioAssi
   const closeAssistant = useCallback(() => {
     setIsExpanded(false);
     closePanel("assistant");
-    window.requestAnimationFrame(() => fabRef.current?.focus());
+    window.requestAnimationFrame(() => focusFloatingControlTrigger(fabRef.current));
   }, [closePanel]);
 
   const toggleExpanded = useCallback(() => {
@@ -2757,12 +2837,12 @@ export default function PortfolioAssistantFab({ hideFab = false }: PortfolioAssi
                 <h2>
                   {portfolioAssistantAvailability === "teaser"
                     ? "Coming soon."
-                    : "Ask the archive."}
+                    : "Portfolio guide."}
                 </h2>
                 <p className="portfolio-assistant-muted">
                   {portfolioAssistantAvailability === "teaser"
                     ? "A source-grounded portfolio guide is in development."
-                    : "Grounded in the portfolio MCP. No general-purpose work."}
+                    : "Projects, certificates, and technical notes."}
                 </p>
               </div>
               <div className="portfolio-assistant-header-actions">
@@ -2829,17 +2909,10 @@ export default function PortfolioAssistantFab({ hideFab = false }: PortfolioAssi
                 <AssistantAccessError error={sessionError} onRetry={() => void openAssistant()} />
               ) : (
                 <div className="portfolio-assistant-sign-in portfolio-assistant-sign-in-gate">
-                  <div aria-hidden="true" className="portfolio-assistant-sign-in-rail">
-                    <span className="portfolio-assistant-sign-in-index">01</span>
-                    <MessageCircle size={24} />
-                    <span className="portfolio-assistant-sign-in-rail-line" />
-                  </div>
                   <div className="portfolio-assistant-sign-in-content">
-                    <p className="portfolio-assistant-sign-in-kicker">Private thread / access 01</p>
-                    <h3>Sign in to open the archive.</h3>
+                    <h3>Ask about my work.</h3>
                     <p>
-                      Use Google to receive a bounded, private thread. The assistant only answers
-                      with evidence from this portfolio.
+                      Start a private thread. Answers are read-only and based on this portfolio.
                     </p>
                     <div className="portfolio-assistant-sign-in-actions">
                       <button
@@ -2850,9 +2923,6 @@ export default function PortfolioAssistantFab({ hideFab = false }: PortfolioAssi
                       >
                         <LogIn aria-hidden="true" size={16} /> Continue with Google
                       </button>
-                      <span className="portfolio-assistant-sign-in-note">
-                        Read-only answers from the portfolio
-                      </span>
                     </div>
                   </div>
                 </div>
