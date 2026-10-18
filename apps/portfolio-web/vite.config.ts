@@ -23,6 +23,8 @@ export default defineConfig(({ mode }) => {
     base: "/",
     server: {
       host: true,
+      port: 5173,
+      strictPort: true,
       allowedHosts: [
         "yashindo.local",
         "dev.syn-forge.com",
