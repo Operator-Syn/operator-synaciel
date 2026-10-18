@@ -18,6 +18,11 @@
     display: flex;
     min-height: 0;
     flex-direction: column;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    line-height: 1.55;
+    letter-spacing: normal;
+    text-transform: none;
     --assistant-panel-block-size: min(42rem, calc(100dvh - 5rem));
     width: min(34rem, calc(100vw - 1rem));
     max-height: var(--assistant-panel-block-size);
@@ -72,7 +77,7 @@
     overflow-x: hidden;
     overflow-y: auto;
     scroll-padding-block: 7rem;
-    scrollbar-color: var(--color-line-strong) transparent;
+    scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
     scrollbar-width: thin;
     padding: 1rem;
     background: var(--color-surface, #171918);
@@ -186,18 +191,21 @@
     display: grid;
     flex: 1 1 auto;
     align-content: center;
-    gap: 0.8rem;
+    gap: 1.25rem;
     min-height: 0;
-    padding-block: 1.5rem;
+    padding-block: clamp(1.25rem, 4vh, 2rem);
     color: var(--color-text-muted);
 }
 
 .portfolio-assistant-session-loading > div {
     display: grid;
-    gap: 0.35rem;
+    gap: 0.5rem;
 }
 
 .portfolio-assistant-session-loading h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
     margin: 0;
     color: var(--color-text);
     font-family: var(--font-display);
@@ -206,17 +214,30 @@
     line-height: 1.05;
 }
 
-.portfolio-assistant-session-loading p:not(.eyebrow) {
+.portfolio-assistant-session-loading p {
+    max-width: 38ch;
     margin: 0;
-    color: var(--color-text-faint);
-    font-size: var(--text-note);
+    color: var(--color-text-muted);
+    font-family: var(--font-body);
+    font-size: var(--text-body-compact);
+    letter-spacing: normal;
     line-height: 1.5;
+    text-transform: none;
 }
 
 .portfolio-assistant-session-loading .portfolio-assistant-loading-skeleton {
+    align-content: start;
+    gap: 0.55rem;
     min-height: 0;
-    width: min(18rem, 100%);
-    margin-top: 0.3rem;
+    width: min(24rem, 100%);
+    border-block-start: 1px solid var(--color-line);
+    margin: 0;
+    padding-block-start: 1rem;
+}
+
+.portfolio-assistant-session-loading .portfolio-assistant-skeleton-line {
+    height: 0.55rem;
+    border: 0;
 }
 
 .portfolio-assistant-toolbar {
@@ -259,7 +280,7 @@
     scroll-behavior: auto;
     scroll-padding-block: 1rem;
     scrollbar-gutter: stable;
-    scrollbar-color: var(--color-line-strong) transparent;
+    scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
     scrollbar-width: thin;
     margin-inline-end: 0;
     padding-block: 1rem 1.5rem;
@@ -275,7 +296,7 @@
 
 .portfolio-assistant-transcript::-webkit-scrollbar-track,
 .portfolio-assistant-message pre::-webkit-scrollbar-track {
-    background: transparent;
+    background: var(--color-scrollbar-track);
 }
 
 .portfolio-assistant-transcript::-webkit-scrollbar-button,
@@ -288,14 +309,14 @@
 .portfolio-assistant-transcript::-webkit-scrollbar-thumb,
 .portfolio-assistant-message pre::-webkit-scrollbar-thumb {
     border: 0.15rem solid transparent;
-    border-radius: 999px;
-    background: var(--color-line-strong);
+    border-radius: var(--radius-control);
+    background: var(--color-scrollbar-thumb);
     background-clip: padding-box;
 }
 
 .portfolio-assistant-transcript::-webkit-scrollbar-thumb:hover,
 .portfolio-assistant-message pre::-webkit-scrollbar-thumb:hover {
-    background: var(--color-signal);
+    background: var(--color-signal-strong);
     background-clip: padding-box;
 }
 
@@ -379,7 +400,7 @@
     background: var(--color-surface, #171918);
     box-shadow: var(--shadow-panel);
     padding: 0.35rem;
-    scrollbar-color: var(--color-line-strong) transparent;
+    scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
     scrollbar-width: thin;
 }
 
@@ -580,7 +601,7 @@
     line-height: 1.5;
     overflow-wrap: anywhere;
     white-space: pre-wrap;
-    scrollbar-color: var(--color-line-strong) transparent;
+    scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
     scrollbar-width: thin;
 }
 
@@ -607,7 +628,7 @@
     border: 1px solid var(--color-line);
     background: var(--color-canvas);
     overscroll-behavior-inline: contain;
-    scrollbar-color: var(--color-line-strong) transparent;
+    scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
     scrollbar-width: thin;
 }
 
@@ -622,18 +643,18 @@
 }
 
 .portfolio-assistant-table-scroll::-webkit-scrollbar-track {
-    background: transparent;
+    background: var(--color-scrollbar-track);
 }
 
 .portfolio-assistant-table-scroll::-webkit-scrollbar-thumb {
     border: 0.15rem solid transparent;
-    border-radius: 999px;
-    background: var(--color-line-strong);
+    border-radius: var(--radius-control);
+    background: var(--color-scrollbar-thumb);
     background-clip: padding-box;
 }
 
 .portfolio-assistant-table-scroll::-webkit-scrollbar-thumb:hover {
-    background: var(--color-signal);
+    background: var(--color-signal-strong);
     background-clip: padding-box;
 }
 
@@ -1259,14 +1280,14 @@
 
 .portfolio-assistant-sign-in-gate {
     display: grid;
-    grid-template-columns: 2.25rem minmax(0, 1fr);
-    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
     width: 100%;
     min-height: 17rem;
-    align-content: stretch;
+    align-content: center;
     border: 0;
     background: transparent;
-    padding: 1.35rem 1.25rem 1.25rem;
+    padding: 1.35rem 1.25rem;
     box-shadow: none;
 }
 
@@ -1274,64 +1295,24 @@
     display: none;
 }
 
-.portfolio-assistant-sign-in-rail {
-    display: flex;
-    min-height: 100%;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.7rem;
-    color: var(--color-signal);
-}
-
-.portfolio-assistant-sign-in-index,
-.portfolio-assistant-sign-in-kicker,
-.portfolio-assistant-sign-in-note {
-    font-family: var(--font-mono);
-    font-size: var(--text-meta);
-    letter-spacing: 0.06em;
-    line-height: var(--text-meta--line-height);
-    text-transform: uppercase;
-}
-
-.portfolio-assistant-sign-in-index {
-    color: var(--color-signal);
-}
-
-.portfolio-assistant-sign-in-rail svg {
-    flex: 0 0 auto;
-    stroke-width: 1.5;
-}
-
-.portfolio-assistant-sign-in-rail-line {
-    width: 1px;
-    flex: 1 1 auto;
-    min-height: 3rem;
-    background: var(--color-line-strong);
-}
-
 .portfolio-assistant-sign-in-content {
     display: flex;
     min-width: 0;
     flex-direction: column;
-    padding-top: 0.1rem;
-}
-
-.portfolio-assistant-sign-in-kicker {
-    margin: 0;
-    color: var(--color-text-faint);
+    gap: 0.9rem;
 }
 
 .portfolio-assistant-sign-in-content h3 {
     max-width: 24ch;
-    margin-top: 0.55rem;
+    margin: 0;
     font-size: var(--text-panel-title);
-    line-height: 0.98;
+    line-height: 1.02;
     text-wrap: balance;
 }
 
-.portfolio-assistant-sign-in-content > p:not(.portfolio-assistant-sign-in-kicker) {
+.portfolio-assistant-sign-in-content > p {
     max-width: 34rem;
-    margin-top: 0.9rem;
+    margin: 0;
     color: var(--color-text-muted);
     font-size: var(--text-body-compact);
     line-height: 1.55;
@@ -1339,23 +1320,16 @@
 
 .portfolio-assistant-sign-in-actions {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     flex-wrap: wrap;
     gap: 0.8rem 1rem;
-    margin-top: auto;
+    margin-top: 0.25rem;
     border-top: 1px solid var(--color-line);
     padding-top: 1rem;
 }
 
 .portfolio-assistant-google-action {
     min-width: 13rem;
-}
-
-.portfolio-assistant-sign-in-note {
-    max-width: none;
-    flex: 1 1 100%;
-    color: var(--color-text-faint);
-    line-height: 1.45;
 }
 
 .portfolio-assistant-coming-soon {
@@ -1398,7 +1372,7 @@
     overflow-y: auto;
     padding: 0.75rem;
     line-height: 1.45;
-    scrollbar-color: var(--color-line-strong) transparent;
+    scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
     scrollbar-width: thin;
     transition:
         border-color var(--motion-feedback-duration) var(--motion-ease),
@@ -1411,7 +1385,7 @@
 }
 
 .portfolio-assistant-composer textarea::-webkit-scrollbar-track {
-    background: transparent;
+    background: var(--color-scrollbar-track);
 }
 
 .portfolio-assistant-composer textarea::-webkit-scrollbar-button {
@@ -1422,8 +1396,8 @@
 
 .portfolio-assistant-composer textarea::-webkit-scrollbar-thumb {
     border: 0.15rem solid transparent;
-    border-radius: 999px;
-    background: var(--color-line-strong);
+    border-radius: var(--radius-control);
+    background: var(--color-scrollbar-thumb);
     background-clip: padding-box;
 }
 
@@ -1718,31 +1692,99 @@
     margin-top: 0.5rem;
 }
 
-.portfolio-assistant-turnstile {
-    display: grid;
-    gap: 0.6rem;
-    min-width: 0;
-    max-width: 100%;
-    min-height: 12rem;
-    align-content: center;
-    justify-items: start;
+.portfolio-assistant-panel[data-chat-state="turnstile"] .portfolio-assistant-body {
+    justify-content: center;
 }
 
-.portfolio-assistant-turnstile > p {
-    max-width: 100%;
+.portfolio-assistant-turnstile {
+    display: grid;
+    width: min(100%, 24rem);
+    gap: 0.75rem;
+    min-width: 0;
+    margin-block: auto;
+    margin-inline: auto;
+    align-content: center;
+    justify-items: center;
+    padding-block: clamp(1.25rem, 4vh, 2rem);
+    padding-inline: clamp(0.75rem, 4vw, 1rem);
+    text-align: center;
+}
+
+.portfolio-assistant-turnstile h3 {
+    margin: 0;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: var(--text-panel-title);
+    font-weight: 400;
+    line-height: 1.1;
+}
+
+.portfolio-assistant-turnstile-copy {
+    max-width: 38ch;
+    margin: 0;
+    color: var(--color-text-muted);
+    font-family: var(--font-body);
+    font-size: var(--text-body-compact);
+    letter-spacing: normal;
+    line-height: 1.5;
+    text-transform: none;
 }
 
 .portfolio-assistant-turnstile-widget {
-    width: min(100%, 300px);
+    display: grid;
+    width: min(100%, 18.75rem);
     min-width: 0;
+    min-height: 4.0625rem;
     max-width: 100%;
-    overflow: hidden;
+    place-items: center;
 }
 
-.portfolio-assistant-turnstile-widget > div,
-.portfolio-assistant-turnstile-widget > div > div {
+.portfolio-assistant-turnstile-widget[data-widget-size="compact"] {
+    min-height: 8.75rem;
+}
+
+.portfolio-assistant-turnstile-skeleton {
+    display: grid;
+    box-sizing: border-box;
+    width: min(100%, 18.75rem);
+    height: 4.0625rem;
+    grid-template-columns: 1.25rem minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: center;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface-raised);
+    padding: 0.75rem;
+}
+
+.portfolio-assistant-turnstile-skeleton-checkbox {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+}
+
+.portfolio-assistant-turnstile-skeleton[data-widget-size="compact"] {
+    width: min(100%, 9.375rem);
+    height: 8.75rem;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: center;
+    justify-items: center;
+    gap: 0.75rem;
+}
+
+.portfolio-assistant-turnstile-skeleton-lines {
+    display: grid;
+    gap: 0.45rem;
+    justify-items: start;
+}
+
+.portfolio-assistant-turnstile-skeleton[data-widget-size="compact"]
+    .portfolio-assistant-turnstile-skeleton-lines {
     width: 100%;
-    max-width: 100%;
+    min-width: 0;
+    justify-items: center;
 }
 
 .portfolio-assistant-fab {
@@ -1799,7 +1841,7 @@
     }
 }
 
-@media (prefers-reduced-motion: no-preference) {
+@scope (html[data-motion-mode="full"]) {
     html:not([data-reduced-motion="on"]) .portfolio-assistant-panel[data-state="open"] {
         animation: portfolio-assistant-panel-enter var(--motion-overlay-enter-duration)
             var(--motion-ease) both;
@@ -1871,7 +1913,7 @@
     }
 }
 
-@media (prefers-reduced-motion: no-preference) {
+@scope (html[data-motion-mode="full"]) {
     html:not([data-reduced-motion="on"]) .portfolio-assistant-typing-dots i,
     html:not([data-reduced-motion="on"]) .portfolio-assistant-loading-mark i {
         animation: portfolio-assistant-typing-fade 1.4s var(--motion-ease) infinite;
@@ -2022,25 +2064,6 @@
     .portfolio-assistant-thread-select {
         flex-basis: 100%;
     }
-
-    .portfolio-assistant-sign-in-gate {
-        grid-template-columns: 1.75rem minmax(0, 1fr);
-        gap: 0.75rem;
-        padding-inline: 1rem;
-    }
-
-    .portfolio-assistant-sign-in-actions {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .portfolio-assistant-google-action {
-        width: 100%;
-    }
-
-    .portfolio-assistant-sign-in-note {
-        max-width: none;
-    }
 }
 
 @media (max-width: 400px) {
@@ -2050,7 +2073,7 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@scope (html[data-motion-mode="reduced"]) {
     .portfolio-assistant-transcript {
         scroll-behavior: auto;
     }
@@ -2598,16 +2621,18 @@
 
 .portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-panel {
     position: fixed;
-    inset: 0;
+    z-index: 2;
+    inset-block: calc(4.5rem + 1px + env(safe-area-inset-top)) 0;
+    inset-inline: 0;
     width: 100%;
     min-width: 0;
-    min-height: 100dvh;
+    min-height: 0;
     max-width: none;
     max-height: none;
-    height: 100dvh;
+    height: auto;
     border: 0;
     border-radius: 0;
-    padding-block: env(safe-area-inset-top) env(safe-area-inset-bottom);
+    padding-block: 0 env(safe-area-inset-bottom);
     padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
     transform-origin: center;
 }
@@ -2651,6 +2676,27 @@
     max-height: none;
     min-height: 0;
     padding: 0;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-sign-in-gate {
+    min-height: 0;
+    align-content: start;
+    padding: 1.15rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-sign-in-content {
+    gap: 0.8rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-sign-in-actions {
+    align-items: stretch;
+    flex-direction: column;
+    margin-top: 0.1rem;
+    padding-top: 0.85rem;
+}
+
+.portfolio-assistant[data-assistant-mobile-modal="true"] .portfolio-assistant-google-action {
+    width: 100%;
 }
 
 .portfolio-assistant[data-assistant-mobile-modal="true"]
