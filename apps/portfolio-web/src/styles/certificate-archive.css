@@ -5,7 +5,6 @@
         margin-top: -1rem;
         margin-inline: -2rem;
         width: calc(100% + 4rem);
-        padding-bottom: 6rem;
     }
 
     .certificate-archive-coordinates {
@@ -419,10 +418,6 @@
 }
 
 @media (max-width: 640px) {
-    .certificate-archive-shell {
-        padding-bottom: 7rem;
-    }
-
     .certificate-archive-header {
         padding: 1rem 0 1.25rem;
     }
@@ -459,13 +454,8 @@
 }
 
 @scope (html[data-motion-mode="full"]) {
-    html:not([data-reduced-motion="on"])
-        .certificate-archive-card:focus-within
-        .certificate-archive-index,
-    html:not([data-reduced-motion="on"])
-        .certificate-archive-card:focus-within
-        .certificate-archive-copy
-        h2 {
+    .certificate-archive-card:focus-within .certificate-archive-index,
+    .certificate-archive-card:focus-within .certificate-archive-copy h2 {
         transform: translateY(-2px);
     }
 }
@@ -484,13 +474,8 @@
 
 @media (hover: hover) {
     @scope (html[data-motion-mode="full"]) {
-        html:not([data-reduced-motion="on"])
-            .certificate-archive-card:hover
-            .certificate-archive-index,
-        html:not([data-reduced-motion="on"])
-            .certificate-archive-card:hover
-            .certificate-archive-copy
-            h2 {
+        .certificate-archive-card:hover .certificate-archive-index,
+        .certificate-archive-card:hover .certificate-archive-copy h2 {
             transform: translateY(-2px);
         }
     }
