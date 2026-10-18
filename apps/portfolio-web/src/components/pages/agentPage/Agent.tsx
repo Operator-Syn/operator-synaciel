@@ -1,4 +1,3 @@
-import { Bot, ExternalLink, ShieldCheck } from "lucide-react";
 import StaticAppPage, { type StaticAppPageConfig } from "../staticAppPage/StaticAppPage";
 
 const agentPageConfig: StaticAppPageConfig = {
@@ -34,7 +33,6 @@ const agentPageConfig: StaticAppPageConfig = {
   sections: [
     {
       title: "Google Project Verification",
-      icon: ShieldCheck,
       paragraphs: [
         "Feilhann Agent uses Google Sign-In through public-auth.syn-forge.com before opening a private conversation. The sign-in flow confirms the visitor's Google identity and returns them to the portfolio.",
         "The application uses the basic account information authorized on the Google consent screen to identify the visitor, maintain a session, and protect their private assistant threads.",
@@ -47,7 +45,6 @@ const agentPageConfig: StaticAppPageConfig = {
     },
     {
       title: "Assistant Scope",
-      icon: Bot,
       paragraphs: [
         "The assistant answers portfolio questions from Syn-Forge's public, read-only Portfolio MCP. It does not change accounts, repositories, portfolio records, or external services.",
         "Authenticated visitors may keep a private thread history for the assistant experience. Sessions and stored records follow the retention, access, and deletion terms described in the linked policy pages.",
@@ -60,7 +57,6 @@ const agentPageConfig: StaticAppPageConfig = {
     },
     {
       title: "Related Policies",
-      icon: ExternalLink,
       paragraphs: [
         "Syn-Forge policy pages describe Google OAuth data handling, service providers, retention, user requests, and the terms that apply to this assistant.",
       ],
