@@ -3,7 +3,6 @@
     .project-archive-shell {
         container: project-archive / inline-size;
         margin-top: -1rem;
-        padding-bottom: 6rem;
     }
 
     .project-archive-coordinates {
