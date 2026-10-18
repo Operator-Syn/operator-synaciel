@@ -4,6 +4,7 @@ import {
   applySitePreferences,
   CUSTOM_THEME_STORAGE_KEY,
   isSystemReducedMotion,
+  type MotionPreference,
   persistSitePreferences,
   REDUCED_MOTION_STORAGE_KEY,
   readSitePreferences,
@@ -14,7 +15,7 @@ import { SitePreferencesContext } from "./SitePreferencesContext";
 import { createThemeTransitionController, type ThemeTransitionController } from "./themeTransition";
 
 export default function SitePreferencesProvider({ children }: { children: ReactNode }) {
-  const [{ theme, reducedMotion, customTheme }, setPreferences] = useState(readSitePreferences);
+  const [{ theme, motionPreference, customTheme }, setPreferences] = useState(readSitePreferences);
   const [systemReducedMotion, setSystemReducedMotion] = useState(isSystemReducedMotion);
   const [themeTransitionId, setThemeTransitionId] = useState<number | null>(null);
   const themeTransitionControllerRef = useRef<ThemeTransitionController | null>(null);
@@ -34,18 +35,19 @@ export default function SitePreferencesProvider({ children }: { children: ReactN
   }, []);
 
   useEffect(() => {
-    const preferences = { theme, reducedMotion, customTheme };
+    const preferences = { theme, motionPreference, customTheme };
     const visualThemeKey =
       theme === "custom" && customTheme
         ? `custom:${serializeCustomTheme(customTheme)}`
         : theme === "custom"
           ? "dalan"
           : theme;
+    const effectiveReducedMotion =
+      motionPreference === "reduced" || (motionPreference === "system" && systemReducedMotion);
     const shouldAnimate =
       visualThemeKeyRef.current !== null &&
       visualThemeKeyRef.current !== visualThemeKey &&
-      !reducedMotion &&
-      !systemReducedMotion;
+      !effectiveReducedMotion;
 
     visualThemeKeyRef.current = visualThemeKey;
     persistSitePreferences(preferences);
@@ -58,7 +60,7 @@ export default function SitePreferencesProvider({ children }: { children: ReactN
 
     controller.start(() => applySitePreferences(preferences), shouldAnimate);
     return controller.cancel;
-  }, [customTheme, reducedMotion, systemReducedMotion, theme]);
+  }, [customTheme, motionPreference, systemReducedMotion, theme]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -111,30 +113,33 @@ export default function SitePreferencesProvider({ children }: { children: ReactN
     }));
   }, []);
 
-  const setReducedMotion = useCallback((enabled: boolean) => {
+  const setMotionPreference = useCallback((preference: MotionPreference) => {
     setPreferences((current) =>
-      current.reducedMotion === enabled ? current : { ...current, reducedMotion: enabled },
+      current.motionPreference === preference
+        ? current
+        : { ...current, motionPreference: preference },
     );
   }, []);
 
   const value = useMemo(
     () => ({
       theme,
-      reducedMotion,
-      effectiveReducedMotion: reducedMotion || systemReducedMotion,
+      motionPreference,
+      effectiveReducedMotion:
+        motionPreference === "reduced" || (motionPreference === "system" && systemReducedMotion),
       systemReducedMotion,
       customTheme,
       setTheme,
       setCustomTheme,
       clearCustomTheme,
-      setReducedMotion,
+      setMotionPreference,
     }),
     [
       clearCustomTheme,
       customTheme,
-      reducedMotion,
+      motionPreference,
       setCustomTheme,
-      setReducedMotion,
+      setMotionPreference,
       setTheme,
       systemReducedMotion,
       theme,
