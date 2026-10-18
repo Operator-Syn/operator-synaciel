@@ -146,72 +146,61 @@
 }
 
 @scope (html[data-motion-mode="full"]) {
-    html:not([data-reduced-motion="on"])
-        .page-transition-root[data-transition-fallback="page"]
+    .page-transition-root[data-transition-fallback="page"]
         .page-transition-curtain[data-transition-phase="cover"][data-transition-direction="forward"] {
         visibility: visible;
         animation: page-transition-curtain-cover-forward 250ms var(--motion-ease) both;
     }
 
-    html:not([data-reduced-motion="on"])
-        .page-transition-root[data-transition-fallback="page"]
+    .page-transition-root[data-transition-fallback="page"]
         .page-transition-curtain[data-transition-phase="cover"][data-transition-direction="backward"] {
         visibility: visible;
         animation: page-transition-curtain-cover-backward 250ms var(--motion-ease) both;
     }
 
-    html:not([data-reduced-motion="on"])
-        .page-transition-root[data-transition-fallback="page"]
+    .page-transition-root[data-transition-fallback="page"]
         .page-transition-curtain[data-transition-phase="cover"][data-transition-direction="neutral"] {
         visibility: visible;
         animation: page-transition-curtain-cover-neutral 250ms var(--motion-ease) both;
     }
 
-    html:not([data-reduced-motion="on"])
-        .page-transition-root[data-transition-fallback="page"]
+    .page-transition-root[data-transition-fallback="page"]
         .page-transition-curtain[data-transition-phase="covered"] {
         visibility: visible;
         transform: translateX(0);
     }
 
-    html:not([data-reduced-motion="on"])
-        .page-transition-root[data-transition-fallback="page"]
+    .page-transition-root[data-transition-fallback="page"]
         .page-transition-curtain[data-transition-phase="covered"][data-transition-direction="neutral"] {
         transform: scaleX(1);
     }
 
-    html:not([data-reduced-motion="on"])
-        .page-transition-root[data-transition-fallback="page"]
+    .page-transition-root[data-transition-fallback="page"]
         .page-transition-curtain[data-transition-phase="reveal"][data-transition-direction="forward"] {
         visibility: visible;
         animation: page-transition-curtain-reveal-forward 230ms var(--motion-ease-curtain-reveal)
             both;
     }
 
-    html:not([data-reduced-motion="on"])
-        .page-transition-root[data-transition-fallback="page"]
+    .page-transition-root[data-transition-fallback="page"]
         .page-transition-curtain[data-transition-phase="reveal"][data-transition-direction="backward"] {
         visibility: visible;
         animation: page-transition-curtain-reveal-backward 230ms var(--motion-ease-curtain-reveal)
             both;
     }
 
-    html:not([data-reduced-motion="on"])
-        .page-transition-root[data-transition-fallback="page"]
+    .page-transition-root[data-transition-fallback="page"]
         .page-transition-curtain[data-transition-phase="reveal"][data-transition-direction="neutral"] {
         visibility: visible;
         animation: page-transition-curtain-reveal-neutral 230ms var(--motion-ease-curtain-reveal)
             both;
     }
 
-    html:not([data-reduced-motion="on"])
-        .page-transition-root[data-transition-fallback="nested"]
-        .app-shell {
+    .page-transition-root[data-transition-fallback="nested"] .app-shell {
         animation: page-transition-nested-forward 220ms var(--motion-ease) both;
     }
 
-    html:not([data-reduced-motion="on"])
-        .page-transition-root[data-transition-fallback="nested"][data-transition-direction="backward"]
+    .page-transition-root[data-transition-fallback="nested"][data-transition-direction="backward"]
         .app-shell {
         animation-name: page-transition-nested-backward;
     }
