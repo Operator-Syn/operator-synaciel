@@ -47,7 +47,7 @@ test("keeps fixed disclosures mounted and closed states inert", async () => {
   assert.match(quickNavigation, /aria-controls="quick-navigation-panel"/);
   assert.match(quickNavigation, /inert=\{!isOpen\}/);
   assert.match(quickNavigation, /event.key !== "Escape"/);
-  assert.match(quickNavigation, /toggleRef.current\?\.focus\(\)/);
+  assert.match(quickNavigation, /focusFloatingControlTrigger\(toggleRef\.current\)/);
   assert.match(navBar, /data-navigation-state=\{expanded \? "open" : "closed"\}/);
   assert.match(navBar, /event.key !== "Escape"/);
   assert.match(navBar, /menuButtonRef.current\?\.focus\(\)/);
@@ -110,12 +110,12 @@ test("keeps reduced-motion paths immediate", async () => {
     read("src/components/pages/privacyPolicyPage/LegalPolicyPage.css"),
   ]);
 
-  assert.match(media, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(media, /@scope \(html\[data-motion-mode="reduced"\]\)/);
   assert.match(media, /media-modal-backdrop\[data-state="closing"\][\s\S]*animation: none;/);
   assert.match(quickNavigation, /transition: none;\s+transform: none;/);
   assert.match(tocStyles, /\.snippet-document-toc-mobile-panel/);
   assert.match(tocStyles, /\.snippet-document-toc-mobile-panel \{[\s\S]*transform: none;/);
-  assert.match(tocStyles, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(tocStyles, /@scope \(html\[data-motion-mode="reduced"\]\)/);
   assert.match(legalPolicyStyles, /\.legal-policy-page \.privacy-policy-action-panel/);
   assert.match(legalPolicyStyles, /transition: none;/);
 });
