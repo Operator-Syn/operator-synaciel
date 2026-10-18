@@ -195,7 +195,7 @@ test("persists a custom document and falls back safely when storage is invalid",
 
   const preferences: StoredSitePreferences = {
     theme: "custom",
-    reducedMotion: false,
+    motionPreference: "system",
     customTheme: theme,
   };
   persistSitePreferences(preferences, storage);
@@ -227,7 +227,7 @@ test("applies resolved custom variables and clears them for built-in themes", ()
   applySitePreferences(
     {
       theme: "custom",
-      reducedMotion: false,
+      motionPreference: "system",
       customTheme: theme,
     },
     root,
@@ -252,7 +252,7 @@ test("applies resolved custom variables and clears them for built-in themes", ()
   applySitePreferences(
     {
       theme: "dalan",
-      reducedMotion: false,
+      motionPreference: "system",
       customTheme: theme,
     },
     root,
