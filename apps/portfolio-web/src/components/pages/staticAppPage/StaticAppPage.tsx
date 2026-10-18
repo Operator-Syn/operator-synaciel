@@ -1,4 +1,4 @@
-import { FileText, type LucideIcon, ShieldCheck } from "lucide-react";
+import { FileText, ShieldCheck } from "lucide-react";
 import CookingArea from "../../cookingArea/CookingArea";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
 import TransitionNavLink from "../../pageTransition/TransitionNavLink";
@@ -12,7 +12,6 @@ export type StaticAppSummaryItem = {
 
 export type StaticAppSection = {
   title: string;
-  icon: LucideIcon;
   paragraphs: string[];
   listItems?: string[];
   includePolicyLinks?: boolean;
@@ -91,13 +90,10 @@ export default function StaticAppPage({ config }: StaticAppPageProps) {
 
           <article className="static-app-document">
             {config.sections.map((section, index) => {
-              const Icon = section.icon;
-
               return (
                 <section className="static-app-section" key={section.title}>
                   <div aria-hidden="true" className="static-app-section-mark">
                     <span>{String(index + 1).padStart(2, "0")}</span>
-                    <Icon size={18} />
                   </div>
 
                   <div className="static-app-section-content">
