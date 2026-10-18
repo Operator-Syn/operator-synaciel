@@ -4,7 +4,7 @@
 
 .page-transition-curtain {
     position: fixed;
-    z-index: 20;
+    z-index: var(--layer-route-transition);
     inset-block-start: 4.5rem;
     inset-inline: 0;
     inset-block-end: 0;
@@ -145,7 +145,7 @@
     }
 }
 
-@media (prefers-reduced-motion: no-preference) {
+@scope (html[data-motion-mode="full"]) {
     html:not([data-reduced-motion="on"])
         .page-transition-root[data-transition-fallback="page"]
         .page-transition-curtain[data-transition-phase="cover"][data-transition-direction="forward"] {
@@ -217,7 +217,7 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@scope (html[data-motion-mode="reduced"]) {
     .page-transition-curtain {
         display: none;
     }
