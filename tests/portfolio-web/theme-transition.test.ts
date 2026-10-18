@@ -197,7 +197,7 @@ test("defines the covered theme transition and reduced-motion bypass", async () 
   );
   assert.match(styles, /transform: translate3d\(-100%, 0, 0\)/);
   assert.match(styles, /37\.5%[\s\S]*?62\.5%[\s\S]*?transform: translate3d\(100%, 0, 0\)/);
-  assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(styles, /@scope \(html\[data-motion-mode="reduced"\]\)/);
   assert.match(styles, /html\[data-reduced-motion="on"\] \.theme-transition-wipe/);
   assert.doesNotMatch(styles, /!important/);
 });
