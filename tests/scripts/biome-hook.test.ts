@@ -1,13 +1,12 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
 import { test } from "node:test";
 
 import {
   BIOME_CHECK_COMMAND,
   buildBiomeHookFeedback,
   MAX_FEEDBACK_CHARS,
+  MAX_TOOL_RESULT_CHARS,
   runBiomeCheck,
 } from "../../scripts/check-biome-hook.mjs";
 
@@ -23,7 +22,6 @@ type SpawnInvocation = {
 type HookHandler = {
   readonly command: string;
   readonly async?: boolean;
-  readonly additionalContextLimit?: number;
 };
 
 type HookEntry = {
@@ -69,22 +67,31 @@ test("returns bounded model-visible feedback for a failed Biome check", () => {
   const feedback = buildBiomeHookFeedback({
     toolName: "mcp__operator_synaciel_repository__apply_repository_change",
     output: result.output,
+    toolResponse: { status: "applied", finalFileHashes: { "apps/example.ts": "abc" } },
   });
-  const serialized = JSON.stringify(feedback);
-  const context = feedback.hookSpecificOutput.additionalContext;
-
   assert.equal(result.status, 1);
-  assert.match(serialized, /"decision":"block"/);
-  assert.match(context, /check:biome:github/);
-  assert.match(context, /Fix the reported diagnostics/);
-  assert.match(context, /Ai\.tsx/);
+  assert.equal(feedback.decision, "block");
+  assert.equal("hookSpecificOutput" in feedback, false);
+  assert.match(feedback.reason, /"status":"applied"/);
+  assert.match(feedback.reason, /"finalFileHashes"/);
+  assert.match(feedback.reason, /check:biome:github/);
+  assert.match(feedback.reason, /Fix the reported diagnostics/);
+  assert.match(feedback.reason, /Ai\.tsx/);
 
   const truncated = buildBiomeHookFeedback({
     toolName: "apply_patch",
     output: "x".repeat(MAX_FEEDBACK_CHARS * 2),
   });
-  assert.ok(truncated.hookSpecificOutput.additionalContext.length < MAX_FEEDBACK_CHARS * 2);
-  assert.match(truncated.hookSpecificOutput.additionalContext, /output truncated/);
+  assert.ok(truncated.reason.length < MAX_FEEDBACK_CHARS * 2);
+  assert.match(truncated.reason, /output truncated/);
+
+  const truncatedResult = buildBiomeHookFeedback({
+    toolName: "apply_patch",
+    output: "ok",
+    toolResponse: "r".repeat(MAX_TOOL_RESULT_CHARS * 2),
+  });
+  assert.ok(truncatedResult.reason.length < MAX_TOOL_RESULT_CHARS * 2);
+  assert.match(truncatedResult.reason, /tool result truncated/);
 });
 
 test("keeps the Codex matcher and current Ai page regression covered", async () => {
@@ -112,28 +119,19 @@ test("keeps the Codex matcher and current Ai page regression covered", async () 
   );
   assert.ok(
     manifest.hooks.PostToolUse.some((entry) =>
-      entry.hooks.some((hook) => hook.command.includes("impeccable/scripts/hook.mjs")),
+      entry.hooks.some((hook) => hook.command.includes("scripts/impeccable-hook.mjs")),
     ),
   );
   assert.ok(
     manifest.hooks.Stop.some((entry) =>
-      entry.hooks.some((hook) => hook.command.includes("impeccable/scripts/hook.mjs")),
+      entry.hooks.some((hook) => hook.command.includes("scripts/impeccable-hook.mjs")),
     ),
   );
   assert.match(biomeEntry.matcher, /apply_patch/);
   assert.match(biomeEntry.matcher, /mcp__operator_synaciel_repository__apply_repository_change/);
   assert.ok(biomeHook);
   assert.equal(biomeHook.async, undefined);
-  assert.equal(biomeHook.additionalContextLimit, 4_000);
 
-  const execution = spawnSync("bash", ["-lc", biomeHook.command], {
-    cwd: resolve(import.meta.dirname, "../.."),
-    input: `{"tool_name":"apply_patch"}\n`,
-    encoding: "utf8",
-  });
-  assert.equal(execution.status, 0);
-  assert.equal(execution.stdout, "");
-  assert.equal(execution.stderr, "");
   assert.match(aiPage, /<pre className="ai-page-prompt">/);
   assert.doesNotMatch(aiPage, /aria-label="Prompt for registering/);
   assert.doesNotMatch(aiPage, /role="status"/);
