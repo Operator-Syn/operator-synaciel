@@ -103,15 +103,15 @@
         align-self: flex-end;
     }
 
-    .coordinate-rail {
-        grid-template-columns: auto auto 1fr;
-        gap: 0.7rem;
-        padding-inline: 0.75rem;
-        font-size: 0.62rem;
+    .coordinate-rail-frame {
+        --coordinate-rail-font-size: 0.62rem;
     }
 
-    .coordinate-rail > :last-child {
-        justify-self: end;
+    .coordinate-rail {
+        min-height: 2.5rem;
+        grid-template-columns: auto auto minmax(0, 1fr);
+        gap: 0.4rem;
+        padding-inline: 0.45rem;
     }
 
     .coordinate-rail-markers {
