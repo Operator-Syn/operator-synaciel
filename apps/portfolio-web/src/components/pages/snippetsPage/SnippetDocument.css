@@ -480,10 +480,6 @@
     }
 
     @media (max-width: 520px) {
-        .snippet-document-page {
-            padding-bottom: 8rem;
-        }
-
         .snippet-document-header {
             padding: 1.5rem 1rem 1.75rem;
         }
