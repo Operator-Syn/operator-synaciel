@@ -186,11 +186,23 @@ The repository-local `.codex/hooks.json` runs
 `scripts/check-biome-hook.mjs` synchronously after `apply_patch`, `Edit`, and
 `Write` operations and after the repository MCP's
 `apply_repository_change`. The hook invokes
-`npm run check:biome:github`. A passing check is silent. A failing check emits
-model-visible `hookSpecificOutput.additionalContext` with bounded GitHub-format
-diagnostics and asks the agent to fix them and rerun the check before continuing.
+`npm run check:biome:github`. A passing check is silent. A failing check blocks
+the tool result with bounded GitHub-format diagnostics inside the result's
+`reason` and asks the agent to fix them and rerun the check before continuing.
+The hook copies the original tool response into that reason before the
+diagnostics, so blocking does not hide the MCP apply result.
+Diagnostics stay in the tool result instead of
+`hookSpecificOutput.additionalContext`: Codex records additional context as a
+developer message before the tool output, and providers that require adjacent
+tool-call/output pairs then reject the turn as missing a tool output.
 The operation already completed; this feedback does not roll it back or
 auto-format files.
+
+The design skill runs its per-edit detector through
+`scripts/impeccable-hook.mjs`. PostToolUse findings are queued and delivered
+by the `Stop` hook together with the deep-pass findings, so every edit is still
+audited without inserting a developer message between a tool call and its
+output.
 
 This is separate from the versioned `.githooks/pre-commit` hook. The Git hook
 enforces commit policy at commit time; the Codex hook provides immediate
@@ -243,9 +255,9 @@ The output families are:
 `outputSchema` is a tool contract. This local repository MCP exposes no
 resources, so there is no resource output schema to advertise.
 
-Git status and commit diagnostics in returned commit results are capped at
-12,000 characters; the complete command remains visible so a caller can rerun
-the corresponding fixed check when the diagnostic tail is omitted.
+Git status, commit diagnostics, and verification check output are capped at
+12,000 characters; each check retains its complete command so a caller can
+rerun it when the diagnostic tail is omitted.
 
 ## Profiles
 
