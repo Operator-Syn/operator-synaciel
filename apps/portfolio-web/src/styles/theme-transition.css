@@ -1,7 +1,7 @@
 /* The wipe covers the viewport before the new palette is applied. */
 .theme-transition-wipe {
     position: fixed;
-    z-index: 45;
+    z-index: var(--layer-theme-transition);
     inset: 0;
     overflow: hidden;
     background-color: var(--color-canvas);
@@ -39,7 +39,7 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@scope (html[data-motion-mode="reduced"]) {
     .theme-transition-wipe {
         display: none;
         animation: none;
