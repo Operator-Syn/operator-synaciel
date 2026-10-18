@@ -1,27 +1,57 @@
 /* Shared coordinate rail and pointer handshake instrument. */
 @layer components {
-    .coordinate-rail {
-        width: 100%;
+    .coordinate-rail-frame {
+        --coordinate-rail-font-size: var(--text-meta);
+        container-name: coordinate-rail;
+        container-type: inline-size;
         position: relative;
         display: grid;
-        min-height: 2.5rem;
-        grid-template-columns: auto auto minmax(4rem, 1fr) auto;
+        width: 100%;
+        min-width: 0;
+        min-height: 2.75rem;
+        grid-template-columns: minmax(0, 1fr) auto auto;
         align-items: center;
-        gap: 1.2rem;
         border-inline: 1px solid var(--color-line);
         border-top: 1px solid var(--color-line);
         border-bottom: 0;
+        border-radius: 0;
+        background: transparent;
+        color: var(--color-text-muted);
+        font-family: var(--font-mono);
+        font-size: var(--coordinate-rail-font-size);
+        letter-spacing: 0.06em;
+        line-height: 1;
+        text-transform: uppercase;
+    }
+
+    .coordinate-rail {
+        position: relative;
+        display: grid;
+        width: 100%;
+        min-width: 0;
+        min-height: 2.75rem;
+        grid-template-columns: auto auto minmax(4rem, 1fr);
+        align-items: center;
+        gap: 1.2rem;
+        border: 0;
         border-radius: 0;
         background: transparent;
         padding: 0 1.1rem;
         color: var(--color-text-muted);
         appearance: none;
         font-family: var(--font-mono);
-        font-size: var(--text-meta);
+        font-size: var(--coordinate-rail-font-size);
         letter-spacing: 0.06em;
         line-height: 1;
         text-align: left;
         text-transform: uppercase;
+    }
+
+    .coordinate-rail-controls {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        padding-inline: 0.25rem;
     }
 
     .coordinate-rail.has-pointer::after {
@@ -65,8 +95,14 @@
     }
 
     .coordinate-rail-status {
+        display: flex;
         min-width: 4.8rem;
+        min-height: 2.75rem;
+        align-items: center;
+        justify-content: flex-end;
+        padding-inline: 0.75rem;
         text-align: right;
+        white-space: nowrap;
     }
 
     .coordinate-rail-markers {
