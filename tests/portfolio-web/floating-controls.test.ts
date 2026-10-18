@@ -69,9 +69,11 @@ test("mounts visitor controls in one safe-area-aware dock", async () => {
   assert.match(dockStyles, /position:\s*fixed/);
   assert.match(dockStyles, /inset-inline-end:\s*var\(--floating-control-inline-end\)/);
   assert.match(dockStyles, /inset-block-end:\s*var\(--floating-control-block-end\)/);
-  assert.match(dockStyles, /gap:\s*var\(--floating-control-gap\)/);
-  assert.match(dockStyles, /data-active-panel="assistant"/);
-  assert.match(dockStyles, /display:\s*none/);
+  assert.match(dockStyles, /gap:\s*0/);
+  assert.match(
+    dockStyles,
+    /:has\(\[data-floating-panel="assistant"\] \[role="dialog"\]\)[\s\S]*?z-index:\s*var\(--layer-modal\)/,
+  );
 
   assert.match(
     assistantStyles,
@@ -109,15 +111,18 @@ test("coordinates exclusive panels, focus restoration, and native titles", async
     provider,
     /setActivePanel\(\(current\) => \(current === panel \? null : current\)\)/,
   );
-  assert.match(dockStyles, /data-active-panel="assistant"[\s\S]*display:\s*none/);
+  assert.match(
+    dockStyles,
+    /:has\(\[data-floating-panel="assistant"\] \[role="dialog"\]\)[\s\S]*?z-index:\s*var\(--layer-modal\)/,
+  );
   assert.match(quick, /activePanel === "quick-navigation"/);
-  assert.match(quick, /toggleRef\.current\?\.focus\(\)/);
+  assert.match(quick, /focusFloatingControlTrigger\(toggleRef\.current\)/);
   assert.match(quick, /title="Quick navigation"/);
   assert.match(settings, /activePanel === "settings"/);
-  assert.match(settings, /triggerRef\.current\?\.focus\(\)/);
-  assert.ok(settings.includes('location.pathname !== "/"'));
+  assert.match(settings, /focusFloatingControlTrigger\(triggerRef\.current\)/);
+  assert.ok(settings.includes('data-floating-panel="settings"'));
   assert.match(assistant, /activePanel === "assistant"/);
-  assert.match(assistant, /fabRef\.current\?\.focus\(\)/);
+  assert.match(assistant, /focusFloatingControlTrigger\(fabRef\.current\)/);
   assert.match(assistant, /event\.key !== "Escape"/);
   assert.match(assistant, /document\.addEventListener\("keydown"/);
   assert.match(assistant, /title=\{[\s\S]*Portfolio assistant/);
