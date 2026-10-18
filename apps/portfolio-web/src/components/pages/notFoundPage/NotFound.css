@@ -1,7 +1,6 @@
 /* Recovery-first ruled fallback for unknown application routes. */
 .not-found-page {
     width: 100%;
-    padding-bottom: clamp(5rem, 8vw, 8rem);
 }
 
 .not-found-coordinates {
