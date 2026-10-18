@@ -1,4 +1,3 @@
-import { ExternalLink, LayoutDashboard } from "lucide-react";
 import StaticAppPage, { type StaticAppPageConfig } from "../staticAppPage/StaticAppPage";
 
 const atelierPageConfig: StaticAppPageConfig = {
@@ -35,7 +34,6 @@ const atelierPageConfig: StaticAppPageConfig = {
   sections: [
     {
       title: "Dashboard Verification",
-      icon: LayoutDashboard,
       paragraphs: [
         "Atelier supports private administrative workflows for the Syn-Forge portfolio, including portfolio data updates, snippets management, and operational checks.",
         "Access is intended for approved users only. Any account information used by the dashboard is handled for authentication, authorization, and site administration.",
@@ -48,7 +46,6 @@ const atelierPageConfig: StaticAppPageConfig = {
     },
     {
       title: "Related Policies",
-      icon: ExternalLink,
       paragraphs: [
         "Syn-Forge policy pages describe the covered properties, data handling, service providers, retention, user requests, and contact path for privacy questions.",
       ],
