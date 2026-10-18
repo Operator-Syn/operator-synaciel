@@ -22,7 +22,7 @@
 .app-modal-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 60;
+    z-index: var(--layer-modal);
     display: grid;
     place-items: center;
     padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
@@ -124,7 +124,7 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@scope (html[data-motion-mode="reduced"]) {
     .app-modal-backdrop,
     .app-modal {
         animation: none;
