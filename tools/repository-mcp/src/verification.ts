@@ -4,6 +4,7 @@ import { statSync } from "node:fs";
 
 import { PROJECT_ROOT } from "./path.ts";
 import {
+  MAX_VERIFICATION_OUTPUT_CHARACTERS,
   REPOSITORY_VERIFICATION_PROFILES,
   type RepositoryVerificationProfile,
   SAFE_VERIFICATION_COMMANDS,
@@ -25,7 +26,6 @@ export type VerificationSummary = {
   readonly cached: boolean;
 };
 
-const MAX_OUTPUT_BYTES = 12_000;
 const DEFAULT_TIMEOUT_MS = 120_000;
 const VERIFICATION_CACHE_TTL_MS = 30_000;
 const MAX_VERIFICATION_CACHE_ENTRIES = 32;
@@ -34,11 +34,14 @@ const verificationCache = new Map<
   { readonly summary: VerificationSummary; readonly expiresAt: number }
 >();
 
-function boundedOutput(stdout: string, stderr: string): string {
+const TRUNCATION_MARKER = "\n[output truncated]";
+
+export function boundVerificationOutput(stdout: string, stderr: string): string {
   const output = `${stdout}${stderr ? `\n${stderr}` : ""}`.trim();
-  return output.length <= MAX_OUTPUT_BYTES
-    ? output
-    : `${output.slice(0, MAX_OUTPUT_BYTES)}\n[output truncated]`;
+  if (output.length <= MAX_VERIFICATION_OUTPUT_CHARACTERS) return output;
+
+  const available = MAX_VERIFICATION_OUTPUT_CHARACTERS - TRUNCATION_MARKER.length;
+  return `${output.slice(0, available)}${TRUNCATION_MARKER}`;
 }
 
 function repositoryFingerprint(): string | null {
@@ -125,7 +128,7 @@ export function runVerificationProfile(
       check,
       command,
       status,
-      output: boundedOutput(
+      output: boundVerificationOutput(
         completed.stdout ?? "",
         [completed.stderr ?? "", completed.error instanceof Error ? completed.error.message : ""]
           .filter(Boolean)
