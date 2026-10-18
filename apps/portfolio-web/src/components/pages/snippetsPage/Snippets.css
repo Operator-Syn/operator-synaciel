@@ -39,7 +39,7 @@
         flex: 1 1 auto;
         overflow-y: auto;
         padding: 2rem clamp(1.25rem, 3vw, 3rem) 1rem;
-        scrollbar-color: var(--color-line-strong) var(--color-surface);
+        scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
         scrollbar-width: thin;
     }
 
@@ -376,7 +376,7 @@
         overflow-x: hidden;
         overflow-y: auto;
         overscroll-behavior: contain;
-        scrollbar-color: var(--color-line-strong) var(--color-canvas);
+        scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
         scrollbar-gutter: stable;
         scrollbar-width: thin;
         background: var(--color-canvas);
@@ -937,7 +937,7 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@scope (html[data-motion-mode="reduced"]) {
     .snippets-breadcrumb-home,
     .snippet-file-action,
     .snippets-file-table tbody tr,
