@@ -67,8 +67,8 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    html {
+@scope (html[data-motion-mode="reduced"]) {
+    :scope {
         scroll-behavior: auto;
     }
 
