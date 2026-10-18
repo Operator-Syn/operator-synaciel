@@ -21,11 +21,11 @@ export type SiteTheme =
   | "vesper-index"
   | "ancient-blue-ledger"
   | "custom";
-export type ReducedMotionPreference = "on" | "off";
+export type MotionPreference = "system" | "reduced" | "force";
 
 export interface StoredSitePreferences {
   theme: SiteTheme;
-  reducedMotion: boolean;
+  motionPreference: MotionPreference;
   customTheme: CustomThemeDocument | null;
 }
 
@@ -47,6 +47,12 @@ export function isSiteTheme(value: unknown): value is SiteTheme {
     value === "ancient-blue-ledger" ||
     value === "custom"
   );
+}
+
+function parseMotionPreference(value: string | null): MotionPreference {
+  if (value === "force") return "force";
+  if (value === "on" || value === "reduced") return "reduced";
+  return "system";
 }
 
 export function readSitePreferences(
@@ -81,7 +87,7 @@ export function readSitePreferences(
 
   return {
     theme,
-    reducedMotion: storedMotion === "on",
+    motionPreference: parseMotionPreference(storedMotion),
     customTheme,
   };
 }
@@ -92,7 +98,7 @@ export function persistSitePreferences(
 ) {
   try {
     storage?.setItem(SITE_THEME_STORAGE_KEY, preferences.theme);
-    storage?.setItem(REDUCED_MOTION_STORAGE_KEY, preferences.reducedMotion ? "on" : "off");
+    storage?.setItem(REDUCED_MOTION_STORAGE_KEY, preferences.motionPreference);
 
     if (preferences.customTheme) {
       storage?.setItem(CUSTOM_THEME_KEY, serializeCustomTheme(preferences.customTheme));
@@ -121,7 +127,12 @@ export function applySitePreferences(
     root.dataset.theme = preferences.theme === "custom" ? DEFAULT_SITE_THEME : preferences.theme;
   }
 
-  if (preferences.reducedMotion) {
+  const effectiveReducedMotion =
+    preferences.motionPreference === "reduced" ||
+    (preferences.motionPreference === "system" && isSystemReducedMotion());
+  root.dataset.motionMode = effectiveReducedMotion ? "reduced" : "full";
+
+  if (effectiveReducedMotion) {
     root.dataset.reducedMotion = "on";
   } else {
     delete root.dataset.reducedMotion;
@@ -141,8 +152,10 @@ export function isSystemReducedMotion() {
 }
 
 export function isReducedMotionEnabled() {
-  const explicitPreference =
-    typeof document !== "undefined" && document.documentElement.dataset.reducedMotion === "on";
+  const root = typeof document !== "undefined" ? document.documentElement : null;
+  if (root?.dataset.motionMode === "reduced") return true;
+  if (root?.dataset.motionMode === "full") return false;
 
+  const explicitPreference = root?.dataset.reducedMotion === "on";
   return explicitPreference || isSystemReducedMotion();
 }
