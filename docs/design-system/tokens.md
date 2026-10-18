@@ -26,6 +26,8 @@ Both are part of the [[design-system/README|Design System]] contract.
 | `--color-canvas` | `#101111` | Page background |
 | `--color-surface` | `#171918` | Panels and archive surfaces |
 | `--color-surface-raised` | `#202321` | Hover and selected surfaces |
+| `--color-scrollbar-thumb` | `var(--color-signal)` | Scrollbar thumb follows the active palette |
+| `--color-scrollbar-track` | `var(--color-surface-raised)` | Muted scrollbar track follows the active palette |
 | `--color-text` | `#f2ede3` | Primary text |
 | `--color-text-muted` | `#b7b1a7` | Supporting text |
 | `--color-text-faint` | `#7e7b74` | Metadata and atmosphere |
@@ -44,11 +46,12 @@ newly composed from the prior portfolio's blue as visual reference only. It
 remaps semantic color roles without restoring former spacing, type, imagery, or
 component structure. Its structural roles stay monochrome blue; danger and
 success retain distinct softened hues so status is not color-ambiguous. Theme
-and explicit reduced-motion choices are stored in browser-local storage.
-Turning reduced motion off removes the explicit override but still honors the
-operating system preference. Page wipes and nonessential motion honor either
-reduced-motion source; static custom cursor glyphs remain available on fine
-pointers because they provide pointer affordance rather than movement.
+and motion preferences are stored in browser-local storage. Motion defaults to
+System and follows the operating system's `prefers-reduced-motion` setting.
+Reduced motion limits site transitions and animation. Force motion opts into
+those effects even when the operating system requests reduced motion. Static
+custom cursor glyphs remain available on fine pointers because they provide
+pointer affordance rather than movement.
 
 Its current palette is intentionally lighter and more muted than the legacy
 surface:
@@ -112,7 +115,9 @@ Visitors may author a browser-local custom palette with the versioned JSON docum
   "name": "My theme",
   "colors": {
     "canvas": "#101111",
-    "signal": "#f0a42a"
+    "signal": "#f0a42a",
+    "scrollbarThumb": "#f0a42a",
+    "scrollbarTrack": "#202321"
   },
   "shadows": {
     "panel": "#00000040",
@@ -136,6 +141,8 @@ The public keys are semantic names rather than arbitrary CSS custom properties:
 | `textFaint` | `--color-text-faint` | Metadata |
 | `line` | `--color-line` | Default rules |
 | `lineStrong` | `--color-line-strong` | Strong separators |
+| `scrollbarThumb` | `--color-scrollbar-thumb` | Custom thumb color |
+| `scrollbarTrack` | `--color-scrollbar-track` | Custom track color |
 | `signal` | `--color-signal` | Actions and active states |
 | `signalStrong` | `--color-signal-strong` | Focus and emphasis |
 | `danger` | `--color-danger` | Error states |
@@ -146,7 +153,7 @@ The public keys are semantic names rather than arbitrary CSS custom properties:
 | `canvasOverlayNavigation` | `--color-canvas-overlay-navigation` | Navigation overlay |
 | `signalSoft` | `--color-signal-soft` | Subtle signal tint |
 
-Structural and readable roles accept opaque `#RRGGBB` values. Rule, overlay, and soft-signal roles also accept `#RRGGBBAA` values when transparency is needed.
+Built-in palettes derive scrollbar defaults from their signal and raised-surface colors. Custom-theme documents start with Dalan's amber thumb (`#f0a42a`) and muted track (`#202321`); `scrollbarThumb` and `scrollbarTrack` override them independently. Thumb hover uses the existing `signalStrong` role. Structural and readable roles accept opaque `#RRGGBB` values. Rule, overlay, soft-signal, and scrollbar roles also accept `#RRGGBBAA` values when transparency is needed.
 
 Shadow keys are optional and inherit Dalan when omitted. Their values are
 hexadecimal tints with optional alpha; the shadow geometry remains fixed so a
@@ -160,7 +167,7 @@ custom document changes only depth and opacity, not layout:
 
 The loader parses JSON as data only. It rejects unknown fields, unknown roles, prototype-pollution keys, control characters in names, oversized documents, malformed JSON, and non-hex values. Any valid hexadecimal color combination may be applied; contrast is not a blocking rule, so experimentation is not limited to a predefined palette. When a resolved palette falls below the suggested readability ratios, the editor reports those findings as optional suggestions. Invalid input never changes the active theme.
 
-Only the allowlisted semantic variables are applied to the document root. The Markdown renderer maps its syntax-token colors to the same semantic roles, so custom palettes also reach highlighted code. Fonts, spacing, type scale, motion, layout, cursor SVGs, media content, and browser-owned PDF/video controls are outside this contract. Shadow geometry remains fixed; only the allowlisted shadow tint and opacity can change.
+Only the allowlisted semantic variables are applied to the document root. The Markdown renderer maps its syntax-token colors to the same semantic roles, so custom palettes also reach highlighted code. Fonts, spacing, type scale, motion, layout, cursor SVGs, media content, and browser-owned PDF/video controls are outside this contract. Scrollbar width and shape follow the shared site style; custom documents control the thumb and track colors. Shadow geometry remains fixed; only the allowlisted shadow tint and opacity can change.
 
 Custom documents are normalized before browser-local storage. They remain local to the current origin and can be exported as JSON for manual sharing; no custom theme data is sent to the Worker or stored in D1/R2.
 
