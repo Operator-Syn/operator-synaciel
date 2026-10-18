@@ -775,7 +775,7 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@scope (html[data-motion-mode="reduced"]) {
     .loading-region::before,
     .loading-inline-signal {
         animation: none;
