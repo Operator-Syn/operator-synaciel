@@ -1,6 +1,7 @@
-import { Folder, FolderOpen, Home as HomeIcon, ListTree, X } from "lucide-react";
+import { Folder, FolderOpen, Home as HomeIcon, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { focusFloatingControlTrigger } from "../floatingControls/focusFloatingControl";
 import { useFloatingControls } from "../floatingControls/useFloatingControls";
 import TransitionNavLink from "../pageTransition/TransitionNavLink";
 
@@ -32,10 +33,11 @@ export default function QuickNavigation() {
   const panelRef = useRef<HTMLDivElement>(null);
   const isOpen = activePanel === "quick-navigation";
   const isVisible = visibleRoutePrefixes.some((prefix) => location.pathname.startsWith(prefix));
+  const previousPathnameRef = useRef(location.pathname);
 
   const closeNavigation = useCallback(() => {
     closePanel("quick-navigation");
-    window.requestAnimationFrame(() => toggleRef.current?.focus());
+    window.requestAnimationFrame(() => focusFloatingControlTrigger(toggleRef.current));
   }, [closePanel]);
 
   useEffect(() => {
@@ -60,11 +62,12 @@ export default function QuickNavigation() {
   }, [closeNavigation, isOpen]);
 
   useEffect(() => {
-    if (isVisible || !isOpen) return;
+    if (previousPathnameRef.current === location.pathname) return;
+    previousPathnameRef.current = location.pathname;
     closePanel("quick-navigation");
-  }, [closePanel, isOpen, isVisible]);
+  }, [closePanel, location.pathname]);
 
-  if (!isVisible) return null;
+  if (!isVisible && !isOpen) return null;
 
   return (
     <div
@@ -138,22 +141,21 @@ export default function QuickNavigation() {
         </nav>
       </div>
 
-      <button
-        ref={toggleRef}
-        aria-controls="quick-navigation-panel"
-        aria-expanded={isOpen}
-        aria-label={isOpen ? "Close quick navigation" : "Open quick navigation"}
-        className="quick-navigation-toggle inline-flex min-h-12 items-center gap-3 border border-line-strong bg-surface px-3 text-text shadow-panel transition-colors hover:border-signal hover:text-signal"
-        data-cursor="context-menu"
-        onClick={() => (isOpen ? closeNavigation() : openPanel("quick-navigation"))}
-        title="Quick navigation"
-        type="button"
-      >
-        <span className="inline-grid min-h-8 min-w-8 place-items-center border border-line-strong">
+      {isVisible ? (
+        <button
+          ref={toggleRef}
+          aria-controls="quick-navigation-panel"
+          aria-expanded={isOpen}
+          aria-label={isOpen ? "Close quick navigation" : "Open quick navigation"}
+          className="quick-navigation-toggle inline-flex min-h-12 items-center gap-3 border border-line-strong bg-surface px-3 text-text shadow-panel transition-colors hover:border-signal hover:text-signal"
+          data-cursor="context-menu"
+          onClick={() => (isOpen ? closeNavigation() : openPanel("quick-navigation"))}
+          title="Quick navigation"
+          type="button"
+        >
           <HomeIcon aria-hidden="true" size={15} />
-        </span>
-        <ListTree aria-hidden="true" size={19} />
-      </button>
+        </button>
+      ) : null}
     </div>
   );
 }
