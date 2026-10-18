@@ -2,8 +2,9 @@
 @layer components {
     .app-shell {
         min-height: 100vh;
+        min-height: 100dvh;
         padding-top: 5.5rem;
-        padding-bottom: 2rem;
+        padding-bottom: max(clamp(1.5rem, 3vh, 2.5rem), env(safe-area-inset-bottom, 0px));
     }
 
     .page-frame {
