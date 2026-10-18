@@ -120,7 +120,7 @@ test("keeps the Home settings utility inside the shared floating dock", async ()
 
   assert.match(app, /<HomeSettings \/>/);
   assert.doesNotMatch(home, /<HomeSettings \/>/);
-  assert.ok(settings.includes('location.pathname !== "/"'));
+  assert.ok(settings.includes('data-floating-panel="settings"'));
   assert.match(styles, /\.home-settings\s*\{[\s\S]*position: relative/);
   assert.match(styles, /\.home-settings\s*\{[\s\S]*pointer-events: none/);
   assert.match(styles, /\.home-settings-panel\s*\{[\s\S]*position: absolute/);
