@@ -1,21 +1,41 @@
-/* Shared safe-area-aware dock for visitor utilities and the assistant. */
-.floating-control-dock {
+/* Shared utility controls sit beside the coordinate-rail system tag when one is present. */
+.coordinate-rail-control-portal {
+    display: flex;
+    align-items: center;
+}
+
+.coordinate-rail-control-portal.is-floating-controls-fallback {
     position: fixed;
     inset-inline-end: var(--floating-control-inline-end);
     inset-block-end: var(--floating-control-block-end);
-    z-index: 40;
-    display: flex;
-    align-items: flex-end;
-    gap: var(--floating-control-gap);
+    z-index: var(--layer-floating-controls);
     max-inline-size: calc(100vw - (2 * var(--floating-control-inline-end)));
+}
+
+.floating-control-dock {
+    position: relative;
+    z-index: var(--layer-floating-controls);
+    display: flex;
+    align-items: center;
+    gap: 0;
     pointer-events: none;
+}
+
+.floating-control-dock:has([data-floating-panel="assistant"] [role="dialog"]) {
+    z-index: var(--layer-modal);
+}
+
+.coordinate-rail-control-portal.is-floating-controls-fallback:has(
+        [data-floating-panel="assistant"] [role="dialog"]
+    ) {
+    z-index: var(--layer-modal);
 }
 
 .floating-control-dock > [data-floating-panel] {
     position: relative;
     display: grid;
     justify-items: end;
-    gap: var(--floating-control-gap);
+    gap: 0;
     pointer-events: none;
 }
 
@@ -23,13 +43,106 @@
     pointer-events: auto;
 }
 
-.floating-control-dock[data-active-panel="assistant"]
-    > [data-floating-panel]:not([data-floating-panel="assistant"]),
-.floating-control-dock[data-active-panel="settings"]
-    > [data-floating-panel]:not([data-floating-panel="settings"]),
-.floating-control-dock[data-active-panel="quick-navigation"]
-    > [data-floating-panel]:not([data-floating-panel="quick-navigation"]) {
-    display: none;
+.floating-control-dock .portfolio-assistant-fab,
+.floating-control-dock .home-settings-trigger,
+.floating-control-dock .quick-navigation-toggle {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    place-items: center;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--color-text-muted);
+    padding: 0;
+    transition:
+        background-color var(--motion-feedback-duration) var(--motion-ease),
+        color var(--motion-feedback-duration) var(--motion-ease);
+}
+
+.floating-control-dock .portfolio-assistant-fab svg,
+.floating-control-dock .home-settings-trigger svg,
+.floating-control-dock .quick-navigation-toggle svg {
+    width: var(--coordinate-rail-font-size, var(--text-meta));
+    height: var(--coordinate-rail-font-size, var(--text-meta));
+    stroke-width: 1.8;
+}
+
+.floating-control-dock .portfolio-assistant-fab:hover,
+.floating-control-dock .portfolio-assistant-fab[aria-expanded="true"],
+.floating-control-dock .home-settings-trigger:hover,
+.floating-control-dock .quick-navigation-toggle:hover,
+.floating-control-dock .home-settings-trigger[data-state="open"],
+.floating-control-dock .quick-navigation-toggle[aria-expanded="true"] {
+    background: var(--color-signal-soft);
+    color: var(--color-signal-strong);
+}
+
+.floating-control-dock .portfolio-assistant-fab:focus-visible,
+.floating-control-dock .home-settings-trigger:focus-visible,
+.floating-control-dock .quick-navigation-toggle:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
+}
+
+.floating-control-dock .home-settings-panel,
+.floating-control-dock .quick-navigation-panel {
+    inset-block-start: calc(100% + var(--floating-control-gap));
+    inset-block-end: auto;
+    transform-origin: top right;
+}
+
+.floating-control-dock .home-settings-panel {
+    max-height: min(46rem, calc(100dvh - 12rem));
+}
+
+.coordinate-rail-control-portal.is-floating-controls-fallback .home-settings-panel,
+.coordinate-rail-control-portal.is-floating-controls-fallback .quick-navigation-panel {
+    inset-block-start: auto;
+    inset-block-end: calc(100% + var(--floating-control-gap));
+    transform-origin: bottom right;
+}
+
+.coordinate-rail-control-portal.is-floating-controls-fallback .home-settings-panel {
+    max-height: min(
+        46rem,
+        calc(
+            100dvh -
+            var(--floating-control-block-end) -
+            2.75rem -
+            var(--floating-control-gap) -
+            1rem
+        )
+    );
+}
+
+@media (min-width: 641px) and (min-height: 561px) {
+    .floating-control-dock .portfolio-assistant-panel,
+    .floating-control-dock .portfolio-assistant-entry-loading {
+        inset-block-start: calc(100% + var(--floating-control-gap));
+        inset-block-end: auto;
+        transform-origin: top right;
+    }
+
+    .floating-control-dock .portfolio-assistant {
+        --assistant-panel-block-size: min(42rem, calc(100dvh - 11rem));
+    }
+
+    .floating-control-dock .portfolio-assistant-entry-loading {
+        height: min(42rem, calc(100dvh - 11rem));
+        max-height: min(42rem, calc(100dvh - 11rem));
+    }
+
+    .coordinate-rail-control-portal.is-floating-controls-fallback .portfolio-assistant-panel,
+    .coordinate-rail-control-portal.is-floating-controls-fallback
+        .portfolio-assistant-entry-loading {
+        inset-block-start: auto;
+        inset-block-end: calc(100% + var(--floating-control-gap));
+        transform-origin: bottom right;
+    }
 }
 
 .portfolio-assistant-fab {
@@ -56,4 +169,401 @@
 
 .portfolio-assistant-fab:active {
     transform: translateY(0) scale(0.96);
+}
+
+.portfolio-assistant-entry-loading {
+    position: absolute;
+    inset-inline-end: 0;
+    inset-block-end: calc(100% + var(--floating-control-gap));
+    z-index: 1;
+    display: flex;
+    width: min(34rem, calc(100vw - 1rem));
+    height: min(42rem, calc(100dvh - 5rem));
+    min-width: 0;
+    min-height: 0;
+    max-height: min(42rem, calc(100dvh - 5rem));
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-panel);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-panel);
+    color: var(--color-text);
+}
+
+.portfolio-assistant-entry-loading-header {
+    display: flex;
+    flex: 0 0 auto;
+    min-width: 0;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid var(--color-line);
+    padding: 1rem;
+}
+
+.portfolio-assistant-entry-loading-header > div {
+    min-width: 0;
+}
+
+.portfolio-assistant-entry-loading-header h2 {
+    margin: 0.15rem 0 0.35rem;
+    color: var(--color-text);
+    font-family: var(--font-display);
+    font-size: var(--text-panel-title);
+    font-weight: 400;
+    line-height: 1.05;
+}
+
+.portfolio-assistant-entry-loading-summary {
+    max-width: 42ch;
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-note);
+    line-height: 1.45;
+}
+
+.portfolio-assistant-entry-loading-close {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 2.75rem;
+    place-items: center;
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--color-text);
+}
+
+.portfolio-assistant-entry-loading-close:hover,
+.portfolio-assistant-entry-loading-close:focus-visible {
+    border-color: var(--color-signal);
+    color: var(--color-signal-strong);
+}
+
+.portfolio-assistant-entry-loading-close:focus-visible {
+    outline: 2px solid var(--color-signal-strong);
+    outline-offset: 3px;
+}
+
+.portfolio-assistant-entry-loading-content {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1rem;
+    overflow: auto;
+    padding: 1rem;
+}
+
+.portfolio-assistant-entry-loading-thread {
+    display: grid;
+    width: min(100%, 30rem);
+    gap: 1.25rem;
+    margin: auto;
+}
+
+.portfolio-assistant-entry-loading-user {
+    display: flex;
+    justify-content: flex-end;
+    padding-inline-start: 2rem;
+}
+
+.portfolio-assistant-entry-loading-message {
+    display: grid;
+    grid-template-columns: 0.75rem minmax(0, 1fr);
+    align-items: start;
+    gap: 0.7rem;
+    border-block: 1px solid var(--color-line);
+    padding-block: 1rem;
+}
+
+.portfolio-assistant-entry-loading-lines {
+    display: grid;
+    gap: 0.65rem;
+    min-width: 0;
+    padding-block: 0.2rem;
+}
+
+.portfolio-assistant-entry-loading-mark {
+    display: inline-flex;
+    min-width: 0.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.16rem;
+    padding-block: 0.2rem;
+}
+
+.portfolio-assistant-entry-loading-mark i {
+    display: block;
+    width: 0.22rem;
+    height: 0.22rem;
+    border-radius: 50%;
+    background: var(--color-signal);
+}
+
+.portfolio-assistant-entry-loading-skeleton-line,
+.portfolio-assistant-entry-loading-composer-field,
+.portfolio-assistant-entry-loading-composer-action {
+    display: block;
+    height: 0.72rem;
+    border: 1px solid var(--color-line);
+    background: linear-gradient(
+        100deg,
+        var(--color-surface-raised) 20%,
+        var(--color-line) 45%,
+        var(--color-surface-raised) 70%
+    );
+    background-size: 240% 100%;
+}
+
+.portfolio-assistant-entry-loading-skeleton-line.is-short {
+    width: 38%;
+}
+
+.portfolio-assistant-entry-loading-skeleton-line.is-medium {
+    width: 64%;
+}
+
+.portfolio-assistant-entry-loading-skeleton-line.is-long {
+    width: 88%;
+}
+
+.portfolio-assistant-entry-loading-composer {
+    display: grid;
+    flex: 0 0 auto;
+    grid-template-columns: minmax(0, 1fr) 2.75rem;
+    align-items: end;
+    gap: 0.5rem;
+    border-top: 1px solid var(--color-line);
+    padding-top: 0.75rem;
+}
+
+.portfolio-assistant-entry-loading-composer-field,
+.portfolio-assistant-entry-loading-composer-action {
+    height: 2.75rem;
+    border-radius: var(--radius-control);
+    background-color: var(--color-surface-raised);
+}
+
+.portfolio-assistant-entry-loading-status {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.65rem;
+    border-top: 1px solid var(--color-line);
+    margin: 0;
+    padding: 0.7rem 1rem;
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: var(--text-note);
+}
+
+@scope (html[data-motion-mode="full"]) {
+    @keyframes portfolio-assistant-entry-shimmer {
+        to {
+            background-position: -240% 0;
+        }
+    }
+
+    .portfolio-assistant-entry-loading-skeleton-line,
+    .portfolio-assistant-entry-loading-composer-field,
+    .portfolio-assistant-entry-loading-composer-action {
+        animation: portfolio-assistant-entry-shimmer 1.8s var(--motion-ease) infinite;
+    }
+}
+
+@media (max-width: 640px), (max-height: 560px) {
+    .portfolio-assistant-entry-loading {
+        position: fixed;
+        inset-block-start: calc(4.5rem + 1px + env(safe-area-inset-top));
+        inset-inline: 0;
+        inset-block-end: 0;
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        max-height: none;
+        border: 0;
+        border-radius: 0;
+        padding-block: 0 env(safe-area-inset-bottom, 0px);
+        padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
+    }
+}
+
+@media (max-width: 400px) {
+    .portfolio-assistant-entry-loading-header {
+        gap: 0.75rem;
+        padding: 0.75rem;
+    }
+
+    .portfolio-assistant-entry-loading-content {
+        padding: 0.75rem;
+    }
+
+    .portfolio-assistant-entry-loading-status {
+        padding-inline: 0.75rem;
+    }
+}
+
+.floating-control-dock .floating-controls-compact-menu {
+    display: none;
+    position: relative;
+    pointer-events: auto;
+}
+
+.floating-control-dock .floating-controls-compact-trigger {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    place-items: center;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--color-text-muted);
+    padding: 0;
+    transition:
+        background-color var(--motion-feedback-duration) var(--motion-ease),
+        color var(--motion-feedback-duration) var(--motion-ease);
+}
+
+.floating-control-dock .floating-controls-compact-trigger svg,
+.floating-control-dock .floating-controls-compact-option svg {
+    width: var(--coordinate-rail-font-size, var(--text-meta));
+    height: var(--coordinate-rail-font-size, var(--text-meta));
+    flex: 0 0 auto;
+    stroke-width: 1.8;
+}
+
+.floating-control-dock
+    .floating-controls-compact-menu[data-state="open"]
+    .floating-controls-compact-trigger,
+.floating-control-dock .floating-controls-compact-trigger:hover {
+    background: var(--color-signal-soft);
+    color: var(--color-signal-strong);
+}
+
+.floating-control-dock .floating-controls-compact-trigger:focus-visible,
+.floating-control-dock .floating-controls-compact-option:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
+}
+
+.floating-control-dock .floating-controls-compact-panel {
+    position: absolute;
+    inset-block-start: calc(100% + var(--floating-control-gap));
+    inset-inline-end: 0;
+    z-index: 1;
+    display: grid;
+    min-inline-size: 12rem;
+    margin: 0;
+    gap: 0.125rem;
+    border: 1px solid var(--color-line-strong);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-panel);
+    padding: 0.25rem;
+}
+
+.floating-control-dock .floating-controls-compact-panel[hidden] {
+    display: none;
+}
+
+.floating-control-dock .home-settings-panel,
+.floating-control-dock .quick-navigation-panel {
+    inset-inline-end: var(--floating-control-panel-inset-inline-end, 0px);
+}
+
+@media (min-width: 641px) {
+    .floating-control-dock .portfolio-assistant-panel,
+    .floating-control-dock .portfolio-assistant-entry-loading {
+        inset-inline-end: var(--floating-control-panel-inset-inline-end, 0px);
+    }
+}
+
+.floating-control-dock .floating-controls-compact-option {
+    display: flex;
+    width: 100%;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.7rem;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-muted);
+    padding: 0 0.65rem;
+    font-family: var(--font-mono);
+    font-size: var(--coordinate-rail-font-size, var(--text-meta));
+    letter-spacing: 0.06em;
+    text-align: start;
+    text-transform: uppercase;
+    transition:
+        background-color var(--motion-feedback-duration) var(--motion-ease),
+        color var(--motion-feedback-duration) var(--motion-ease);
+}
+
+.floating-control-dock .floating-controls-compact-option:hover,
+.floating-control-dock .floating-controls-compact-option[data-active="true"] {
+    background: var(--color-signal-soft);
+    color: var(--color-signal-strong);
+}
+
+@media (min-width: 641px) {
+    @container coordinate-rail (width < 35rem) {
+        .floating-control-dock {
+            --floating-control-panel-inset-inline-end: -2.75rem;
+        }
+
+        .floating-control-dock .portfolio-assistant-fab,
+        .floating-control-dock .home-settings-trigger,
+        .floating-control-dock .quick-navigation-toggle {
+            display: none;
+        }
+
+        .floating-control-dock .floating-controls-compact-menu {
+            display: block;
+        }
+    }
+}
+
+@media (min-width: 435px) and (max-width: 640px) {
+    @container coordinate-rail (width < 27.5rem) {
+        .floating-control-dock {
+            --floating-control-panel-inset-inline-end: -2.75rem;
+        }
+
+        .floating-control-dock .portfolio-assistant-fab,
+        .floating-control-dock .home-settings-trigger,
+        .floating-control-dock .quick-navigation-toggle {
+            display: none;
+        }
+
+        .floating-control-dock .floating-controls-compact-menu {
+            display: block;
+        }
+    }
+}
+
+@media (max-width: 434px) {
+    @container coordinate-rail (width < 27.5rem) {
+        .floating-control-dock {
+            --floating-control-panel-inset-inline-end: -2.75rem;
+        }
+
+        .floating-control-dock .portfolio-assistant-fab,
+        .floating-control-dock .home-settings-trigger,
+        .floating-control-dock .quick-navigation-toggle {
+            display: none;
+        }
+
+        .floating-control-dock .floating-controls-compact-menu {
+            display: block;
+        }
+    }
+}
+
+.coordinate-rail-control-portal.is-floating-controls-fallback .floating-controls-compact-panel {
+    inset-block-start: auto;
+    inset-block-end: calc(100% + var(--floating-control-gap));
 }
