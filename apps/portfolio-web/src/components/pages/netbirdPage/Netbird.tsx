@@ -1,4 +1,3 @@
-import { ExternalLink, ShieldCheck } from "lucide-react";
 import StaticAppPage, { type StaticAppPageConfig } from "../staticAppPage/StaticAppPage";
 
 const netbirdPageConfig: StaticAppPageConfig = {
@@ -35,7 +34,6 @@ const netbirdPageConfig: StaticAppPageConfig = {
   sections: [
     {
       title: "Google Project Verification",
-      icon: ShieldCheck,
       paragraphs: [
         "NetBird for Syn-Forge is used to manage private network access and administrative connectivity for systems operated under syn-forge.com.",
         "When Google authentication is enabled, the application uses the authorized Google account information only to identify the user, maintain access control, and protect private infrastructure.",
@@ -48,7 +46,6 @@ const netbirdPageConfig: StaticAppPageConfig = {
     },
     {
       title: "Related Policies",
-      icon: ExternalLink,
       paragraphs: [
         "Syn-Forge policy pages describe the covered properties, Google OAuth data handling, service providers, retention, user requests, and contact path for privacy questions.",
       ],
