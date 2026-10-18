@@ -438,11 +438,8 @@ export default function PointerCoordinates({
     (visiblePointerPosition.kind === "mouse" || visiblePointerPosition.kind === "pen")
       ? visiblePointerPosition
       : null;
-  const coordinateClassName = [
-    "coordinate-rail",
-    className,
-    pointerSignalPosition ? "has-pointer" : "",
-  ]
+  const coordinateFrameClassName = ["coordinate-rail-frame", className].filter(Boolean).join(" ");
+  const coordinateClassName = ["coordinate-rail", pointerSignalPosition ? "has-pointer" : ""]
     .filter(Boolean)
     .join(" ");
   const safeMarkerCount = Math.max(0, Math.floor(markerCount));
@@ -452,39 +449,43 @@ export default function PointerCoordinates({
   }));
 
   return (
-    <button
-      aria-describedby="coordinate-rail-instruction"
-      className={coordinateClassName}
-      data-cursor="crosshair"
-      data-handshake-state={handshakeState}
-      data-pointer-surface={pointerSurface}
-      onClick={completeHandshake}
-      onPointerDown={handleCoordinatePointerDown}
-      onPointerEnter={handleCoordinatePointerEnter}
-      onPointerLeave={cancelHandshake}
-      onPointerMove={handleCoordinatePointerMove}
-      onPointerCancel={handleCoordinatePointerEnd}
-      onPointerUp={handleCoordinatePointerEnd}
-      ref={coordinatesRef}
-      title="Pause or activate to run a signal handshake"
-      type="button"
-    >
-      <span>X {x} PX</span>
-      <span>Y {y} PX</span>
-      <span aria-hidden="true" className="coordinate-rail-markers">
-        {markers.map((marker) => (
-          <i className={activeSection === marker.index ? "is-active" : undefined} key={marker.id} />
-        ))}
-      </span>
-      <span className="coordinate-rail-status" data-cursor="help">
-        {statusLabel}
-      </span>
-      <span className="sr-only" id="coordinate-rail-instruction">
-        Activate to run a signal handshake.
-      </span>
-      <span aria-live="polite" className="sr-only">
-        {handshakeAnnouncement}
-      </span>
-    </button>
+    <div className={coordinateFrameClassName}>
+      <button
+        aria-describedby="coordinate-rail-instruction"
+        className={coordinateClassName}
+        data-cursor="crosshair"
+        data-handshake-state={handshakeState}
+        data-pointer-surface={pointerSurface}
+        onClick={completeHandshake}
+        onPointerDown={handleCoordinatePointerDown}
+        onPointerEnter={handleCoordinatePointerEnter}
+        onPointerLeave={cancelHandshake}
+        onPointerMove={handleCoordinatePointerMove}
+        onPointerCancel={handleCoordinatePointerEnd}
+        onPointerUp={handleCoordinatePointerEnd}
+        ref={coordinatesRef}
+        title="Pause or activate to run a signal handshake"
+        type="button"
+      >
+        <span>X {x} PX</span>
+        <span>Y {y} PX</span>
+        <span aria-hidden="true" className="coordinate-rail-markers">
+          {markers.map((marker) => (
+            <i
+              className={activeSection === marker.index ? "is-active" : undefined}
+              key={marker.id}
+            />
+          ))}
+        </span>
+        <span className="sr-only" id="coordinate-rail-instruction">
+          Activate to run a signal handshake.
+        </span>
+        <span aria-live="polite" className="sr-only">
+          {handshakeAnnouncement}
+        </span>
+      </button>
+      <span className="coordinate-rail-status">{statusLabel}</span>
+      <div className="coordinate-rail-controls" data-coordinate-rail-controls />
+    </div>
   );
 }
