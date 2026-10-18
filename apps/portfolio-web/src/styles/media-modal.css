@@ -63,6 +63,7 @@
 }
 
 .media-modal-backdrop {
+    z-index: var(--layer-modal);
     padding: max(0.5rem, env(safe-area-inset-top)) max(0.5rem, env(safe-area-inset-right))
         max(0.5rem, env(safe-area-inset-bottom)) max(0.5rem, env(safe-area-inset-left));
 }
@@ -493,7 +494,7 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@scope (html[data-motion-mode="reduced"]) {
     .media-modal-close,
     .media-modal-media-stage,
     .media-modal-nav-button,
