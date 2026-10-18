@@ -347,7 +347,7 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@scope (html[data-motion-mode="reduced"]) {
     .not-found-link,
     .not-found-route-link,
     .not-found-route-link > svg {
