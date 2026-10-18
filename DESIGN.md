@@ -199,13 +199,14 @@ highlight aligned to the full row boundary.
 
 ### Interaction spacing
 
-Fixed quick navigation uses safe-area-aware edge spacing and stays clear of
-pagination and content. Its open state becomes a width-constrained panel on
-narrow screens rather than forcing a desktop-width layout.
+Shared utility controls sit beside the coordinate rail's system label. Their
+icon marks use the rail's metadata size while preserving 2.75rem (44px) touch
+targets. Open panels anchor to the rail and remain bounded by the viewport.
+Routes without a coordinate rail use the safe-area-aware fixed dock at the
+lower-right, with panels opening above the controls.
 
-Interaction targets keep a practical minimum: action buttons and media controls
-use approximately 2.65rem to 2.75rem minimum height, while the fixed quick
-navigation toggle is at least 3rem high.
+Action buttons and media controls keep a practical minimum height of
+approximately 2.65rem to 2.75rem.
 
 ## Elevation & Depth
 
@@ -288,12 +289,11 @@ the highlighted surface.
 
 ### Quick navigation
 
-The floating application control is a safe-area-aware, fixed utility. The
-closed control is a compact bordered surface with home and list affordances.
-The open panel uses a ruled header, two category tabs, and numbered links.
-Active tabs and routes use the raised surface plus amber signal. On mobile the
-panel is constrained to the viewport and the toggle remains separated from
-content and pagination.
+Quick Navigation shares the coordinate rail on the archive routes
+where it is offered. Its closed trigger is a compact metadata-sized icon in a
+2.75rem target. The panel keeps its ruled header, two category tabs, and
+numbered links; active tabs and routes use the raised surface plus amber
+signal. On narrow screens, the panel remains bounded by the viewport.
 
 ### Media modal
 
