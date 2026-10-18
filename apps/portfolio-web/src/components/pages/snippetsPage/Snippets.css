@@ -778,10 +778,6 @@
 }
 
 @media (max-width: 960px) {
-    .snippets-shell {
-        padding-bottom: 7rem;
-    }
-
     .snippets-workspace {
         height: auto;
         min-height: 0;
@@ -803,10 +799,6 @@
 }
 
 @media (max-width: 640px) {
-    .snippets-shell {
-        padding-bottom: 8rem;
-    }
-
     .snippets-index-content {
         padding: 1.4rem 1rem 1rem;
     }
