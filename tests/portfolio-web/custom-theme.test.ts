@@ -280,7 +280,7 @@ test("exposes the fixed custom theme editor contract", async () => {
   assert.match(settings, /home-settings-custom-json/);
   assert.match(settings, /customSuggestions/);
   assert.match(settings, /home-settings-custom-suggestions/);
-  assert.match(settings, /Apply custom/);
+  assert.match(settings, /Apply theme/);
   assert.match(settings, /handleResetCustomTheme/);
   assert.match(styles, /max-height:[\s\S]*100dvh/);
   assert.match(styles, /overflow-y: auto/);
