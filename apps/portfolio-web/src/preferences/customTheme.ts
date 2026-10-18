@@ -21,6 +21,8 @@ export const CUSTOM_THEME_COLOR_ROLES = [
   "canvasOverlayStrong",
   "canvasOverlayNavigation",
   "signalSoft",
+  "scrollbarThumb",
+  "scrollbarTrack",
 ] as const;
 
 export const CUSTOM_THEME_SHADOW_ROLES = ["panel", "media", "viewerTools"] as const;
@@ -70,6 +72,8 @@ export const CUSTOM_THEME_CSS_VARIABLES: Record<CustomThemeColorRole, string> = 
   canvasOverlayStrong: "--color-canvas-overlay-strong",
   canvasOverlayNavigation: "--color-canvas-overlay-navigation",
   signalSoft: "--color-signal-soft",
+  scrollbarThumb: "--color-scrollbar-thumb",
+  scrollbarTrack: "--color-scrollbar-track",
 };
 
 export const CUSTOM_THEME_SHADOW_CSS_VARIABLES: Record<CustomThemeShadowRole, string> = {
@@ -96,6 +100,8 @@ export const DEFAULT_CUSTOM_THEME_COLORS: Record<CustomThemeColorRole, HexColor>
   canvasOverlayStrong: "#101111f5",
   canvasOverlayNavigation: "#101111db",
   signalSoft: "#f0a42a1f",
+  scrollbarThumb: "#f0a42a",
+  scrollbarTrack: "#202321",
 };
 
 export const DEFAULT_CUSTOM_THEME_SHADOWS: Record<CustomThemeShadowRole, HexColor> = {
