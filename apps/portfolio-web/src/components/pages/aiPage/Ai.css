@@ -1,7 +1,6 @@
 /* Dalan agent-interface composition for the public MCP guide. */
 .ai-page {
     width: 100%;
-    padding-bottom: clamp(5rem, 8vw, 8rem);
 }
 
 .ai-page-hero,
