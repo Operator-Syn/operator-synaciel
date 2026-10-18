@@ -1,6 +1,5 @@
 import { Download, RotateCcw, Settings2, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
 import {
   CUSTOM_THEME_MAX_BYTES,
   type CustomThemeDocument,
@@ -10,7 +9,8 @@ import {
   parseCustomThemeDocument,
   serializeCustomTheme,
 } from "../../preferences/customTheme";
-import type { SiteTheme } from "../../preferences/sitePreferences";
+import type { MotionPreference, SiteTheme } from "../../preferences/sitePreferences";
+import { focusFloatingControlTrigger } from "../floatingControls/focusFloatingControl";
 import { useFloatingControls } from "../floatingControls/useFloatingControls";
 import useSitePreferences from "../sitePreferences/useSitePreferences";
 
@@ -19,6 +19,20 @@ const builtInThemeChoices: Array<{ label: string; value: SiteTheme }> = [
   { label: "Of Times Old", value: "of-times-old" },
   { label: "Vesper Index", value: "vesper-index" },
   { label: "The Ancient Blue Ledger", value: "ancient-blue-ledger" },
+];
+
+const motionChoices: Array<{ description: string; label: string; value: MotionPreference }> = [
+  { label: "System", description: "Follow your device’s motion setting.", value: "system" },
+  {
+    label: "Reduced motion",
+    description: "Limit transitions and animated feedback.",
+    value: "reduced",
+  },
+  {
+    label: "Force motion",
+    description: "Play transitions and animation even when your device requests reduced motion.",
+    value: "force",
+  },
 ];
 
 function downloadThemeDocument(content: string) {
@@ -39,9 +53,9 @@ function HomeSettingsPanel() {
     clearCustomTheme,
     customTheme,
     effectiveReducedMotion,
-    reducedMotion,
+    motionPreference,
     setCustomTheme,
-    setReducedMotion,
+    setMotionPreference,
     setTheme,
     systemReducedMotion,
     theme,
@@ -85,7 +99,7 @@ function HomeSettingsPanel() {
 
   const closeSettings = useCallback(() => {
     closePanel("settings");
-    window.requestAnimationFrame(() => triggerRef.current?.focus());
+    window.requestAnimationFrame(() => focusFloatingControlTrigger(triggerRef.current));
   }, [closePanel]);
 
   useEffect(() => {
@@ -134,9 +148,15 @@ function HomeSettingsPanel() {
     setAnnouncement(`Color scheme changed to ${label}.`);
   };
 
-  const handleMotionChange = (enabled: boolean) => {
-    setReducedMotion(enabled);
-    setAnnouncement(`Reduced motion ${enabled ? "enabled" : "disabled"}.`);
+  const handleMotionChange = (preference: MotionPreference) => {
+    setMotionPreference(preference);
+    setAnnouncement(
+      preference === "force"
+        ? "Force motion enabled, including when your device requests reduced motion."
+        : preference === "reduced"
+          ? "Reduced motion enabled."
+          : "Motion now follows your device setting.",
+    );
   };
 
   const handleCustomFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -212,8 +232,7 @@ function HomeSettingsPanel() {
       >
         <div className="home-settings-header">
           <div>
-            <p className="eyebrow">Settings</p>
-            <h2 id="home-settings-title">Interface settings</h2>
+            <h2 id="home-settings-title">Appearance</h2>
           </div>
           <button
             aria-label="Close settings"
@@ -254,31 +273,51 @@ function HomeSettingsPanel() {
 
         <fieldset className="home-settings-fieldset">
           <legend>Motion</legend>
-          <label className="home-settings-choice">
-            <input
-              checked={reducedMotion}
-              onChange={(event) => handleMotionChange(event.target.checked)}
-              type="checkbox"
-            />
-            <span>Reduced motion</span>
-            <span className="home-settings-choice-state">{reducedMotion ? "On" : "Off"}</span>
-          </label>
-          {(reducedMotion || systemReducedMotion) && (
+          <div className="home-settings-options">
+            {motionChoices.map((choice) => (
+              <label
+                className={`home-settings-choice${motionPreference === choice.value ? " is-selected" : ""}`}
+                key={choice.value}
+              >
+                <input
+                  checked={motionPreference === choice.value}
+                  name="motion-preference"
+                  onChange={() => handleMotionChange(choice.value)}
+                  type="radio"
+                  value={choice.value}
+                />
+                <span className="home-settings-motion-copy">
+                  <span>{choice.label}</span>
+                  <small>{choice.description}</small>
+                </span>
+                {motionPreference === choice.value && (
+                  <span aria-hidden="true" className="home-settings-choice-state">
+                    Active
+                  </span>
+                )}
+              </label>
+            ))}
+          </div>
+          {motionPreference === "force" && systemReducedMotion ? (
             <p className="home-settings-note">
-              Page wipes and animated feedback are disabled while reduced motion is active. Static
-              cursor cues remain available.
+              Force motion overrides your device’s reduced-motion setting.
             </p>
-          )}
+          ) : effectiveReducedMotion ? (
+            <p className="home-settings-note">
+              Page transitions and animated feedback are limited. Static cursor cues remain
+              available.
+            </p>
+          ) : null}
         </fieldset>
 
         <fieldset className="home-settings-fieldset home-settings-custom-fieldset">
           <legend>Custom theme</legend>
           <p className="home-settings-custom-description">
-            Edit a safe JSON palette or load one from your device. Apply only when it is valid.
+            Edit the colors and shadows in the JSON below. Invalid values cannot be applied.
           </p>
 
           <label className="home-settings-json-label" htmlFor="home-settings-custom-json">
-            <span>Theme document</span>
+            <span>Theme JSON</span>
             <textarea
               aria-describedby={customFeedbackIds || undefined}
               aria-invalid={customIssues.length > 0}
@@ -342,7 +381,7 @@ function HomeSettingsPanel() {
             </label>
             <button className="home-settings-action" onClick={handleDownloadTemplate} type="button">
               <Download aria-hidden="true" size={15} />
-              <span>Template</span>
+              <span>Download template</span>
             </button>
           </div>
 
@@ -353,7 +392,7 @@ function HomeSettingsPanel() {
               onClick={handleApplyCustomTheme}
               type="button"
             >
-              Apply custom
+              Apply theme
             </button>
             {customTheme && (
               <>
@@ -363,7 +402,7 @@ function HomeSettingsPanel() {
                   type="button"
                 >
                   <Download aria-hidden="true" size={15} />
-                  <span>Export</span>
+                  <span>Export theme</span>
                 </button>
                 <button
                   className="home-settings-action"
@@ -371,7 +410,7 @@ function HomeSettingsPanel() {
                   type="button"
                 >
                   <RotateCcw aria-hidden="true" size={15} />
-                  <span>Reset</span>
+                  <span>Remove custom theme</span>
                 </button>
               </>
             )}
@@ -387,7 +426,7 @@ function HomeSettingsPanel() {
         ref={triggerRef}
         aria-controls="home-settings-panel"
         aria-expanded={isOpen}
-        aria-label={isOpen ? "Close interface settings" : "Open interface settings"}
+        aria-label={isOpen ? "Close appearance settings" : "Open appearance settings"}
         className="home-settings-trigger"
         data-state={isOpen ? "open" : "closed"}
         onClick={() => (isOpen ? closeSettings() : openPanel("settings"))}
@@ -400,7 +439,5 @@ function HomeSettingsPanel() {
 }
 
 export default function HomeSettings() {
-  const location = useLocation();
-  if (location.pathname !== "/") return null;
   return <HomeSettingsPanel />;
 }
