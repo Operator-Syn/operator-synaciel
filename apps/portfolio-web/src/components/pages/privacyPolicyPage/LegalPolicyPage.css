@@ -3,7 +3,6 @@
     width: 100%;
     max-width: none;
     margin-inline: 0;
-    padding-bottom: 2rem;
 }
 
 .legal-policy-coordinates {
@@ -584,10 +583,6 @@
 }
 
 @media (max-width: 640px) {
-    .legal-policy-page {
-        padding-bottom: 6rem;
-    }
-
     .legal-policy-page .privacy-policy-context-return {
         margin-top: 0.75rem;
     }
