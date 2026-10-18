@@ -27,7 +27,7 @@ test("uses a reusable accessible modal instead of native browser confirmation", 
   assert.match(modalSource, /dialogRef\.current\?\.contains\(document\.activeElement\)/);
   assert.match(modalSource, /returnFocusRef/);
   assert.match(modalStyles, /position:\s*fixed/);
-  assert.match(modalStyles, /z-index:\s*60/);
+  assert.match(modalStyles, /z-index:\s*var\(--layer-modal\)/);
   assert.match(modalStyles, /background:\s*var\(--color-canvas-overlay/);
 });
 
@@ -110,7 +110,7 @@ test("uses a full-screen mobile dialog with stable reading rows", async () => {
   assert.match(fabSource, /if \(!isDialogPresentation\) return;/);
   assert.match(
     cssSource,
-    /\.portfolio-assistant\[data-assistant-mobile-modal="true"\] \.portfolio-assistant-panel\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?inset:\s*0;[\s\S]*?height:\s*100dvh;[\s\S]*?max-height:\s*none;/,
+    /\.portfolio-assistant\[data-assistant-mobile-modal="true"\] \.portfolio-assistant-panel\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?inset-block:\s*calc\(4\.5rem \+ 1px \+ env\(safe-area-inset-top\)\) 0;[\s\S]*?inset-inline:\s*0;[\s\S]*?height:\s*auto;[\s\S]*?max-height:\s*none;/,
   );
   assert.match(
     cssSource,
