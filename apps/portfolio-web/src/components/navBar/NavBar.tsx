@@ -17,10 +17,8 @@ interface NavBarProps {
 export default function NavBar({ brandName, links }: NavBarProps) {
   const [expanded, setExpanded] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isNavHidden, setIsNavHidden] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const lastScrollYRef = useRef(0);
   const location = useLocation();
 
   const closeNavigation = useCallback(() => {
@@ -57,40 +55,12 @@ export default function NavBar({ brandName, links }: NavBarProps) {
   }, [closeNavigation, expanded]);
 
   useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const scrollDelta = currentScrollY - lastScrollYRef.current;
+    const handleScroll = () => setIsScrolled(window.scrollY > 12);
 
-      setIsScrolled(currentScrollY > 12);
-
-      if (currentScrollY <= 12 || scrollDelta < -4 || expanded) {
-        setIsNavHidden(false);
-      } else if (scrollDelta > 4) {
-        setIsNavHidden(true);
-      }
-
-      lastScrollYRef.current = currentScrollY;
-    };
-
-    lastScrollYRef.current = window.scrollY;
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [expanded]);
-
-  useEffect(() => {
-    const root = document.documentElement;
-
-    if (isNavHidden && !expanded) {
-      root.dataset.navigationHidden = "true";
-    } else {
-      delete root.dataset.navigationHidden;
-    }
-
-    return () => {
-      delete root.dataset.navigationHidden;
-    };
-  }, [expanded, isNavHidden]);
+  }, []);
 
   useEffect(() => {
     if (location.pathname) closeNavigation();
@@ -99,8 +69,7 @@ export default function NavBar({ brandName, links }: NavBarProps) {
   return (
     <header
       ref={navRef}
-      className={`navigation-shell fixed inset-x-0 top-0 z-40 border-b border-line bg-canvas/95 backdrop-blur-md transition-shadow ${isScrolled || expanded ? "shadow-panel" : ""}`}
-      data-navigation-hidden={isNavHidden && !expanded ? "true" : "false"}
+      className={`navigation-shell fixed inset-x-0 top-0 z-[var(--layer-navigation)] border-b border-line bg-canvas/95 backdrop-blur-md transition-shadow ${isScrolled || expanded ? "shadow-panel" : ""}`}
     >
       <div className="page-frame-wide flex min-h-[4.5rem] items-center justify-between gap-6 px-0">
         <TransitionNavLink
