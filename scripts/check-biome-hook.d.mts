@@ -1,5 +1,6 @@
 export const BIOME_CHECK_COMMAND: readonly string[];
 export const MAX_FEEDBACK_CHARS: number;
+export const MAX_TOOL_RESULT_CHARS: number;
 
 export type BiomeCheckResult = {
   readonly status: number;
@@ -9,10 +10,6 @@ export type BiomeCheckResult = {
 export type BiomeHookFeedback = {
   readonly decision: "block";
   readonly reason: string;
-  readonly hookSpecificOutput: {
-    readonly hookEventName: "PostToolUse";
-    readonly additionalContext: string;
-  };
 };
 
 type BiomeSpawn = (
@@ -37,4 +34,5 @@ export function runBiomeCheck(options?: {
 export function buildBiomeHookFeedback(input: {
   readonly toolName?: unknown;
   readonly output?: unknown;
+  readonly toolResponse?: unknown;
 }): BiomeHookFeedback;
