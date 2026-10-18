@@ -12,13 +12,15 @@
     inset-inline-end: 0;
     inset-block-end: calc(100% + var(--floating-control-gap));
     width: min(22rem, calc(100vw - 2rem));
+    font-family: var(--font-body);
+    text-transform: none;
     max-height: min(46rem, calc(100vh - 2rem));
     max-height: min(46rem, calc(100dvh - 2rem));
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
-    scrollbar-color: var(--color-line-strong) transparent;
+    scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
     scrollbar-width: thin;
     border: 1px solid var(--color-line-strong);
     background: var(--color-surface);
@@ -50,7 +52,7 @@
     inset-block-start: 0;
     z-index: 1;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 1rem;
     border-bottom: 1px solid var(--color-line);
@@ -59,12 +61,12 @@
 }
 
 .home-settings-header h2 {
-    margin-top: 0.35rem;
+    margin: 0;
     color: var(--color-text);
     font-family: var(--font-display);
-    font-size: 1.35rem;
+    font-size: 1.45rem;
     font-weight: 400;
-    line-height: 1;
+    line-height: 1.08;
 }
 
 .home-settings-close,
@@ -106,7 +108,7 @@
     margin: 0;
     border: 0;
     border-bottom: 1px solid var(--color-line);
-    padding: 1rem;
+    padding: 0 1rem 1.5rem;
 }
 
 .home-settings-fieldset:last-of-type {
@@ -114,7 +116,8 @@
 }
 
 .home-settings-fieldset legend {
-    margin-bottom: 0.65rem;
+    margin: 0 0 0.5rem;
+    padding-block-start: 1.25rem;
     color: var(--color-text-faint);
     font-family: var(--font-mono);
     font-size: var(--text-meta);
@@ -155,6 +158,24 @@
     accent-color: var(--color-signal);
 }
 
+.home-settings-motion-copy {
+    display: grid;
+    min-width: 0;
+    gap: 0.2rem;
+}
+
+.home-settings-motion-copy > span {
+    color: var(--color-text);
+    font-size: 0.88rem;
+    line-height: 1.25;
+}
+
+.home-settings-motion-copy small {
+    color: var(--color-text-muted);
+    font-size: 0.74rem;
+    line-height: 1.4;
+}
+
 .home-settings-choice-state {
     color: var(--color-signal);
     font-family: var(--font-mono);
@@ -165,16 +186,17 @@
 
 .home-settings-note {
     margin: 0.65rem 0 0;
-    color: var(--color-text-faint);
-    font-family: var(--font-mono);
-    font-size: var(--text-meta);
+    color: var(--color-text-muted);
+    font-size: 0.82rem;
+    line-height: 1.45;
 }
 
 .home-settings-custom-description {
-    margin: 0 0 0.75rem;
+    max-width: 38ch;
+    margin: 0 0 0.9rem;
     color: var(--color-text-muted);
-    font-size: 0.85rem;
-    line-height: 1.45;
+    font-size: 0.9rem;
+    line-height: 1.5;
 }
 
 .home-settings-json-label {
@@ -201,7 +223,7 @@
     line-height: 1.45;
     text-transform: none;
     scrollbar-gutter: stable;
-    scrollbar-color: var(--color-line-strong) transparent;
+    scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
     scrollbar-width: thin;
 }
 
@@ -318,7 +340,7 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@scope (html[data-motion-mode="reduced"]) {
     .home-settings-panel,
     .home-settings-close,
     .home-settings-trigger {
