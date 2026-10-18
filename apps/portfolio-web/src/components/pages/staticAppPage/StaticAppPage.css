@@ -187,11 +187,7 @@
 }
 
 .static-app-section-mark {
-    display: flex;
     grid-column: 1;
-    flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
     padding-top: 0.3rem;
     color: var(--color-signal);
 }
@@ -201,10 +197,6 @@
     font-size: clamp(1.8rem, 4vw, 3.4rem);
     letter-spacing: -0.04em;
     line-height: 1;
-}
-
-.static-app-section-mark svg {
-    color: var(--color-text-faint);
 }
 
 .static-app-section-content {
@@ -403,14 +395,11 @@
     }
 
     .static-app-section-mark {
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
         padding-top: 0;
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@scope (html[data-motion-mode="reduced"]) {
     .static-app-summary-item {
         animation: none;
         opacity: 1;
