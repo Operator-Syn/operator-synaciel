@@ -5,6 +5,7 @@ import {
   MAX_DIFF_PREVIEW_CHARACTERS,
   MAX_PREPARED_FILES,
   MAX_SOURCE_READ_CHUNK_CHARACTERS,
+  MAX_VERIFICATION_OUTPUT_CHARACTERS,
 } from "./policy.ts";
 
 const nonEmptyString = z.string().min(1);
@@ -128,7 +129,7 @@ const verificationCheckSchema = z.strictObject({
   ]),
   command: z.array(nonEmptyString).min(1),
   status: z.number().int(),
-  output: z.string().max(12_000),
+  output: z.string().max(MAX_VERIFICATION_OUTPUT_CHARACTERS),
   passed: z.boolean(),
 });
 
