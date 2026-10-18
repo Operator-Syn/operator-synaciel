@@ -3,7 +3,6 @@
     width: 100%;
     max-width: none;
     margin: 0;
-    padding-bottom: clamp(5rem, 8vw, 8rem);
 }
 
 .static-app-coordinates {
@@ -307,10 +306,6 @@
 }
 
 @media (max-width: 640px) {
-    .static-app-page {
-        padding-bottom: 6rem;
-    }
-
     .static-app-hero {
         gap: 2rem;
         margin-top: 0.75rem;
