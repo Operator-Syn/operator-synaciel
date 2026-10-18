@@ -580,7 +580,7 @@ export default function MediaModal({
       aria-describedby={modalDetailsId}
       aria-labelledby={modalTitleId}
       aria-modal="true"
-      className="media-modal-backdrop fixed inset-0 z-50 grid place-items-center bg-canvas/90 p-4 backdrop-blur-sm"
+      className="media-modal-backdrop fixed inset-0 z-[var(--layer-modal)] grid place-items-center bg-canvas/90 p-4 backdrop-blur-sm"
       data-state={show ? "open" : "closing"}
       data-cursor="zoom-out"
       onAnimationEnd={handleModalAnimationEnd}
