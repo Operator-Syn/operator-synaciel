@@ -61,14 +61,14 @@ export default function App() {
               })}
               <Route path="*" element={<NotFound />} />
             </Routes>
+
+            <FloatingControlsDock>
+              <PortfolioAssistantFab />
+              <HomeSettings />
+              <QuickNavigation />
+            </FloatingControlsDock>
           </Suspense>
         </main>
-
-        <FloatingControlsDock>
-          <PortfolioAssistantFab />
-          <HomeSettings />
-          <QuickNavigation />
-        </FloatingControlsDock>
       </PageTransition>
     </FloatingControlsProvider>
   );
