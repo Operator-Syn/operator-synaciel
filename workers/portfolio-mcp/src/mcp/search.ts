@@ -78,6 +78,8 @@ export type SearchResult =
       summary: string;
       url: string;
       project_link: string;
+      categories: string[];
+      stack: string[];
       matched_terms: string[];
       matched_fields: string[];
     }
@@ -151,6 +153,9 @@ export async function buildSearchResults(
         { name: "title", value: project.title },
         { name: "short_description", value: project.short_description },
         { name: "long_description", value: project.long_description },
+        { name: "categories", value: project.categories.join(" ") },
+        { name: "stack", value: project.stack.join(" ") },
+        { name: "highlights", value: project.highlights.join(" ") },
       ],
       terms,
       mode,
@@ -163,6 +168,8 @@ export async function buildSearchResults(
       summary: project.short_description,
       url: getPortfolioPageUrl("project"),
       project_link: project.project_link,
+      categories: [...project.categories],
+      stack: [...project.stack],
       matched_terms: match.matchedTerms,
       matched_fields: match.matchedFields,
       score: match.score,
