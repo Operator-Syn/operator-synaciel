@@ -99,6 +99,9 @@ function createFakeEnvironment(): PortfolioApiEnvironment {
               short_description: "A software portfolio",
               long_description: "A longer software portfolio description",
               project_link: "https://github.com/Operator-Syn/portfolio",
+              categories: ["developer-tooling"],
+              stack: ["react"],
+              highlights: ["Public MCP"],
               display_order: 1,
               created_at: "2026-08-27T00:00:00.000Z",
               internal_note: "hidden",
@@ -116,6 +119,9 @@ function createFakeEnvironment(): PortfolioApiEnvironment {
                 short_description: "A software portfolio",
                 long_description: "A longer software portfolio description",
                 project_link: "https://github.com/Operator-Syn/portfolio",
+                categories: ["developer-tooling"],
+                stack: ["react"],
+                highlights: ["Public MCP"],
                 display_order: 1,
                 created_at: "2026-08-27T00:00:00.000Z",
                 internal_note: "hidden",
@@ -385,6 +391,9 @@ test("returns search provenance and applies match_mode to caller-provided terms"
         short_description: "React-Flask P2P mentorship ecosystem",
         long_description: "A school-centered mentorship platform.",
         project_link: "https://github.com/Operator-Syn/peer-tutoring-platform",
+        categories: ["education-platform", "mentorship"],
+        stack: ["react", "flask"],
+        highlights: ["Domain-restricted authentication"],
         display_order: 1,
         created_at: "2026-08-27T00:00:00.000Z",
       },
@@ -396,6 +405,9 @@ test("returns search provenance and applies match_mode to caller-provided terms"
         short_description: "A financial services platform",
         long_description: "The project delivers calculators and customer inquiry support.",
         project_link: "https://www.baifinance.com.au/",
+        categories: ["client-website", "fintech"],
+        stack: ["next.js", "supabase"],
+        highlights: ["Loan calculators"],
         display_order: 2,
         created_at: "2026-08-27T00:00:00.000Z",
       },
@@ -428,8 +440,10 @@ test("returns search provenance and applies match_mode to caller-provided terms"
     summary: "React-Flask P2P mentorship ecosystem",
     url: "https://syn-forge.com/projects",
     project_link: "https://github.com/Operator-Syn/peer-tutoring-platform",
+    categories: ["education-platform", "mentorship"],
+    stack: ["react", "flask"],
     matched_terms: ["react", "flask"],
-    matched_fields: ["short_description"],
+    matched_fields: ["short_description", "stack"],
   });
 
   const broad = await buildSearchResults(api, "BAI Finance Flask", 10);
@@ -439,6 +453,52 @@ test("returns search provenance and applies match_mode to caller-provided terms"
     "finance",
   ]);
   assert.equal((await buildSearchResults(api, "BAI Finance Flask", 10, "all")).length, 0);
+});
+
+test("matches project facets and returns them as provenance", async () => {
+  const api = {
+    getOverview: async () => ({ site: {}, profile: [], sections: [] }),
+    getAllProjects: async () => [
+      {
+        id: 8,
+        title: "BAI Finance Website",
+        type: "image" as const,
+        url: "https://example.com/bai-finance.png",
+        short_description: "A financial services platform",
+        long_description: "Customer inquiry support.",
+        project_link: "https://www.baifinance.com.au/",
+        categories: ["client-website", "fintech"],
+        stack: ["next.js", "supabase"],
+        highlights: ["Loan calculators"],
+        display_order: 1,
+        created_at: "2026-08-27T00:00:00.000Z",
+      },
+    ],
+    getAllCertificates: async () => [],
+    getSnippetTree: async () => [],
+  } as unknown as PortfolioApiClient;
+
+  const byStack = await buildSearchResults(api, "supabase", 10);
+  assert.equal(byStack.length, 1);
+  assert.deepEqual(byStack[0] && "matched_fields" in byStack[0] ? byStack[0].matched_fields : [], [
+    "stack",
+  ]);
+  assert.deepEqual(byStack[0] && "categories" in byStack[0] ? byStack[0].categories : [], [
+    "client-website",
+    "fintech",
+  ]);
+
+  const byCategory = await buildSearchResults(api, "fintech", 10);
+  assert.deepEqual(
+    byCategory[0] && "matched_fields" in byCategory[0] ? byCategory[0].matched_fields : [],
+    ["categories"],
+  );
+
+  const byHighlight = await buildSearchResults(api, "calculators", 10);
+  assert.deepEqual(
+    byHighlight[0] && "matched_fields" in byHighlight[0] ? byHighlight[0].matched_fields : [],
+    ["highlights"],
+  );
 });
 
 test("uses only generic normalization and does not treat record words as kind filters", async () => {
@@ -453,6 +513,9 @@ test("uses only generic normalization and does not treat record words as kind fi
         short_description: "A project",
         long_description: "A project description.",
         project_link: "https://example.com/project",
+        categories: [],
+        stack: [],
+        highlights: [],
         display_order: 1,
         created_at: "2026-08-27T00:00:00.000Z",
       },
@@ -736,6 +799,12 @@ test("advertises strict output schemas and returns structured public results", a
       target_url: null,
     },
   ]);
+
+  const projectList = readStructuredContent(results[2]) as {
+    data: Array<Record<string, unknown>>;
+  };
+  assert.deepEqual(projectList.data[0]?.categories, ["developer-tooling"]);
+  assert.deepEqual(projectList.data[0]?.stack, ["react"]);
 
   const search = readStructuredContent(results[1]);
   assert.ok(Array.isArray(search.results));
