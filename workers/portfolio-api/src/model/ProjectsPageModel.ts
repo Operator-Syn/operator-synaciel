@@ -1,4 +1,5 @@
 import type { D1Database } from "@cloudflare/workers-types";
+import { parseJsonStringArray } from "../utils/contentValidation";
 
 export type ProjectMediaType = "video" | "image";
 
@@ -18,6 +19,9 @@ export interface ProjectArchiveProject {
   short_description: string;
   long_description: string;
   project_link: string;
+  categories: string[];
+  stack: string[];
+  highlights: string[];
   display_order: number;
   created_at: string;
   gallery: ProjectArchiveGalleryItem[];
@@ -44,6 +48,9 @@ interface ProjectRow {
   short_description: string;
   long_description: string;
   project_link: string;
+  categories: string | null;
+  stack: string | null;
+  highlights: string | null;
   display_order: number | null;
   created_at: string | null;
 }
@@ -120,6 +127,9 @@ function toProject(row: ProjectRow): ProjectArchiveProject {
     short_description: String(row.short_description),
     long_description: String(row.long_description),
     project_link: String(row.project_link),
+    categories: parseJsonStringArray(row.categories),
+    stack: parseJsonStringArray(row.stack),
+    highlights: parseJsonStringArray(row.highlights),
     display_order: normalizeDisplayOrder(row.display_order),
     created_at: row.created_at ? String(row.created_at) : "",
     gallery: [],
@@ -167,6 +177,9 @@ export class ProjectsPageModel {
             p.short_description,
             p.long_description,
             p.project_link,
+            p.categories,
+            p.stack,
+            p.highlights,
             COALESCE(p.display_order, 0) AS display_order,
             p.created_at
           FROM Projects p
