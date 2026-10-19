@@ -13,7 +13,7 @@ export function registerSearchTool(server: McpServer, api: PortfolioApiClient): 
     {
       title: "Search portfolio",
       description:
-        "Search public profile, project, certificate, and snippet fields for caller-provided terms. Use list tools for collection-wide requests and detail/read tools after finding a record. Results include match provenance; all mode requires every supplied term to match the same record.",
+        "Search public profile, project (including categories, stack, and highlights), certificate, and snippet fields for caller-provided terms. Use list tools for collection-wide requests and detail/read tools after finding a record. Results include match provenance; all mode requires every supplied term to match the same record.",
       inputSchema: z.strictObject({
         query: z
           .string()
