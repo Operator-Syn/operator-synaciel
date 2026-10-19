@@ -13,7 +13,7 @@ export function registerProjectTools(server: McpServer, api: PortfolioApiClient)
     {
       title: "List projects",
       description:
-        "List public portfolio projects with cursor pagination and canonical project links.",
+        "List public portfolio projects with cursor pagination, canonical project links, categories, stack, and highlights.",
       inputSchema: z.strictObject({
         limit: z.number().int().safe().min(1).max(MAX_LIST_LIMIT).optional(),
         cursor: z.string().trim().min(1).max(512).optional(),
@@ -34,7 +34,8 @@ export function registerProjectTools(server: McpServer, api: PortfolioApiClient)
     "get_project",
     {
       title: "Get project",
-      description: "Return one public project record and its gallery media by numeric project ID.",
+      description:
+        "Return one public project record, including categories, stack, and highlights, and its gallery media by numeric project ID.",
       inputSchema: z.strictObject({ id: z.number().int().safe().positive() }),
       outputSchema: projectDetailsOutputSchema,
       annotations: { readOnlyHint: true },
