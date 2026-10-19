@@ -50,6 +50,12 @@ function toSectionItem(item: SectionItem): SectionItem {
   };
 }
 
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
 function toProjectRecord(project: ProjectRecord): ProjectRecord {
   return {
     id: project.id,
@@ -59,6 +65,9 @@ function toProjectRecord(project: ProjectRecord): ProjectRecord {
     short_description: project.short_description,
     long_description: project.long_description,
     project_link: project.project_link,
+    categories: toStringArray(project.categories),
+    stack: toStringArray(project.stack),
+    highlights: toStringArray(project.highlights),
     display_order: project.display_order,
     created_at: project.created_at,
   };
