@@ -41,6 +41,7 @@ type HooksManifest = {
 };
 
 test("runs the expected repository Biome command", () => {
+  assert.deepEqual(BIOME_CHECK_COMMAND, ["npm", "run", "check:biome"]);
   const invocation: SpawnInvocation[] = [];
   const result = runBiomeCheck({
     spawn(command, argumentsList, options) {
@@ -74,9 +75,20 @@ test("returns bounded model-visible feedback for a failed Biome check", () => {
   assert.equal("hookSpecificOutput" in feedback, false);
   assert.match(feedback.reason, /"status":"applied"/);
   assert.match(feedback.reason, /"finalFileHashes"/);
-  assert.match(feedback.reason, /check:biome:github/);
+  assert.match(feedback.reason, /rerun npm run check:biome\./);
   assert.match(feedback.reason, /Fix the reported diagnostics/);
   assert.match(feedback.reason, /Ai\.tsx/);
+
+  const detailedFeedback = buildBiomeHookFeedback({
+    toolName: "apply_patch",
+    output: [
+      "tests/example.ts format ━━━━━━━━━━━",
+      "  × Formatter would have printed the following content:",
+      "    1 │ const probe = { a: 1 };",
+      "      │            + + +  +  + +",
+    ].join("\n"),
+  });
+  assert.match(detailedFeedback.reason, /const probe = \{ a: 1 \};/);
 
   const truncated = buildBiomeHookFeedback({
     toolName: "apply_patch",
