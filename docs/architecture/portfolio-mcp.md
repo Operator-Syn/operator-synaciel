@@ -118,8 +118,8 @@ The server is intentionally read-only. It exposes no create, update, delete, upl
 | --- | --- | --- |
 | `get_portfolio_overview` | None | `{ site, profile, sections }` with public identity, capabilities, home content, and public/social/contact links |
 | `search_portfolio` | `query` (1–21,600 characters), optional `limit` (1–200), optional `match_mode` (`broad` or `all`) | `{ query, results[] }`; each result carries `matched_terms` and `matched_fields`, profile matching includes public section labels, content, and `target_url` values, and complete links come from the overview tool |
-| `list_projects` | Optional `limit` (1–12) and cursor (1–512 characters) | `{ data: project[], pagination }` |
-| `get_project` | Positive safe integer `id` | `{ project, gallery, canonical_url }` |
+| `list_projects` | Optional `limit` (1–12) and cursor (1–512 characters) | `{ data: project[], pagination }`; each project includes its categories, stack, and highlights |
+| `get_project` | Positive safe integer `id` | `{ project, gallery, canonical_url }`; the project includes its categories, stack, and highlights |
 | `list_certificates` | Optional `limit` (1–12) and cursor (1–512 characters) | `{ data: certificate[], pagination }` |
 | `get_certificate` | Positive safe integer `id` | `{ certificate, items, canonical_url }` |
 | `list_snippets` | None | `{ snippets[] }` with public Markdown/PDF metadata and canonical links |
@@ -135,8 +135,9 @@ The output schemas are advertised in `tools/list` and validated by the MCP SDK b
 
 `search_portfolio` performs only generic Unicode, case, punctuation, whitespace,
 and duplicate-term normalization. It has no stop-word list, record-kind aliases,
-technology vocabulary, precision patterns, or intent triggers. Every remaining
-caller-provided term participates in matching: `broad` mode accepts any supplied
+technology vocabulary, precision patterns, or intent triggers. Project matching
+includes title, short description, long description, categories, stack, and
+highlights. Every remaining caller-provided term participates in matching: `broad` mode accepts any supplied
 term, while `all` mode requires every supplied term to match the same record.
 Collection-wide requests belong to the list tools, and record-specific claims
 belong to the detail/read tools. The response preserves the terms and field
