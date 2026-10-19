@@ -185,10 +185,12 @@ reported as `cached: true`.
 The repository-local `.codex/hooks.json` runs
 `scripts/check-biome-hook.mjs` synchronously after `apply_patch`, `Edit`, and
 `Write` operations and after the repository MCP's
-`apply_repository_change`. The hook invokes
-`npm run check:biome:github`. A passing check is silent. A failing check blocks
-the tool result with bounded GitHub-format diagnostics inside the result's
-`reason` and asks the agent to fix them and rerun the check before continuing.
+`apply_repository_change`. The hook invokes `npm run check:biome`, whose default
+reporter includes the formatter's suggested content. A passing check is silent.
+A failing check blocks the tool result with bounded diagnostics inside the
+result's `reason` and asks the agent to fix them and rerun the check before
+continuing. The GitHub-format reporter remains the CI/PR surface; it omits the
+formatter diff, so the hook does not use it.
 The hook copies the original tool response into that reason before the
 diagnostics, so blocking does not hide the MCP apply result.
 Diagnostics stay in the tool result instead of
