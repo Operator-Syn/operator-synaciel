@@ -85,14 +85,17 @@ INSERT INTO section_items (section_id, label, image_url, target_url, display_ord
 -- =====================================================
 
 -- PROJECT 1: CSV System
-INSERT INTO Projects (title, type, url, short_description, long_description, project_link) 
+INSERT INTO Projects (title, type, url, short_description, long_description, project_link, categories, stack, highlights)
 VALUES (
     'Simple Student Information System (CSV Version)', 
     'image', 
     'https://personal-portfolio-bucket.syn-forge.com/Projects/student-info-system-csv.png', 
     'A school requirement. The Simple Student Information System is a CSV-based project for managing student, program, and college records with basic CRUD, search, and sort functions.', 
     'This is a demo GUI application for managing a simple student database stored in CSV files. The Simple Student Information System is a CSV-based project for managing student, program, and college records with basic CRUD-L, search, and sort functions. Made with IntelliJ IDEA’s GUI Designer Note: Form files created by IntelliJ may not be readable or compatible with other IDEs.', 
-    'https://github.com/Operator-Syn/CCC151-Development-Environment'
+    'https://github.com/Operator-Syn/CCC151-Development-Environment',
+    '["academic-project","data-management"]',
+    '["java","swing","csv"]',
+    '["Java Swing CRUD interface","Search and sort over CSV records","Student, program, and college records"]'
 );
 
 -- Gallery for Project 1 (Uses the clean filename now!)
@@ -105,14 +108,17 @@ VALUES (
 );
 
 -- PROJECT 2: MySQL System
-INSERT INTO Projects (title, type, url, short_description, long_description, project_link)
+INSERT INTO Projects (title, type, url, short_description, long_description, project_link, categories, stack, highlights)
 VALUES (
     'Simple Student Information System (MySQL Version)',
     'image',
     'https://personal-portfolio-bucket.syn-forge.com/Projects/student-info-system-MySQL.png',
     'A school requirement. The MySQL Database Implementation of the Simple Student Information System that was previously a CSV-based project for managing student, program, and college records with basic CRUD, search, and sort functions.',
     'This is the second version of the Student Information System, now featuring MySQL Database implementation. It continues to support the management of student, program, and college records with core functionalities such as CRUD-L operations, search, and sorting. The MySQL database setup is containerized using Docker for improved portability and ease of deployment. Although this is the second version. The application is coded from scratch with Netbean''s Matisse''s Drag and Drop for Java Swing Applications with improved code structure and prim OOP Application.',
-    'https://github.com/Operator-Syn/studentDatabaseMySQLIntegration'
+    'https://github.com/Operator-Syn/studentDatabaseMySQLIntegration',
+    '["academic-project","data-management"]',
+    '["java","swing","mysql","docker"]',
+    '["MySQL-backed persistence","Dockerized database setup","CRUD, search, and sort","OOP restructure"]'
 );
 
 -- Gallery for Project 2
