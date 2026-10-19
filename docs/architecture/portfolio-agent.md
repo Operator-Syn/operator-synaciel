@@ -167,7 +167,10 @@ follow-ups and comparisons.
 
 The first model step requires a tool call but does not prescribe which tool.
 After one usable portfolio result, tool choice becomes automatic and natural
-prose can stream. Text emitted before usable evidence is suppressed at the
+prose can stream. Project records carry `categories`, `stack`, and `highlights`
+facets from the public API; they are ordinary evidence fields for categorization
+and technology questions, while search keeps generic term matching rather than
+vocabulary routing. Text emitted before usable evidence is suppressed at the
 stream boundary. Empty results and tool failures do not unlock an answer; after
 three consecutive unusable results, the turn ends with a brief statement that
 the answer could not be verified from public portfolio evidence. This is an
