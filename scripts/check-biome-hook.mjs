@@ -4,9 +4,9 @@ import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-export const BIOME_CHECK_COMMAND = ["npm", "run", "check:biome:github"];
-export const MAX_FEEDBACK_CHARS = 12_000;
-export const MAX_TOOL_RESULT_CHARS = 6_000;
+export const BIOME_CHECK_COMMAND = ["npm", "run", "check:biome"];
+export const MAX_FEEDBACK_CHARS = 24_000;
+export const MAX_TOOL_RESULT_CHARS = 12_000;
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -19,7 +19,8 @@ function displayToolName(value) {
 function truncateFeedback(value) {
   if (value.length <= MAX_FEEDBACK_CHARS) return value;
 
-  const marker = "\n... Biome hook output truncated; rerun the check for the complete report ...\n";
+  const marker =
+    "\n... Biome hook output truncated; rerun npm run check:biome for the complete report ...\n";
   const available = MAX_FEEDBACK_CHARS - marker.length;
   const headLength = Math.ceil(available * 0.65);
   const tailLength = available - headLength;
@@ -101,7 +102,8 @@ export function buildBiomeHookFeedback({ toolName, output, toolResponse }) {
   if (toolResult) reason.push(toolResult, "");
   reason.push(
     `Biome failed after ${shownToolName}. The operation already completed; do not repeat it blindly.`,
-    "Fix the reported diagnostics, then rerun npm run check:biome:github.",
+    "Fix the reported diagnostics, then rerun npm run check:biome.",
+    "Formatting fixes may be applied with npx biome format --write <reported path>; review the resulting diff.",
     "Continue the original task after the check passes.",
     "",
     diagnostics,
