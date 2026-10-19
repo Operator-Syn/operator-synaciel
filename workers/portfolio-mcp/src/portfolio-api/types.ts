@@ -45,6 +45,9 @@ export type ProjectRecord = {
   short_description: string;
   long_description: string;
   project_link: string;
+  categories: string[];
+  stack: string[];
+  highlights: string[];
   display_order: number;
   created_at: string;
 };
