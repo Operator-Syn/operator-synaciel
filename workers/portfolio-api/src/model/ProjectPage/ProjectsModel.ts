@@ -1,5 +1,6 @@
 // workers/portfolio-api/src/model/ProjectPage/ProjectsModel.ts
 import type { D1Database } from "@cloudflare/workers-types";
+import { parseJsonStringArray, serializeJsonStringArray } from "../../utils/contentValidation";
 
 export interface Project {
   id: number;
@@ -9,6 +10,9 @@ export interface Project {
   short_description: string;
   long_description: string;
   project_link: string;
+  categories: string[];
+  stack: string[];
+  highlights: string[];
   display_order: number;
   created_at: string;
 }
@@ -20,6 +24,9 @@ export interface ProjectCreate {
   short_description: string;
   long_description: string;
   project_link: string;
+  categories?: string[];
+  stack?: string[];
+  highlights?: string[];
   display_order?: number;
 }
 
@@ -31,9 +38,29 @@ type ProjectRow = {
   short_description: string;
   long_description: string;
   project_link: string;
+  categories: string | null;
+  stack: string | null;
+  highlights: string | null;
   display_order: number;
   created_at: string;
 };
+
+function toProject(row: ProjectRow): Project {
+  return {
+    id: Number(row.id),
+    title: String(row.title),
+    type: row.type === "video" ? "video" : "image",
+    url: String(row.url),
+    short_description: String(row.short_description),
+    long_description: String(row.long_description),
+    project_link: String(row.project_link),
+    categories: parseJsonStringArray(row.categories),
+    stack: parseJsonStringArray(row.stack),
+    highlights: parseJsonStringArray(row.highlights),
+    display_order: Number(row.display_order),
+    created_at: String(row.created_at),
+  };
+}
 
 export class ProjectsModel {
   private db: D1Database;
@@ -47,17 +74,7 @@ export class ProjectsModel {
 
     if (!results) return [];
 
-    return results.map((r) => ({
-      id: Number(r.id),
-      title: String(r.title),
-      type: r.type === "video" ? "video" : "image",
-      url: String(r.url),
-      short_description: String(r.short_description),
-      long_description: String(r.long_description),
-      project_link: String(r.project_link),
-      display_order: Number(r.display_order),
-      created_at: String(r.created_at),
-    }));
+    return results.map(toProject);
   }
 
   async getById(id: number): Promise<Project | null> {
@@ -66,25 +83,14 @@ export class ProjectsModel {
 
     if (!results || results.length === 0) return null;
 
-    const r = results[0];
-    return {
-      id: Number(r.id),
-      title: String(r.title),
-      type: r.type === "video" ? "video" : "image",
-      url: String(r.url),
-      short_description: String(r.short_description),
-      long_description: String(r.long_description),
-      project_link: String(r.project_link),
-      display_order: Number(r.display_order),
-      created_at: String(r.created_at),
-    };
+    return toProject(results[0]);
   }
 
   async create(project: ProjectCreate): Promise<number> {
     const query = `
       INSERT INTO Projects 
-        (title, type, url, short_description, long_description, project_link, display_order)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+        (title, type, url, short_description, long_description, project_link, categories, stack, highlights, display_order)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING id
     `;
 
@@ -97,6 +103,9 @@ export class ProjectsModel {
         project.short_description,
         project.long_description,
         project.project_link,
+        serializeJsonStringArray(project.categories),
+        serializeJsonStringArray(project.stack),
+        serializeJsonStringArray(project.highlights),
         project.display_order ?? 0,
       )
       .first<{ id: number }>();
@@ -115,20 +124,26 @@ export class ProjectsModel {
       "short_description",
       "long_description",
       "project_link",
+      "categories",
+      "stack",
+      "highlights",
       "display_order",
     ]);
 
     for (const [key, value] of Object.entries(project)) {
       if (!allowedKeys.has(key)) continue;
       fields.push(`${key}=?`);
-      values.push(value);
+      values.push(
+        key === "categories" || key === "stack" || key === "highlights"
+          ? serializeJsonStringArray(value as string[] | undefined)
+          : value,
+      );
     }
 
     if (!fields.length) return;
 
     const query = `UPDATE Projects SET ${fields.join(", ")} WHERE id=?`;
 
-    // FIX: Replaced [...values, id] with ...values, id
     await this.db
       .prepare(query)
       .bind(...values, id)
@@ -136,7 +151,6 @@ export class ProjectsModel {
   }
 
   async delete(id: number): Promise<void> {
-    // FIX: Removed the array brackets around id
     await this.db.prepare(`DELETE FROM Projects WHERE id=?`).bind(id).run();
   }
 }
