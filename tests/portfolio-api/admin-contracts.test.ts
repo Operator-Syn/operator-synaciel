@@ -53,6 +53,8 @@ test("project facets accept only bounded string arrays and normalize tokens", as
     { stack: ["ok", 2] },
     { highlights: ["x".repeat(161)] },
     { categories: Array.from({ length: 7 }, (_, index) => `tag-${index}`) },
+    { stack: Array.from({ length: 13 }, (_, index) => `tool-${index}`) },
+    { stack: ["x".repeat(49)] },
   ]) {
     const response = await ProjectsController.create(context({ ...baseProject, ...facets }));
     assert.equal((response as Response).status, 400);
@@ -118,6 +120,43 @@ test("project facets accept only bounded string arrays and normalize tokens", as
     .filter((statement) => statement.query.startsWith("UPDATE Projects"))
     .at(-1);
   assert.deepEqual(facetUpdate?.values, ['["client-website"]', 1]);
+});
+
+test("public project reads expose facets", async () => {
+  const row = {
+    id: 1,
+    title: "Facet project",
+    type: "image",
+    url: "https://example.com/project.png",
+    short_description: "Short summary",
+    long_description: "Long description",
+    project_link: "https://example.com/project",
+    categories: '["client-website","fintech"]',
+    stack: '["next.js"]',
+    highlights: '["Loan calculators"]',
+    display_order: 0,
+    created_at: "2026-08-27T00:00:00.000Z",
+  };
+  const database = {
+    prepare() {
+      return {
+        all: async () => ({ results: [row] }),
+        bind: () => ({ all: async () => ({ results: [row] }) }),
+      };
+    },
+  };
+
+  const listResponse = await ProjectsController.list(context({}, {}, database));
+  const list = (await (listResponse as Response).json()) as Array<Record<string, unknown>>;
+  assert.deepEqual(list[0]?.categories, ["client-website", "fintech"]);
+  assert.deepEqual(list[0]?.stack, ["next.js"]);
+  assert.deepEqual(list[0]?.highlights, ["Loan calculators"]);
+
+  const getResponse = await ProjectsController.get(context({}, { id: "1" }, database));
+  const project = (await (getResponse as Response).json()) as Record<string, unknown>;
+  assert.deepEqual(project.categories, ["client-website", "fintech"]);
+  assert.deepEqual(project.stack, ["next.js"]);
+  assert.deepEqual(project.highlights, ["Loan calculators"]);
 });
 
 test("profile and certificate-item writes reject coerced object values", async () => {
