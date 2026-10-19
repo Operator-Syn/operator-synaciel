@@ -9,6 +9,7 @@ import {
   parseMediaType,
   parseNonNegativeInteger,
   parsePositiveId,
+  parseStringList,
   readContentRecord,
 } from "../../utils/contentValidation";
 
@@ -21,7 +22,16 @@ const PROJECT_KEYS = [
   "short_description",
   "long_description",
   "project_link",
+  "categories",
+  "stack",
+  "highlights",
   "display_order",
+] as const;
+
+const PROJECT_FACET_FIELDS = [
+  { key: "categories", maxItems: 6, maxLength: 48, normalize: "token" },
+  { key: "stack", maxItems: 12, maxLength: 48, normalize: "token" },
+  { key: "highlights", maxItems: 8, maxLength: 160, normalize: "text" },
 ] as const;
 
 function validateProjectBody(body: unknown, partial: boolean): Record<string, unknown> | Response {
@@ -62,6 +72,22 @@ function validateProjectBody(body: unknown, partial: boolean): Record<string, un
         { status: 400 },
       );
     result.display_order = displayOrder;
+  }
+  for (const field of PROJECT_FACET_FIELDS) {
+    if (partial && record[field.key] === undefined) continue;
+    const value = record[field.key] === undefined ? [] : record[field.key];
+    const list = parseStringList(value, {
+      maxItems: field.maxItems,
+      maxLength: field.maxLength,
+      normalize: field.normalize,
+    });
+    if (list === null) {
+      return Response.json(
+        { error: `${field.key} must be an array of at most ${field.maxItems} short strings` },
+        { status: 400 },
+      );
+    }
+    result[field.key] = list;
   }
   return result;
 }
