@@ -109,6 +109,15 @@ test("project facets accept only bounded string arrays and normalize tokens", as
   assert.equal((updateResponse as Response).status, 200);
   const update = statements.find((statement) => statement.query.startsWith("UPDATE Projects"));
   assert.deepEqual(update?.values, ["Renamed", 1]);
+
+  const facetUpdateResponse = await ProjectsController.update(
+    context({ categories: ["Client Website"] }, { id: "1" }, database),
+  );
+  assert.equal((facetUpdateResponse as Response).status, 200);
+  const facetUpdate = statements
+    .filter((statement) => statement.query.startsWith("UPDATE Projects"))
+    .at(-1);
+  assert.deepEqual(facetUpdate?.values, ['["client-website"]', 1]);
 });
 
 test("profile and certificate-item writes reject coerced object values", async () => {
