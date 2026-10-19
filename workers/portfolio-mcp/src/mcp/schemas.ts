@@ -46,6 +46,9 @@ const projectRecordSchema = z.strictObject({
   short_description: z.string(),
   long_description: z.string(),
   project_link: z.string(),
+  categories: z.array(z.string()),
+  stack: z.array(z.string()),
+  highlights: z.array(z.string()),
   display_order: z.number().int(),
   created_at: z.string(),
 });
@@ -217,6 +220,8 @@ const projectSearchResultSchema = z.strictObject({
   summary: z.string(),
   url: z.string(),
   project_link: z.string(),
+  categories: z.array(z.string()),
+  stack: z.array(z.string()),
 });
 
 const certificateSearchResultSchema = z.strictObject({
