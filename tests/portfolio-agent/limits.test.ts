@@ -383,6 +383,7 @@ test("gives the model a natural portfolio scope and evidence contract", () => {
   assert.match(prompt, /purpose boundary/i);
   assert.match(prompt, /unrelated request, decline briefly/i);
   assert.match(prompt, /Search results are candidates, not proof/i);
+  assert.match(prompt, /categories, stack, and highlights/i);
   assert.match(prompt, /Choose, call, and chain/i);
   assert.match(prompt, /do not guess/i);
   assert.match(prompt, /separate narrator/i);
