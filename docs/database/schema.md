@@ -21,7 +21,9 @@ Wrangler applies them.
 - `sections` stores ordered dynamic content groups.
 - `section_items` stores ordered section content and cascades when its section
   is deleted.
-- `Projects` stores portfolio projects and their main media URL.
+- `Projects` stores portfolio projects, their main media URL, and agent-facing
+  facets: JSON-encoded `categories`, `stack`, and `highlights` arrays that the
+  public site does not render.
 - `GalleryItems` stores ordered media belonging to a project and cascades with
   that project.
 - `Certificates` stores certificate entries and their main media URL.
@@ -29,6 +31,12 @@ Wrangler applies them.
   certificate.
 - `Snippets` stores a recursive directory/file tree. File entries reference an
   R2 `storage_path`; directory entries have no `file_format`.
+
+The project facets are descriptive metadata exposed through the public JSON API
+and Portfolio MCP. `categories` and `stack` are normalized to lowercase kebab
+tokens; `highlights` keeps short display phrases. The admin dashboard edits
+them, and the initial D1 backfill only runs while a project's `categories` value
+is still empty.
 
 The snippets archive derives display paths, canonical document slugs, and bounded
 Markdown excerpts at read time. The v2 document reads therefore use the existing
