@@ -1,4 +1,4 @@
-export const PORTFOLIO_TOOL_NAMES = [
+export const PORTFOLIO_MCP_TOOL_NAMES = [
   "get_portfolio_overview",
   "search_portfolio",
   "list_projects",
@@ -7,6 +7,13 @@ export const PORTFOLIO_TOOL_NAMES = [
   "get_certificate",
   "list_snippets",
   "read_snippet",
+] as const;
+
+export const PORTFOLIO_PAGE_TOOL_NAME = "read_portfolio_page" as const;
+
+export const PORTFOLIO_TOOL_NAMES = [
+  ...PORTFOLIO_MCP_TOOL_NAMES,
+  PORTFOLIO_PAGE_TOOL_NAME,
 ] as const;
 
 export type PortfolioToolName = (typeof PORTFOLIO_TOOL_NAMES)[number];
@@ -59,7 +66,7 @@ export function selectPortfolioTools<T>(tools: Record<string, T>): Record<string
 }
 
 export function hasCompletePortfolioToolCatalog(tools: Record<string, unknown>): boolean {
-  return PORTFOLIO_TOOL_NAMES.every((name) =>
+  return PORTFOLIO_MCP_TOOL_NAMES.every((name) =>
     Object.entries(tools).some(
       ([candidate, tool]) =>
         tool !== undefined && (candidate === name || candidate.endsWith(`_${name}`)),
@@ -132,6 +139,12 @@ export function hasUsablePortfolioToolResult(toolName: string, value: unknown): 
       return (
         typeof root.name === "string" &&
         (typeof root.content === "string" || typeof root.page_url === "string")
+      );
+    case "read_portfolio_page":
+      return (
+        typeof root.page_url === "string" &&
+        typeof root.content === "string" &&
+        root.content.trim().length > 0
       );
   }
 }
