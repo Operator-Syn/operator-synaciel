@@ -63,6 +63,15 @@ const PORTFOLIO_TOOL_SOURCE_URLS: Partial<Record<PortfolioToolName, string>> = {
   list_snippets: "https://syn-forge.com/snippets",
   read_snippet: "https://syn-forge.com/snippets",
 };
+const PORTFOLIO_TOOL_SOURCE_TITLES: Partial<Record<PortfolioToolName, string>> = {
+  get_portfolio_overview: "Syn-Forge home",
+  list_projects: "Syn-Forge projects",
+  get_project: "Syn-Forge projects",
+  list_certificates: "Syn-Forge certificates",
+  get_certificate: "Syn-Forge certificates",
+  list_snippets: "Syn-Forge snippets",
+  read_snippet: "Syn-Forge snippets",
+};
 
 function objectValue(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -542,7 +551,10 @@ export function extractPortfolioSources(toolName: string, value: unknown): Portf
   const sources = new Map<string, PortfolioSource>();
   const defaultUrl = PORTFOLIO_TOOL_SOURCE_URLS[name];
   if (defaultUrl) {
-    sources.set(defaultUrl, { url: defaultUrl, title: name.replaceAll("_", " ") });
+    sources.set(defaultUrl, {
+      url: defaultUrl,
+      title: PORTFOLIO_TOOL_SOURCE_TITLES[name] ?? name.replaceAll("_", " "),
+    });
   }
   const visit = (candidate: unknown, inheritedTitle: string): void => {
     if (Array.isArray(candidate)) {
@@ -768,8 +780,13 @@ export function recordPortfolioToolResult(
     return { ...state, unusableResults: state.unusableResults + 1 };
   }
 
-  const sources = new Map(state.sources.map((source) => [source.url, source] as const));
+  const sources = new Map<string, PortfolioSource>();
   for (const source of extractPortfolioSources(toolName, value)) {
+    if (!sources.has(source.url) && sources.size < MAX_PORTFOLIO_SOURCES) {
+      sources.set(source.url, source);
+    }
+  }
+  for (const source of state.sources) {
     if (!sources.has(source.url) && sources.size < MAX_PORTFOLIO_SOURCES) {
       sources.set(source.url, source);
     }
