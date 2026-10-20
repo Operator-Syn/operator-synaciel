@@ -34,6 +34,8 @@ import {
   hasCompletePortfolioToolCatalog,
   portfolioToolChoice,
   recordPortfolioToolResult,
+  type StoredPortfolioEvidence,
+  seedPortfolioEvidenceState,
   selectPortfolioTools,
   shouldStopPortfolioToolLoop,
 } from "./evidence.ts";
@@ -83,6 +85,13 @@ import {
   coalesceToolInputDeltas,
   isModelOutputChunkType,
 } from "./stream.ts";
+import {
+  createThreadEvidenceStore,
+  type EvidenceSql,
+  ensureThreadEvidenceSchema,
+  evidenceFromToolResult,
+  prefetchPortfolioOverview,
+} from "./thread-evidence.ts";
 import {
   isThreadTitleEligible,
   persistGeneratedThreadTitle as persistThreadTitle,
@@ -149,6 +158,13 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
       >;
   }
 
+  private evidenceSql(): EvidenceSql {
+    return (query, ...values) =>
+      this.sql(query as unknown as TemplateStringsArray, ...values) as unknown as Array<
+        Record<string, unknown>
+      >;
+  }
+
   private persistIdentity(identity: AgentProps): void {
     this.identity = identity;
     this.sql(["DELETE FROM portfolio_agent_identity"] as unknown as TemplateStringsArray);
@@ -206,6 +222,7 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
         "CREATE TABLE IF NOT EXISTS portfolio_agent_identity (sub TEXT NOT NULL, sid TEXT NOT NULL, tid TEXT NOT NULL, q INTEGER NOT NULL)",
       ] as unknown as TemplateStringsArray);
       ensurePortfolioPageCacheSchema(this.pageCacheSql());
+      ensureThreadEvidenceSchema(this.evidenceSql());
       if (props) {
         this.persistIdentity(props);
       }
@@ -441,6 +458,27 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
       render: createPortfolioPageRenderer(this.environment),
       cache: createSqlPortfolioPageCache(this.pageCacheSql()),
     });
+    const now = Date.now();
+    const evidenceStore = createThreadEvidenceStore(this.evidenceSql());
+    let threadEvidence: StoredPortfolioEvidence | null = null;
+    try {
+      threadEvidence = evidenceStore.load(now);
+    } catch {
+      threadEvidence = null;
+    }
+    if (!threadEvidence) {
+      const prefetched = await prefetchPortfolioOverview(catalog.tools);
+      if (prefetched) {
+        threadEvidence = evidenceFromToolResult(prefetched.toolName, prefetched.result, now);
+        if (threadEvidence) {
+          try {
+            evidenceStore.save(threadEvidence);
+          } catch {
+            // Evidence persistence is best effort.
+          }
+        }
+      }
+    }
     const selectedTools = asToolSet({
       ...catalog.tools,
       read_portfolio_page: pageTool as unknown as McpTool,
@@ -451,7 +489,7 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
       ignoreIncompleteToolCalls: true,
     });
     const modelMessages = mergeAdjacentUserMessages(converted as ModelMessage[]);
-    const systemPrompt = buildSystemPrompt();
+    const systemPrompt = buildSystemPrompt(threadEvidence?.snapshot);
     const provisionalTokens = estimateQuotaUnits(
       estimateModelTokens(systemPrompt, modelMessages),
       PROVISIONAL_OUTPUT_TOKEN_ALLOWANCE,
@@ -512,7 +550,9 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
       requestId: options?.requestId,
     });
     const workersai = createWorkersAI({ binding: this.environment.AI as never });
-    let evidenceState = createPortfolioEvidenceState();
+    let evidenceState = threadEvidence
+      ? seedPortfolioEvidenceState(threadEvidence.sources)
+      : createPortfolioEvidenceState();
     let result: ReturnType<typeof streamText>;
     try {
       result = streamText({
@@ -541,6 +581,21 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
           const previousSuccesses = evidenceState.successfulResults;
           evidenceState = recordPortfolioToolResult(evidenceState, toolCall.toolName, toolOutput);
           const usable = evidenceState.successfulResults > previousSuccesses;
+          if (usable) {
+            const persisted = evidenceFromToolResult(
+              toolCall.toolName,
+              toolOutput,
+              Date.now(),
+              evidenceState.sources,
+            );
+            if (persisted) {
+              try {
+                evidenceStore.save(persisted);
+              } catch {
+                // Evidence persistence is best effort.
+              }
+            }
+          }
           this.emitDiagnostic({
             phase: "mcp-tool",
             outcome: usable ? "succeeded" : "failed",
