@@ -3,6 +3,10 @@
     width: 100%;
 }
 
+.ai-page-coordinates {
+    border-bottom: 1px solid var(--color-line);
+}
+
 .ai-page-hero,
 .ai-page-panel {
     border: 1px solid var(--color-line);
