@@ -40,7 +40,7 @@ Both are part of the [[design-system/README|Design System]] contract.
 
 ## Visitor preferences
 
-The Home route exposes a settings utility inside the shared floating-control dock; it does not add layout flow. The assistant, Home Settings, and Quick Navigation use the same safe-area-aware inline/block anchor and `--floating-control-gap` token. Closed triggers remain a horizontal dock, while an open panel temporarily yields the inactive trigger so the active surface owns the edge without overlap.
+The shared floating-control dock carries the settings utility, assistant, and Quick Navigation on every coordinate-railed route without adding layout flow. They use the same safe-area-aware inline/block anchor and `--floating-control-gap` token. Closed triggers remain a horizontal dock, while an open panel temporarily yields the inactive trigger so the active surface owns the edge without overlap.
 Dalan is the default theme. Of Times Old is an opt-in pastel blue-hour palette
 newly composed from the prior portfolio's blue as visual reference only. It
 remaps semantic color roles without restoring former spacing, type, imagery, or
