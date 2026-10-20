@@ -484,7 +484,24 @@ export default function PointerCoordinates({
           {handshakeAnnouncement}
         </span>
       </button>
-      <span className="coordinate-rail-status">{statusLabel}</span>
+      <button
+        aria-describedby="coordinate-rail-instruction"
+        aria-label="Run signal handshake"
+        className="coordinate-rail-status"
+        data-cursor="help"
+        data-handshake-state={handshakeState}
+        onClick={completeHandshake}
+        onPointerCancel={handleCoordinatePointerEnd}
+        onPointerDown={handleCoordinatePointerDown}
+        onPointerEnter={handleCoordinatePointerEnter}
+        onPointerLeave={cancelHandshake}
+        onPointerMove={handleCoordinatePointerMove}
+        onPointerUp={handleCoordinatePointerEnd}
+        title="Run signal handshake"
+        type="button"
+      >
+        {statusLabel}
+      </button>
       <div className="coordinate-rail-controls" data-coordinate-rail-controls />
     </div>
   );
