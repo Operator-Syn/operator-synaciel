@@ -37,14 +37,12 @@
     text-transform: uppercase;
 }
 
-.ai-page h1,
-.ai-page h2,
-.ai-page h3,
-.ai-page p {
+.ai-page-hero :where(h1, h2, h3, p),
+.ai-page-panel :where(h1, h2, h3, p) {
     margin-top: 0;
 }
 
-.ai-page h1 {
+.ai-page-hero h1 {
     max-width: none;
     margin-bottom: 1.7rem;
     color: var(--color-text);
@@ -185,7 +183,8 @@
     margin-bottom: 0;
 }
 
-.ai-page h2 {
+.ai-page-hero h2,
+.ai-page-panel h2 {
     max-width: 20ch;
     margin-bottom: 0;
     color: var(--color-text);
@@ -541,7 +540,7 @@
         width: min(100%, 22rem);
     }
 
-    .ai-page h1 {
+    .ai-page-hero h1 {
         font-size: clamp(3.25rem, 15vw, 5.5rem);
         line-height: 0.95;
     }
@@ -555,7 +554,7 @@
         margin-bottom: 1.5rem;
     }
 
-    .ai-page h2 {
+    .ai-page-panel h2 {
         font-size: clamp(2.2rem, 10vw, 3.4rem);
     }
 
