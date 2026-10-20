@@ -144,11 +144,12 @@ rediscovery passes the same absolute deadline to the remove/re-add helper,
 which will not begin cleanup, another add attempt, or a retry backoff after the
 shared window expires.
 
-Once that bounded phase ends, the agent selects the eight portfolio tools by
+Once that bounded phase ends, the agent selects the eight portfolio MCP tools by
 capability name: overview, search, project list/detail, certificate list/detail,
-and snippet list/read. The four project-linked GitHub tools remain public MCP
-capabilities but are not exposed to this portfolio-only assistant. No question
-text is inspected to make that decision.
+and snippet list/read. It then adds the agent-local `read_portfolio_page` tool.
+The four project-linked GitHub tools remain public MCP capabilities but are not
+exposed to this portfolio-only assistant. No question text is inspected to make
+that decision.
 
 After authentication, question, and safety gates, the agent performs a cheap
 quota-availability check for the Google subject before touching MCP. A paused
@@ -158,8 +159,8 @@ call. This is an availability peek, not the authoritative reservation; the
 final atomic reservation after model-message conversion handles the exact
 request size and concurrent-turn race.
 
-Every turn that reaches generation receives the same eight selected tools in
-both `convertToModelMessages` and `streamText`. There is no mandatory search or
+Every turn that reaches generation receives the same eight MCP tools plus the
+local page reader in both `convertToModelMessages` and `streamText`. There is no mandatory search or
 overview call, question classifier, stop-word removal, record-kind map,
 technology vocabulary, precision pattern, or scope-word catalog. The model
 decides whether to search, list, inspect, or read and may chain calls for
@@ -175,6 +176,27 @@ stream boundary. Empty results and tool failures do not unlock an answer; after
 three consecutive unusable results, the turn ends with a brief statement that
 the answer could not be verified from public portfolio evidence. This is an
 evidence gate, not semantic routing.
+
+## Same-origin page reads
+
+The agent also exposes one local tool, `read_portfolio_page`, alongside the
+eight MCP tools. It uses the `BROWSER` Browser Rendering binding to render a
+page under exactly `https://syn-forge.com`; inputs are path-only and query
+strings, hashes, credentials, backslash or encoded traversal, and external
+redirects are rejected. All pathnames are allowed, including `/snippets` and
+`/snippets/document/:id/:slug`. Rendering waits for the site shell, reads
+`main.innerText`, and treats the result as untrusted evidence.
+
+The full normalized text is cached in the agent Durable Object SQLite for one
+hour and pruned to 24 hours or the 20 newest pages. A read returns a
+12,000-character chunk by default with up to 32,000 characters per response;
+`offset`, `next_offset`, `total_characters`, and `complete` let the model
+continue through the full page, so the page is not truncated at 12k. A
+1,000,000-character safety ceiling returns an error instead of silently
+truncating. Each turn permits at most three page reads. Browser Rendering is
+included on Workers Free (10 minutes/day, 3 concurrent browsers) and Workers
+Paid (10 hours/month, 10 concurrent; $0.09 per additional browser hour). The
+public Portfolio MCP remains unchanged; the page reader is agent-local.
 
 Native model tool parts are the activity source of truth. Successful results
 are inspected only for their documented public shape and canonical link fields;
