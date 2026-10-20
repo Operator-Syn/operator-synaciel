@@ -62,6 +62,13 @@ import {
   remainingMcpDiscoveryTimeout,
 } from "./mcp.ts";
 import {
+  createPortfolioPageRenderer,
+  createReadPortfolioPageTool,
+  createSqlPortfolioPageCache,
+  ensurePortfolioPageCacheSchema,
+  type PageCacheSql,
+} from "./page-reader.ts";
+import {
   checkRollingQuotaAvailability,
   consumeRollingQuota,
   estimateQuotaUnits,
@@ -135,6 +142,13 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
     emitPortfolioAgentDiagnostic(this.diagnosticSink, input);
   }
 
+  private pageCacheSql(): PageCacheSql {
+    return (query, ...values) =>
+      this.sql(query as unknown as TemplateStringsArray, ...values) as unknown as Array<
+        Record<string, unknown>
+      >;
+  }
+
   private persistIdentity(identity: AgentProps): void {
     this.identity = identity;
     this.sql(["DELETE FROM portfolio_agent_identity"] as unknown as TemplateStringsArray);
@@ -191,6 +205,7 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
       this.sql([
         "CREATE TABLE IF NOT EXISTS portfolio_agent_identity (sub TEXT NOT NULL, sid TEXT NOT NULL, tid TEXT NOT NULL, q INTEGER NOT NULL)",
       ] as unknown as TemplateStringsArray);
+      ensurePortfolioPageCacheSchema(this.pageCacheSql());
       if (props) {
         this.persistIdentity(props);
       }
@@ -422,7 +437,14 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
       );
     }
 
-    const selectedTools = asToolSet(catalog.tools);
+    const pageTool = createReadPortfolioPageTool({
+      render: createPortfolioPageRenderer(this.environment),
+      cache: createSqlPortfolioPageCache(this.pageCacheSql()),
+    });
+    const selectedTools = asToolSet({
+      ...catalog.tools,
+      read_portfolio_page: pageTool as unknown as McpTool,
+    });
     const modelInputMessages = stripAssistantReasoning(this.messages);
     const converted = await convertToModelMessages(modelInputMessages, {
       tools: selectedTools,
