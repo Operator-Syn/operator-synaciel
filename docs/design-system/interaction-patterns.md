@@ -229,8 +229,8 @@ their separate contracts.
 
 ## Visitor preferences
 
-The Home-only settings utility, Quick Navigation, and site-wide assistant share
-one safe-area-aware floating-control dock. Closed triggers stay horizontal with a
+The shared settings utility, rail-mounted Quick Navigation, and site-wide
+assistant share one safe-area-aware floating-control dock. Closed triggers stay horizontal with a
 deliberate gap; opening one panel yields the inactive trigger so the active panel
 gets the full dock edge and no panel or focus target can cover another. Escape and
 close actions restore focus to the trigger, while native browser titles remain the
