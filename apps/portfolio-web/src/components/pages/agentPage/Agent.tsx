@@ -1,3 +1,8 @@
+import {
+  PORTFOLIO_ASSISTANT_LABEL,
+  PORTFOLIO_ASSISTANT_NAME,
+  PORTFOLIO_ASSISTANT_ROLE,
+} from "../../portfolioAssistant/portfolioAssistantIdentity";
 import StaticAppPage, { type StaticAppPageConfig } from "../staticAppPage/StaticAppPage";
 
 const agentPageConfig: StaticAppPageConfig = {
@@ -28,7 +33,21 @@ const agentPageConfig: StaticAppPageConfig = {
       value: "Evidence-grounded portfolio questions and private thread history",
     },
   ],
-  policyReturnLabel: "Feilhann Agent",
+  jsonLd: {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    description:
+      "Feilhann is the authenticated, evidence-grounded portfolio assistant for Syn-Forge.",
+    disambiguatingDescription: PORTFOLIO_ASSISTANT_ROLE,
+    name: PORTFOLIO_ASSISTANT_NAME,
+    publisher: {
+      "@type": "Organization",
+      name: "Syn-Forge",
+      url: "https://syn-forge.com/",
+    },
+    url: "https://syn-forge.com/agent",
+  },
+  policyReturnLabel: PORTFOLIO_ASSISTANT_LABEL,
   policyReturnTo: "/agent",
   sections: [
     {
