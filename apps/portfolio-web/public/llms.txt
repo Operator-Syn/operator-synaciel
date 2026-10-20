@@ -2,6 +2,18 @@
 
 Syn-Forge is the software developer portfolio of Operator-Syn.
 
+## Feilhann portfolio assistant
+
+Feilhann is Syn-Forge's authenticated, site-wide portfolio assistant. It helps visitors understand Operator-Syn's published portfolio and points them to canonical public pages.
+
+- Name: Feilhann
+- Role: Portfolio assistant
+- Scope: public portfolio projects, certificates, snippets, and page content
+- Evidence: the public Portfolio MCP and rendered pages under `https://syn-forge.com`
+- Boundary: read-only; no account, repository, portfolio-record, or external-service changes
+
+Feilhann is the interactive site assistant. The public Portfolio MCP described below remains a separate, unauthenticated read-only interface for compatible agents.
+
 ## Public Portfolio MCP (Streamable HTTP)
 
 Syn-Forge provides a public, read-only Model Context Protocol server for agents that need grounded portfolio information.
