@@ -27,4 +27,7 @@ test("surfaces every hidden route in quick navigation", async () => {
       `${route.name} should be available from quick navigation`,
     );
   }
+
+  assert.doesNotMatch(quickNavigation, /visibleRoutePrefixes|isVisible|if \(!isVisible/);
+  assert.match(quickNavigation, /className="quick-navigation-toggle/);
 });
