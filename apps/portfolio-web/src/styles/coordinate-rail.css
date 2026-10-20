@@ -54,7 +54,7 @@
         padding-inline: 0.25rem;
     }
 
-    .coordinate-rail.has-pointer::after {
+    .coordinate-rail-frame.has-pointer::after {
         position: absolute;
         top: 50%;
         left: var(--coordinate-pointer-x, 50%);
@@ -76,7 +76,7 @@
         color: var(--color-signal-strong);
     }
 
-    .coordinate-rail[data-handshake-state="complete"]::after {
+    .coordinate-rail-frame[data-handshake-state="complete"]::after {
         position: absolute;
         top: 50%;
         left: var(--coordinate-pointer-x, 50%);
@@ -90,7 +90,7 @@
         animation: homepage-handshake-signal 700ms var(--motion-ease) both;
     }
 
-    .coordinate-rail[data-pointer-surface="native"]::after {
+    .coordinate-rail-frame[data-pointer-surface="native"]::after {
         display: none;
     }
 
