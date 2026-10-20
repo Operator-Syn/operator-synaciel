@@ -88,7 +88,7 @@ test("accepts only usable successful portfolio results as evidence", () => {
   );
   assert.deepEqual(extractStructuredContent(projectResult), projectResult.structuredContent);
   assert.deepEqual(extractPortfolioSources("portfolio_get_project", projectResult), [
-    { url: "https://syn-forge.com/projects", title: "get project" },
+    { url: "https://syn-forge.com/projects", title: "Syn-Forge projects" },
     {
       url: "https://github.com/Operator-Syn/peer-tutoring-platform",
       title: "The Hootline",
@@ -249,6 +249,34 @@ test("projects, certificates, and snippets receive distinct compact slots", () =
   assert.ok(snippet);
   assert.equal(snippet.slot, "snippet:7");
   assert.match(snippet.snapshot, /Public notes/);
+});
+
+test("prioritizes sources from the current tool result", () => {
+  let state = recordPortfolioToolResult(createPortfolioEvidenceState(), "get_portfolio_overview", {
+    structuredContent: {
+      site: { status: "Available" },
+      profile: [],
+      sections: [{ id: 1, title: "Links", section_type: "links", items: [] }],
+    },
+  });
+  state = recordPortfolioToolResult(state, "list_projects", {
+    structuredContent: {
+      data: [
+        {
+          id: 5,
+          title: "The Hootline",
+          project_link: "https://github.com/Operator-Syn/peer-tutoring-platform",
+        },
+      ],
+      pagination: { limit: 6, total: 1, has_more: false, next_cursor: null },
+    },
+  });
+
+  assert.equal(state.sources[0]?.url, "https://syn-forge.com/projects");
+  assert.equal(
+    state.sources.find((source) => source.url === "https://syn-forge.com/")?.title,
+    "Syn-Forge home",
+  );
 });
 
 test("seeds evidence state from prior ledger sources", () => {
