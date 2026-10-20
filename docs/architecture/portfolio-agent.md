@@ -160,15 +160,18 @@ final atomic reservation after model-message conversion handles the exact
 request size and concurrent-turn race.
 
 Every turn that reaches generation receives the same eight MCP tools plus the
-local page reader in both `convertToModelMessages` and `streamText`. There is no mandatory search or
-overview call, question classifier, stop-word removal, record-kind map,
-technology vocabulary, precision pattern, or scope-word catalog. The model
-decides whether to search, list, inspect, or read and may chain calls for
-follow-ups and comparisons.
+local page reader in both `convertToModelMessages` and `streamText`, and a fresh
+thread evidence snapshot when one is available. There is no mandatory search or
+overview call once fresh evidence exists; when none exists, the agent prefetches
+the overview once before generation. There is no question classifier, stop-word
+removal, record-kind map, technology vocabulary, precision pattern, or scope-word
+catalog. The model decides whether to search, list, inspect, or read and may
+chain calls for follow-ups and comparisons.
 
-The first model step requires a tool call but does not prescribe which tool.
-After one usable portfolio result, tool choice becomes automatic and natural
-prose can stream. Project records carry `categories`, `stack`, and `highlights`
+The first model step requires a tool call only when no fresh thread evidence is
+available. With a fresh snapshot, tool choice is automatic and the model may
+answer orientation or follow-up questions without another call. After one usable
+portfolio result, tool choice becomes automatic and natural prose can stream. Project records carry `categories`, `stack`, and `highlights`
 facets from the public API; they are ordinary evidence fields for categorization
 and technology questions, while search keeps generic term matching rather than
 vocabulary routing. Text emitted before usable evidence is suppressed at the
@@ -176,6 +179,19 @@ stream boundary. Empty results and tool failures do not unlock an answer; after
 three consecutive unusable results, the turn ends with a brief statement that
 the answer could not be verified from public portfolio evidence. This is an
 evidence gate, not semantic routing.
+
+## Thread evidence
+
+Successful portfolio tool results are persisted in the thread Durable Object
+SQLite as a bounded snapshot, validated source list, and capture timestamp. A
+later turn reuses that evidence for 30 minutes. If no fresh evidence exists, the
+agent calls `get_portfolio_overview` once with a 10-second timeout and seeds the
+turn from the result; a failed prefetch leaves the hard no-evidence gate in
+place. The snapshot is capped at 12,000 characters and injected into the system
+prompt as untrusted data, while the full tool result remains in the thread.
+Orientation and follow-ups can use the snapshot; new factual claims still call
+tools. Clef is not used because it is a decision model and would add a
+probabilistic router without fixing the per-turn evidence reset.
 
 ## Same-origin page reads
 
