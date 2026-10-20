@@ -7,8 +7,6 @@ import TransitionNavLink from "../pageTransition/TransitionNavLink";
 
 type QuickNavigationTab = "portfolio" | "apps";
 
-const visibleRoutePrefixes = ["/projects", "/certificates", "/snippets"];
-
 const links = {
   portfolio: [
     ["01", "Projects", "/projects"],
@@ -32,7 +30,6 @@ export default function QuickNavigation() {
   const toggleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const isOpen = activePanel === "quick-navigation";
-  const isVisible = visibleRoutePrefixes.some((prefix) => location.pathname.startsWith(prefix));
   const previousPathnameRef = useRef(location.pathname);
 
   const closeNavigation = useCallback(() => {
@@ -66,8 +63,6 @@ export default function QuickNavigation() {
     previousPathnameRef.current = location.pathname;
     closePanel("quick-navigation");
   }, [closePanel, location.pathname]);
-
-  if (!isVisible && !isOpen) return null;
 
   return (
     <div
@@ -141,21 +136,19 @@ export default function QuickNavigation() {
         </nav>
       </div>
 
-      {isVisible ? (
-        <button
-          ref={toggleRef}
-          aria-controls="quick-navigation-panel"
-          aria-expanded={isOpen}
-          aria-label={isOpen ? "Close quick navigation" : "Open quick navigation"}
-          className="quick-navigation-toggle inline-flex min-h-12 items-center gap-3 border border-line-strong bg-surface px-3 text-text shadow-panel transition-colors hover:border-signal hover:text-signal"
-          data-cursor="context-menu"
-          onClick={() => (isOpen ? closeNavigation() : openPanel("quick-navigation"))}
-          title="Quick navigation"
-          type="button"
-        >
-          <HomeIcon aria-hidden="true" size={15} />
-        </button>
-      ) : null}
+      <button
+        ref={toggleRef}
+        aria-controls="quick-navigation-panel"
+        aria-expanded={isOpen}
+        aria-label={isOpen ? "Close quick navigation" : "Open quick navigation"}
+        className="quick-navigation-toggle inline-flex min-h-12 items-center gap-3 border border-line-strong bg-surface px-3 text-text shadow-panel transition-colors hover:border-signal hover:text-signal"
+        data-cursor="context-menu"
+        onClick={() => (isOpen ? closeNavigation() : openPanel("quick-navigation"))}
+        title="Quick navigation"
+        type="button"
+      >
+        <HomeIcon aria-hidden="true" size={15} />
+      </button>
     </div>
   );
 }
