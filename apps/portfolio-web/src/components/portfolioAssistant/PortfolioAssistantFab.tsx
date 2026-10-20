@@ -68,6 +68,7 @@ import {
 import { portfolioAssistantAvailability } from "./portfolioAssistantAvailability.ts";
 import { portfolioAssistantConfig } from "./portfolioAssistantConfig.ts";
 import { describeAssistantError } from "./portfolioAssistantErrors.ts";
+import { PORTFOLIO_ASSISTANT_LABEL, PORTFOLIO_ASSISTANT_NAME } from "./portfolioAssistantIdentity";
 import {
   normalizeAssistantMarkdownText,
   transformAssistantMarkdownUrl,
@@ -823,7 +824,7 @@ function AssistantComingSoon() {
     <div className="portfolio-assistant-coming-soon">
       <MessageCircle aria-hidden="true" size={28} />
       <p className="eyebrow">In development</p>
-      <h3>Portfolio assistant coming soon.</h3>
+      <h3>{PORTFOLIO_ASSISTANT_NAME} coming soon.</h3>
       <p>
         We’re tuning a source-grounded guide to the work in this portfolio. It will answer with
         evidence from the archive and decline unrelated requests.
@@ -1414,7 +1415,7 @@ function AssistantMessageList({
                     size={15}
                   />
                 )}
-                <span>{message.role === "user" ? userDisplayName : "Assistant"}</span>
+                <span>{message.role === "user" ? userDisplayName : PORTFOLIO_ASSISTANT_NAME}</span>
                 {isStreamingMessage && !text ? (
                   <span aria-hidden="true" className="portfolio-assistant-streaming-mark" />
                 ) : null}
@@ -1442,7 +1443,7 @@ function AssistantMessageList({
               ) : null}
               {shouldShowTyping && isStreamingMessage ? (
                 <output
-                  aria-label="Assistant is reading portfolio sources"
+                  aria-label={`${PORTFOLIO_ASSISTANT_NAME} is reading portfolio sources`}
                   className="portfolio-assistant-typing portfolio-assistant-streaming-status"
                 >
                   <span aria-hidden="true" className="portfolio-assistant-typing-dots">
@@ -2197,7 +2198,7 @@ function AssistantChat({
         </div>
         {isStreaming && !isTranscriptPinnedToBottom ? (
           <button
-            aria-label="Jump to latest assistant response"
+            aria-label={`Jump to latest ${PORTFOLIO_ASSISTANT_NAME} response`}
             className="portfolio-assistant-jump-latest"
             onClick={handleJumpToLatest}
             type="button"
@@ -2798,7 +2799,7 @@ export default function PortfolioAssistantFab({ hideFab = false }: PortfolioAssi
     >
       {isOpen && isDialogPresentation && !isResponsiveModal ? (
         <button
-          aria-label="Close expanded portfolio assistant"
+          aria-label={`Close expanded ${PORTFOLIO_ASSISTANT_LABEL}`}
           className="portfolio-assistant-expanded-backdrop"
           onClick={dismissAssistantBackdrop}
           tabIndex={-1}
@@ -2809,7 +2810,7 @@ export default function PortfolioAssistantFab({ hideFab = false }: PortfolioAssi
         <>
           {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-modal is paired with the conditional dialog role. */}
           <section
-            aria-label="Portfolio assistant"
+            aria-label={PORTFOLIO_ASSISTANT_LABEL}
             aria-modal={isDialogPresentation ? "true" : undefined}
             id="portfolio-assistant-panel"
             className="portfolio-assistant-panel"
@@ -2833,7 +2834,7 @@ export default function PortfolioAssistantFab({ hideFab = false }: PortfolioAssi
           >
             <header className="portfolio-assistant-header">
               <div>
-                <p className="eyebrow">Syn-Forge assistant</p>
+                <p className="eyebrow">{PORTFOLIO_ASSISTANT_NAME}</p>
                 <h2>
                   {portfolioAssistantAvailability === "teaser"
                     ? "Coming soon."
@@ -2852,13 +2853,17 @@ export default function PortfolioAssistantFab({ hideFab = false }: PortfolioAssi
                     aria-expanded={isExpanded}
                     aria-label={
                       isExpanded
-                        ? "Collapse expanded portfolio assistant"
-                        : "Expand portfolio assistant for reading"
+                        ? `Collapse expanded ${PORTFOLIO_ASSISTANT_LABEL}`
+                        : `Expand ${PORTFOLIO_ASSISTANT_LABEL} for reading`
                     }
                     className="portfolio-assistant-icon"
                     onClick={toggleExpanded}
                     ref={expandRef}
-                    title={isExpanded ? "Collapse assistant" : "Expand assistant for reading"}
+                    title={
+                      isExpanded
+                        ? `Collapse ${PORTFOLIO_ASSISTANT_LABEL}`
+                        : `Expand ${PORTFOLIO_ASSISTANT_LABEL} for reading`
+                    }
                     type="button"
                   >
                     {isExpanded ? (
@@ -2869,10 +2874,10 @@ export default function PortfolioAssistantFab({ hideFab = false }: PortfolioAssi
                   </button>
                 ) : null}
                 <button
-                  aria-label="Close portfolio assistant"
+                  aria-label={`Close ${PORTFOLIO_ASSISTANT_LABEL}`}
                   className="portfolio-assistant-icon"
                   onClick={closeAssistant}
-                  title="Close portfolio assistant"
+                  title={`Close ${PORTFOLIO_ASSISTANT_LABEL}`}
                   type="button"
                 >
                   <X aria-hidden="true" size={17} />
@@ -2890,7 +2895,7 @@ export default function PortfolioAssistantFab({ hideFab = false }: PortfolioAssi
               ) : configurationError ? (
                 <div className="portfolio-assistant-sign-in">
                   <MessageCircle aria-hidden="true" size={28} />
-                  <h3>Assistant is not configured for this environment.</h3>
+                  <h3>{PORTFOLIO_ASSISTANT_NAME} is not configured for this environment.</h3>
                   <p>{configurationError}</p>
                 </div>
               ) : loading ? (
@@ -2910,7 +2915,7 @@ export default function PortfolioAssistantFab({ hideFab = false }: PortfolioAssi
               ) : (
                 <div className="portfolio-assistant-sign-in portfolio-assistant-sign-in-gate">
                   <div className="portfolio-assistant-sign-in-content">
-                    <h3>Ask about my work.</h3>
+                    <h3>Ask about Operator-Syn’s work.</h3>
                     <p>
                       Start a private thread. Answers are read-only and based on this portfolio.
                     </p>
@@ -2938,17 +2943,17 @@ export default function PortfolioAssistantFab({ hideFab = false }: PortfolioAssi
             aria-expanded={isOpen}
             aria-label={
               isOpen
-                ? "Close portfolio assistant"
+                ? `Close ${PORTFOLIO_ASSISTANT_LABEL}`
                 : portfolioAssistantAvailability === "teaser"
-                  ? "Open portfolio assistant (coming soon)"
-                  : "Open portfolio assistant"
+                  ? `Open ${PORTFOLIO_ASSISTANT_LABEL} (coming soon)`
+                  : `Open ${PORTFOLIO_ASSISTANT_LABEL}`
             }
             className="portfolio-assistant-fab"
             onClick={() => (isOpen ? closeAssistant() : void openAssistant())}
             title={
               portfolioAssistantAvailability === "teaser"
-                ? "Portfolio assistant — coming soon"
-                : "Portfolio assistant"
+                ? `${PORTFOLIO_ASSISTANT_LABEL} — coming soon`
+                : PORTFOLIO_ASSISTANT_LABEL
             }
             ref={fabRef}
             type="button"
