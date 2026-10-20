@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@cloudflare/ai-chat": "^0.11.0",
+    "@cloudflare/puppeteer": "^1.4.0",
     "@modelcontextprotocol/client": "2.0.0",
     "agents": "0.22.0",
     "ai": "^7.0.84",
