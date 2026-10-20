@@ -2,6 +2,7 @@ import { MessageCircle, X } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { focusFloatingControlTrigger } from "../floatingControls/focusFloatingControl";
 import { useFloatingControls } from "../floatingControls/useFloatingControls";
+import { PORTFOLIO_ASSISTANT_LABEL, PORTFOLIO_ASSISTANT_NAME } from "./portfolioAssistantIdentity";
 
 const LazyPortfolioAssistant = lazy(() => import("./PortfolioAssistantFab"));
 const ASSISTANT_RESPONSIVE_DIALOG_QUERY = "(max-width: 640px), (max-height: 560px)";
@@ -65,7 +66,7 @@ function AssistantEntryLoadingFallback({
       {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-modal is paired with the conditional dialog role. */}
       <section
         aria-busy="true"
-        aria-labelledby="portfolio-assistant-loading-title"
+        aria-labelledby="portfolio-assistant-loading-eyebrow portfolio-assistant-loading-title"
         aria-modal={isResponsiveModal ? true : undefined}
         className="portfolio-assistant-entry-loading"
         id="portfolio-assistant-panel"
@@ -104,14 +105,16 @@ function AssistantEntryLoadingFallback({
       >
         <header className="portfolio-assistant-entry-loading-header">
           <div>
-            <p className="eyebrow">Syn-Forge assistant</p>
+            <p className="eyebrow" id="portfolio-assistant-loading-eyebrow">
+              {PORTFOLIO_ASSISTANT_NAME}
+            </p>
             <h2 id="portfolio-assistant-loading-title">Ask the archive.</h2>
             <p className="portfolio-assistant-entry-loading-summary">
               Grounded in the portfolio MCP. No general-purpose work.
             </p>
           </div>
           <button
-            aria-label="Close portfolio assistant"
+            aria-label={`Close ${PORTFOLIO_ASSISTANT_LABEL}`}
             className="portfolio-assistant-entry-loading-close"
             onClick={onClose}
             ref={closeButtonRef}
@@ -150,7 +153,7 @@ function AssistantEntryLoadingFallback({
             <i />
             <i />
           </span>
-          <span>Opening the assistant…</span>
+          <span>Opening {PORTFOLIO_ASSISTANT_NAME}…</span>
         </output>
       </section>
     </>
@@ -211,11 +214,13 @@ export default function PortfolioAssistantFab() {
       <button
         aria-controls="portfolio-assistant-panel"
         aria-expanded={isOpen}
-        aria-label={isOpen ? "Close portfolio assistant" : "Open portfolio assistant"}
+        aria-label={
+          isOpen ? `Close ${PORTFOLIO_ASSISTANT_LABEL}` : `Open ${PORTFOLIO_ASSISTANT_LABEL}`
+        }
         className="portfolio-assistant-fab"
         onClick={handleToggle}
         ref={launcherRef}
-        title={isOpen ? "Close portfolio assistant" : "Open portfolio assistant"}
+        title={isOpen ? `Close ${PORTFOLIO_ASSISTANT_LABEL}` : `Open ${PORTFOLIO_ASSISTANT_LABEL}`}
         type="button"
       >
         <MessageCircle aria-hidden="true" size={20} />
