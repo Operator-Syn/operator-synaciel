@@ -94,6 +94,31 @@ test("accepts only usable successful portfolio results as evidence", () => {
   ]);
 });
 
+test("accepts same-origin page reads as evidence with their citation", () => {
+  const pageResult = {
+    structuredContent: {
+      path: "/ai",
+      page_url: "https://syn-forge.com/ai",
+      title: "AI and MCP Access",
+      content: "Portfolio, readable by agents.",
+      offset: 0,
+      next_offset: 30,
+      total_characters: 30,
+      complete: true,
+    },
+  };
+  assert.equal(hasUsablePortfolioToolResult("read_portfolio_page", pageResult), true);
+  assert.deepEqual(extractPortfolioSources("read_portfolio_page", pageResult), [
+    { url: "https://syn-forge.com/ai", title: "AI and MCP Access" },
+  ]);
+  assert.equal(
+    hasUsablePortfolioToolResult("read_portfolio_page", {
+      structuredContent: { page_url: "https://syn-forge.com/ai", content: "  " },
+    }),
+    false,
+  );
+});
+
 test("requires evidence before prose and bounds repeated unusable results", () => {
   let state = createPortfolioEvidenceState();
   assert.equal(portfolioToolChoice(state), "required");
