@@ -147,7 +147,10 @@ export default function Home() {
       />
 
       <CookingArea>
-        <div className={`homepage-shell${isMotionReady ? " homepage-motion-ready" : ""}`}>
+        <main
+          aria-labelledby="homepage-hero-title"
+          className={`homepage-shell${isMotionReady ? " homepage-motion-ready" : ""}`}
+        >
           <HomeCoordinates />
 
           <section
@@ -241,7 +244,7 @@ export default function Home() {
             projects={projects}
           />
           <HomeFooter isLoading={homeQuery.isLoading} links={sections.social.items} />
-        </div>
+        </main>
       </CookingArea>
     </>
   );
