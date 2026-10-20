@@ -160,38 +160,56 @@ final atomic reservation after model-message conversion handles the exact
 request size and concurrent-turn race.
 
 Every turn that reaches generation receives the same eight MCP tools plus the
-local page reader in both `convertToModelMessages` and `streamText`, and a fresh
-thread evidence snapshot when one is available. There is no mandatory search or
-overview call once fresh evidence exists; when none exists, the agent prefetches
-the overview once before generation. There is no question classifier, stop-word
+local page reader in both `convertToModelMessages` and `streamText`, together
+with the trusted code-owned portfolio guide and a bounded fresh evidence ledger
+when entries are available. There is no mandatory search or overview call once a
+fresh overview entry exists; when it is missing, the agent prefetches the
+overview once before generation. There is no question classifier, stop-word
 removal, record-kind map, technology vocabulary, precision pattern, or scope-word
 catalog. The model decides whether to search, list, inspect, or read and may
 chain calls for follow-ups and comparisons.
 
 The first model step requires a tool call only when no fresh thread evidence is
-available. With a fresh snapshot, tool choice is automatic and the model may
-answer orientation or follow-up questions without another call. After one usable
-portfolio result, tool choice becomes automatic and natural prose can stream. Project records carry `categories`, `stack`, and `highlights`
-facets from the public API; they are ordinary evidence fields for categorization
-and technology questions, while search keeps generic term matching rather than
-vocabulary routing. Text emitted before usable evidence is suppressed at the
-stream boundary. Empty results and tool failures do not unlock an answer; after
-three consecutive unusable results, the turn ends with a brief statement that
-the answer could not be verified from public portfolio evidence. This is an
-evidence gate, not semantic routing.
+available. With fresh ledger entries, tool choice is automatic and the model may
+answer orientation or follow-up questions without another call. The guide tells
+the model to answer from covering evidence before asking the visitor to choose a
+retrieval path, to make one useful bounded lookup for a named page or topic, and
+to ask only when material ambiguity remains. After one usable portfolio result,
+tool choice becomes automatic and natural prose can stream. Project records carry
+`categories`, `stack`, and `highlights` facets from the public API; they are
+ordinary evidence fields for categorization and technology questions, while
+search keeps generic term matching rather than vocabulary routing. Text emitted
+before usable evidence is suppressed at the stream boundary. Empty results and
+tool failures do not unlock an answer; after three consecutive unusable results,
+the turn ends with a brief statement that the answer could not be verified from
+public portfolio evidence. This is an evidence gate, not semantic routing.
 
 ## Thread evidence
 
+`workers/portfolio-agent/src/portfolio-guide.ts` owns trusted version-1
+structure for canonical public routes, page semantics, Snippets terminology,
+source precedence, and answer-first behavior. The guide is not evidence of
+current owner facts, projects, counts, or availability. It is paired with the
+public `llms.txt` manifest so external agents receive the same page map.
+
 Successful portfolio tool results are persisted in the thread Durable Object
-SQLite as a bounded snapshot, validated source list, and capture timestamp. A
-later turn reuses that evidence for 30 minutes. If no fresh evidence exists, the
-agent calls `get_portfolio_overview` once with a 10-second timeout and seeds the
-turn from the result; a failed prefetch leaves the hard no-evidence gate in
-place. The snapshot is capped at 12,000 characters and injected into the system
-prompt as untrusted data, while the full tool result remains in the thread.
-Orientation and follow-ups can use the snapshot; new factual claims still call
-tools. Clef is not used because it is a decision model and would add a
-probabilistic router without fixing the per-turn evidence reset.
+SQLite as a keyed evidence ledger. Slots distinguish overview, search
+candidates, project lists and details, certificate lists and details, snippet
+lists and content, and rendered pages. Each entry stores a schema-aware compact
+JSON projection, its own validated sources, a tool name, and a capture
+timestamp. Repeated slots upsert; malformed entries are ignored and pruned.
+
+A later turn reuses fresh entries for 30 minutes. The ledger keeps at most eight
+entries, caps each entry at 12,000 characters and the rendered ledger at 24,000
+characters, and evicts oldest non-overview entries first. The newest overview is
+pinned while fresh. If no fresh overview exists, the agent calls
+`get_portfolio_overview` once with a 10-second timeout; a failed prefetch leaves
+the hard no-evidence gate in place. Projections are sized and compacted before
+serialization instead of cutting a raw JSON payload mid-record. The guide is
+trusted structural context; ledger entries remain untrusted data. Orientation
+and follow-ups can use the ledger; new factual claims still call tools. Clef is
+not used because it is a decision model and would add a probabilistic router
+without fixing the per-turn evidence reset.
 
 ## Same-origin page reads
 
