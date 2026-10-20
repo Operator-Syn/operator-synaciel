@@ -29,7 +29,15 @@ export type PortfolioEvidenceState = {
   sources: PortfolioSource[];
 };
 
+export type StoredPortfolioEvidence = {
+  snapshot: string;
+  sources: PortfolioSource[];
+  capturedAt: number;
+};
+
 export const MAX_UNUSABLE_PORTFOLIO_TOOL_RESULTS = 3;
+export const PRIOR_EVIDENCE_TTL_MS = 30 * 60 * 1_000;
+export const MAX_EVIDENCE_SNAPSHOT_CHARACTERS = 12_000;
 const MAX_PORTFOLIO_SOURCES = 48;
 const SOURCE_FIELDS = new Set([
   "canonical_url",
@@ -211,6 +219,63 @@ export function extractPortfolioSources(toolName: string, value: unknown): Portf
 
 export function createPortfolioEvidenceState(): PortfolioEvidenceState {
   return { successfulResults: 0, unusableResults: 0, sources: [] };
+}
+
+export function seedPortfolioEvidenceState(
+  sources: readonly PortfolioSource[],
+): PortfolioEvidenceState {
+  return { successfulResults: 1, unusableResults: 0, sources: [...sources] };
+}
+
+export function createPortfolioEvidenceSnapshot(toolName: string, value: unknown): string | null {
+  const name = portfolioToolName(toolName);
+  const root = extractStructuredContent(value);
+  if (!name || !root) return null;
+  const serialized = JSON.stringify({ tool: name, evidence: root });
+  return serialized ? serialized.slice(0, MAX_EVIDENCE_SNAPSHOT_CHARACTERS) : null;
+}
+
+export function parseStoredPortfolioEvidenceSources(value: unknown): PortfolioSource[] | null {
+  if (!Array.isArray(value) || value.length > MAX_PORTFOLIO_SOURCES) return null;
+  const sources: PortfolioSource[] = [];
+  for (const item of value) {
+    const record = objectValue(item);
+    if (
+      !record ||
+      typeof record.url !== "string" ||
+      typeof record.title !== "string" ||
+      record.url.length > 2_048 ||
+      record.title.length > 256
+    ) {
+      return null;
+    }
+    const url = publicUrl(record.url);
+    if (!url) return null;
+    sources.push({ url, title: record.title });
+  }
+  return sources;
+}
+
+export function parseStoredPortfolioEvidence(
+  row: Record<string, unknown> | null | undefined,
+  now: number,
+): StoredPortfolioEvidence | null {
+  if (!row) return null;
+  const snapshot = typeof row.snapshot === "string" ? row.snapshot.trim() : "";
+  if (!snapshot || snapshot.length > MAX_EVIDENCE_SNAPSHOT_CHARACTERS) return null;
+  const capturedAt = Number(row.captured_at);
+  if (!Number.isFinite(capturedAt) || capturedAt > now + 5 * 60 * 1_000) return null;
+  if (now - capturedAt > PRIOR_EVIDENCE_TTL_MS) return null;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(typeof row.sources_json === "string" ? row.sources_json : "");
+  } catch {
+    return null;
+  }
+  const sources = parseStoredPortfolioEvidenceSources(parsed);
+  if (!sources) return null;
+  return { snapshot, sources, capturedAt };
 }
 
 export function recordPortfolioToolResult(
