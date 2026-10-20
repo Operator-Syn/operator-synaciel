@@ -31,10 +31,12 @@ import {
 import { classifyModelCapacityError, isRefundableModelCapacityFailure } from "./errors.ts";
 import {
   createPortfolioEvidenceState,
+  formatPortfolioEvidenceLedger,
   hasCompletePortfolioToolCatalog,
+  mergePortfolioEvidenceLedger,
+  type PortfolioEvidenceLedger,
   portfolioToolChoice,
   recordPortfolioToolResult,
-  type StoredPortfolioEvidence,
   seedPortfolioEvidenceState,
   selectPortfolioTools,
   shouldStopPortfolioToolLoop,
@@ -70,6 +72,7 @@ import {
   ensurePortfolioPageCacheSchema,
   type PageCacheSql,
 } from "./page-reader.ts";
+import { PORTFOLIO_GUIDE_VERSION } from "./portfolio-guide.ts";
 import {
   checkRollingQuotaAvailability,
   consumeRollingQuota,
@@ -460,25 +463,27 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
     });
     const now = Date.now();
     const evidenceStore = createThreadEvidenceStore(this.evidenceSql());
-    let threadEvidence: StoredPortfolioEvidence | null = null;
+    let evidenceLedger: PortfolioEvidenceLedger = [];
     try {
-      threadEvidence = evidenceStore.load(now);
+      evidenceLedger = evidenceStore.load(now);
     } catch {
-      threadEvidence = null;
+      evidenceLedger = [];
     }
-    if (!threadEvidence) {
+    if (!evidenceLedger.some((entry) => entry.slot === "overview")) {
       const prefetched = await prefetchPortfolioOverview(catalog.tools);
       if (prefetched) {
-        threadEvidence = evidenceFromToolResult(prefetched.toolName, prefetched.result, now);
-        if (threadEvidence) {
+        const prefetchedEntry = evidenceFromToolResult(prefetched.toolName, prefetched.result, now);
+        if (prefetchedEntry) {
+          evidenceLedger = mergePortfolioEvidenceLedger(evidenceLedger, prefetchedEntry);
           try {
-            evidenceStore.save(threadEvidence);
+            evidenceStore.save(prefetchedEntry);
           } catch {
             // Evidence persistence is best effort.
           }
         }
       }
     }
+    const evidenceLedgerContext = formatPortfolioEvidenceLedger(evidenceLedger, now);
     const selectedTools = asToolSet({
       ...catalog.tools,
       read_portfolio_page: pageTool as unknown as McpTool,
@@ -489,7 +494,7 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
       ignoreIncompleteToolCalls: true,
     });
     const modelMessages = mergeAdjacentUserMessages(converted as ModelMessage[]);
-    const systemPrompt = buildSystemPrompt(threadEvidence?.snapshot);
+    const systemPrompt = buildSystemPrompt({ evidenceLedger: evidenceLedgerContext });
     const provisionalTokens = estimateQuotaUnits(
       estimateModelTokens(systemPrompt, modelMessages),
       PROVISIONAL_OUTPUT_TOKEN_ALLOWANCE,
@@ -547,12 +552,15 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
     this.emitDiagnostic({
       phase: "model",
       outcome: "started",
+      guideVersion: PORTFOLIO_GUIDE_VERSION,
+      evidenceEntryCount: evidenceLedger.length,
       requestId: options?.requestId,
     });
     const workersai = createWorkersAI({ binding: this.environment.AI as never });
-    let evidenceState = threadEvidence
-      ? seedPortfolioEvidenceState(threadEvidence.sources)
-      : createPortfolioEvidenceState();
+    let evidenceState =
+      evidenceLedger.length > 0
+        ? seedPortfolioEvidenceState(evidenceLedger.flatMap((entry) => entry.sources))
+        : createPortfolioEvidenceState();
     let result: ReturnType<typeof streamText>;
     try {
       result = streamText({
@@ -582,13 +590,9 @@ export class PortfolioAgent extends AIChatAgent<PortfolioAgentEnvironment, unkno
           evidenceState = recordPortfolioToolResult(evidenceState, toolCall.toolName, toolOutput);
           const usable = evidenceState.successfulResults > previousSuccesses;
           if (usable) {
-            const persisted = evidenceFromToolResult(
-              toolCall.toolName,
-              toolOutput,
-              Date.now(),
-              evidenceState.sources,
-            );
+            const persisted = evidenceFromToolResult(toolCall.toolName, toolOutput, Date.now());
             if (persisted) {
+              evidenceLedger = mergePortfolioEvidenceLedger(evidenceLedger, persisted);
               try {
                 evidenceStore.save(persisted);
               } catch {
