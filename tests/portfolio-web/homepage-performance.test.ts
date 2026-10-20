@@ -20,10 +20,40 @@ test("homepage uses one aggregate request and keeps critical fallback content", 
   assert.doesNotMatch(source, /useQueries/);
 });
 
-test("homepage shell exposes a main landmark and lazy route boundary", async () => {
-  const source = await readFile(resolve(appRoot, "src/App.tsx"), "utf8");
+test("keeps one route-level main landmark under the app shell", async () => {
+  const routeLandmarkPaths = [
+    "src/components/pages/homePage/Home.tsx",
+    "src/components/pages/aiPage/Ai.tsx",
+    "src/components/pages/projectsPage/Projects.tsx",
+    "src/components/pages/certificatesPage/Certificates.tsx",
+    "src/components/pages/snippetsPage/Snippets.tsx",
+    "src/components/pages/snippetsPage/SnippetDocument.tsx",
+    "src/components/pages/privacyPolicyPage/PrivacyPolicy.tsx",
+    "src/components/pages/termsAndConditionsPage/TermsAndConditions.tsx",
+    "src/components/pages/staticAppPage/StaticAppPage.tsx",
+    "src/components/pages/notFoundPage/NotFound.tsx",
+  ];
+  const [appSource, ...routeSources] = await Promise.all([
+    readFile(resolve(appRoot, "src/App.tsx"), "utf8"),
+    ...routeLandmarkPaths.map((path) => readFile(resolve(appRoot, path), "utf8")),
+  ]);
 
-  assert.match(source, /<main className="app-shell">/);
-  assert.match(source, /<Suspense fallback=/);
-  assert.match(source, /<PortfolioAssistantFab \/>/);
+  assert.match(appSource, /<div className="app-shell">/);
+  assert.match(appSource, /<main aria-label="Loading page">/);
+  assert.doesNotMatch(appSource, /<main className="app-shell">/);
+  assert.match(appSource, /<Suspense fallback=/);
+  assert.match(appSource, /<PortfolioAssistantFab \/>/);
+
+  routeSources.forEach((source, index) => {
+    assert.equal(
+      (source.match(/<main(?:\s|>)/g) ?? []).length,
+      1,
+      `${routeLandmarkPaths[index]} should own exactly one main landmark`,
+    );
+    assert.equal(
+      (source.match(/<\/main>/g) ?? []).length,
+      1,
+      `${routeLandmarkPaths[index]} should close exactly one main landmark`,
+    );
+  });
 });
