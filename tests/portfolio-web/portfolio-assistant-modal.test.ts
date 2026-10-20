@@ -142,7 +142,10 @@ test("keeps history readable during reconnects and follows new activity only whe
     fabSource,
     /const nextTop = Math\.max\(0, transcript\.scrollHeight - transcript\.clientHeight\)/,
   );
-  assert.match(fabSource, /Jump to latest assistant response/);
+  assert.match(
+    fabSource,
+    /aria-label=\{`Jump to latest \$\{PORTFOLIO_ASSISTANT_NAME\} response`\}/,
+  );
   assert.doesNotMatch(fabSource, /latest\.scrollIntoView\(/);
   assert.match(
     fabSource,
