@@ -125,5 +125,5 @@ test("coordinates exclusive panels, focus restoration, and native titles", async
   assert.match(assistant, /focusFloatingControlTrigger\(fabRef\.current\)/);
   assert.match(assistant, /event\.key !== "Escape"/);
   assert.match(assistant, /document\.addEventListener\("keydown"/);
-  assert.match(assistant, /title=\{[\s\S]*Portfolio assistant/);
+  assert.match(assistant, /title=\{[\s\S]*PORTFOLIO_ASSISTANT_LABEL/);
 });
