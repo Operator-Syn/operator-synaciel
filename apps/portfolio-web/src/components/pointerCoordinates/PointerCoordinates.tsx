@@ -52,7 +52,7 @@ export default function PointerCoordinates({
   const handshakeTimerRef = useRef<number | null>(null);
   const handshakeResetTimerRef = useRef<number | null>(null);
   const handshakeTouchStartRef = useRef<{ id: number; x: number; y: number } | null>(null);
-  const coordinatesRef = useRef<HTMLButtonElement>(null);
+  const railFrameRef = useRef<HTMLDivElement>(null);
 
   const setHandshakePhase = (nextState: HandshakeState) => {
     handshakeStateRef.current = nextState;
@@ -157,15 +157,15 @@ export default function PointerCoordinates({
         return;
       }
 
-      const coordinates = coordinatesRef.current;
-      if (!coordinates) return;
+      const railFrame = railFrameRef.current;
+      if (!railFrame) return;
 
-      const coordinatesRect = coordinates.getBoundingClientRect();
+      const railFrameRect = railFrame.getBoundingClientRect();
       const pointerX = Math.min(
-        Math.max(1, nextPosition.x - coordinatesRect.left),
-        Math.max(1, coordinatesRect.width - 1),
+        Math.max(1, nextPosition.x - railFrameRect.left),
+        Math.max(1, railFrameRect.width - 1),
       );
-      coordinates.style.setProperty("--coordinate-pointer-x", `${pointerX}px`);
+      railFrame.style.setProperty("--coordinate-pointer-x", `${pointerX}px`);
     };
 
     const schedulePointerFrame = () => {
@@ -210,7 +210,7 @@ export default function PointerCoordinates({
       }
     };
 
-    const coordinates = coordinatesRef.current;
+    const railFrame = railFrameRef.current;
     const coordinatesResizeObserver = new ResizeObserver(() => {
       const nextPosition = pendingPositionRef.current;
       if (nextPosition?.kind === "mouse" || nextPosition?.kind === "pen") {
@@ -218,8 +218,8 @@ export default function PointerCoordinates({
       }
     });
 
-    if (coordinates) {
-      coordinatesResizeObserver.observe(coordinates);
+    if (railFrame) {
+      coordinatesResizeObserver.observe(railFrame);
     }
 
     const handlePointerDown = (event: PointerEvent, frame?: HTMLIFrameElement) => {
@@ -438,10 +438,14 @@ export default function PointerCoordinates({
     (visiblePointerPosition.kind === "mouse" || visiblePointerPosition.kind === "pen")
       ? visiblePointerPosition
       : null;
-  const coordinateFrameClassName = ["coordinate-rail-frame", className].filter(Boolean).join(" ");
-  const coordinateClassName = ["coordinate-rail", pointerSignalPosition ? "has-pointer" : ""]
+  const coordinateFrameClassName = [
+    "coordinate-rail-frame",
+    pointerSignalPosition ? "has-pointer" : "",
+    className,
+  ]
     .filter(Boolean)
     .join(" ");
+  const coordinateClassName = "coordinate-rail";
   const safeMarkerCount = Math.max(0, Math.floor(markerCount));
   const markers = Array.from({ length: safeMarkerCount }, (_, index) => ({
     id: `coordinate-marker-${index}`,
@@ -449,7 +453,12 @@ export default function PointerCoordinates({
   }));
 
   return (
-    <div className={coordinateFrameClassName}>
+    <div
+      className={coordinateFrameClassName}
+      data-handshake-state={handshakeState}
+      data-pointer-surface={pointerSurface}
+      ref={railFrameRef}
+    >
       <button
         aria-describedby="coordinate-rail-instruction"
         className={coordinateClassName}
@@ -463,7 +472,6 @@ export default function PointerCoordinates({
         onPointerMove={handleCoordinatePointerMove}
         onPointerCancel={handleCoordinatePointerEnd}
         onPointerUp={handleCoordinatePointerEnd}
-        ref={coordinatesRef}
         title="Pause or activate to run a signal handshake"
         type="button"
       >
