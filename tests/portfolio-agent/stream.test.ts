@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { UIMessageChunk } from "ai";
+import { seedPortfolioEvidenceState } from "../../workers/portfolio-agent/src/evidence.ts";
 import {
   boundPortfolioAnswerStream,
   coalesceToolInputDeltas,
@@ -130,4 +131,37 @@ test("replaces a no-evidence model turn with a bounded portfolio response", asyn
     "I couldn't verify that from the public portfolio evidence.",
   );
   assert.deepEqual(chunks.at(-1), { type: "finish", finishReason: "stop" });
+});
+
+test("allows a follow-up answer when fresh thread evidence is seeded", async () => {
+  const evidence = seedPortfolioEvidenceState([{ url: "https://syn-forge.com/", title: "Home" }]);
+  const source = new ReadableStream<UIMessageChunk>({
+    start(controller) {
+      controller.enqueue({ type: "text-start", id: "onboarding" });
+      controller.enqueue({
+        type: "text-delta",
+        id: "onboarding",
+        delta: "Welcome to the portfolio.",
+      });
+      controller.enqueue({ type: "text-end", id: "onboarding" });
+      controller.close();
+    },
+  });
+
+  const chunks = await readChunks(
+    boundPortfolioAnswerStream(source, {
+      hasEvidence: () => evidence.successfulResults > 0,
+      sources: () => evidence.sources,
+      fallbackMessage: "I couldn't verify that from the public portfolio evidence.",
+    }),
+  );
+
+  assert.equal(
+    chunks
+      .filter((chunk) => chunk.type === "text-delta")
+      .map((chunk) => chunk.delta)
+      .join(""),
+    "Welcome to the portfolio.",
+  );
+  assert.ok(chunks.some((chunk) => chunk.type === "source-url"));
 });
