@@ -344,10 +344,11 @@ test("uses the rolling quota without a thread burst gate", async () => {
   assert.ok(catalogIndex > availabilityIndex);
 });
 
-test("keeps only the eight portfolio MCP tools available to the model", async () => {
+test("keeps the eight portfolio MCP tools plus the same-origin page reader", async () => {
   const source = await readFile(agentPath, "utf8");
   assert.match(source, /selectPortfolioTools\(rawTools\)/);
-  assert.match(source, /const selectedTools = asToolSet\(catalog\.tools\)/);
+  assert.match(source, /read_portfolio_page/);
+  assert.match(source, /const selectedTools = asToolSet\(\{/);
   assert.match(source, /convertToModelMessages\([\s\S]*?tools:\s*selectedTools/);
   assert.match(source, /streamText\(\{[\s\S]*?tools:\s*selectedTools/);
   assert.doesNotMatch(source, /filterToolSet|requiresGitHubContext|requiresPortfolioOverview/);
@@ -384,6 +385,9 @@ test("gives the model a natural portfolio scope and evidence contract", () => {
   assert.match(prompt, /unrelated request, decline briefly/i);
   assert.match(prompt, /Search results are candidates, not proof/i);
   assert.match(prompt, /categories, stack, and highlights/i);
+  assert.match(prompt, /read_portfolio_page/);
+  assert.match(prompt, /next_offset/);
+  assert.match(prompt, /page_url/);
   assert.match(prompt, /Choose, call, and chain/i);
   assert.match(prompt, /do not guess/i);
   assert.match(prompt, /separate narrator/i);
