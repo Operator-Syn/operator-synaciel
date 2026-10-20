@@ -10,6 +10,9 @@ BROWSER_ORIGINS = "https://syn-forge.com,https://www.syn-forge.com,http://localh
 [ai]
 binding = "AI"
 
+[browser]
+binding = "BROWSER"
+
 [[d1_databases]]
 binding = "AUTH_DB"
 database_name = "portfolio-agent-auth"
@@ -39,6 +42,9 @@ BROWSER_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 
 [env.local.ai]
 binding = "AI"
+
+[env.local.browser]
+binding = "BROWSER"
 
 [[env.local.d1_databases]]
 binding = "AUTH_DB"
