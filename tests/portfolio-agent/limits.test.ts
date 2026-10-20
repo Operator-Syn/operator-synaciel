@@ -14,7 +14,7 @@ import {
   isModelCapacityError,
   isRefundableModelCapacityFailure,
 } from "../../workers/portfolio-agent/src/errors.ts";
-import { MAX_EVIDENCE_SNAPSHOT_CHARACTERS } from "../../workers/portfolio-agent/src/evidence.ts";
+import { MAX_EVIDENCE_LEDGER_CHARACTERS } from "../../workers/portfolio-agent/src/evidence.ts";
 import {
   buildSystemPrompt,
   buildThreadTitlePrompt,
@@ -350,9 +350,11 @@ test("keeps the eight portfolio MCP tools, page reader, and thread evidence", as
   assert.match(source, /selectPortfolioTools\(rawTools\)/);
   assert.match(source, /read_portfolio_page/);
   assert.match(source, /createThreadEvidenceStore/);
+  assert.match(source, /formatPortfolioEvidenceLedger/);
+  assert.match(source, /mergePortfolioEvidenceLedger/);
   assert.match(source, /prefetchPortfolioOverview/);
   assert.match(source, /seedPortfolioEvidenceState/);
-  assert.match(source, /buildSystemPrompt\(threadEvidence\?\.snapshot\)/);
+  assert.match(source, /buildSystemPrompt\(\{ evidenceLedger: evidenceLedgerContext \}\)/);
   assert.match(source, /const selectedTools = asToolSet\(\{/);
   assert.match(source, /convertToModelMessages\([\s\S]*?tools:\s*selectedTools/);
   assert.match(source, /streamText\(\{[\s\S]*?tools:\s*selectedTools/);
@@ -389,9 +391,17 @@ test("gives the model a natural portfolio scope and evidence contract", () => {
   assert.match(prompt, /purpose boundary/i);
   assert.match(prompt, /unrelated request, decline briefly/i);
   assert.match(prompt, /Search results are candidates, not proof/i);
-  assert.match(prompt, /fresh portfolio evidence snapshot/i);
+  assert.match(prompt, /fresh portfolio evidence ledger/i);
+  assert.match(prompt, /Trusted portfolio guide/i);
+  assert.match(prompt, /Do not ask the visitor to choose between internal retrieval paths/i);
+  assert.match(prompt, /When relevant evidence already covers the request, answer it directly/i);
+  assert.match(prompt, /For broad onboarding/i);
+  assert.match(prompt, /For collection-wide requests/i);
+  assert.match(prompt, /syntactically valid content/i);
+  assert.match(prompt, /Snippets are not automatically a blog feed/i);
+  assert.match(prompt, /Some non-navigation utility surfaces exist/i);
   assert.match(prompt, /Never name internal tool identifiers/i);
-  assert.match(prompt, /Only tool results and the provided fresh evidence snapshot are evidence/i);
+  assert.match(prompt, /Only tool results and the provided fresh evidence ledger are evidence/i);
   assert.match(prompt, /categories, stack, and highlights/i);
   assert.match(prompt, /read_portfolio_page/);
   assert.match(prompt, /next_offset/);
@@ -410,16 +420,21 @@ test("gives the model a natural portfolio scope and evidence contract", () => {
   assert.doesNotMatch(prompt, /grounded answer object|stop word|trigger word/i);
 });
 
-test("injects a bounded fresh evidence snapshot", () => {
+test("injects the trusted guide and a bounded fresh evidence ledger", () => {
   const baseline = buildSystemPrompt();
-  const prompt = buildSystemPrompt(
-    '{"tool":"get_portfolio_overview","evidence":{"site":{"headerPhrase":"Hello"}}}',
-  );
-  assert.match(prompt, /Fresh portfolio evidence snapshot/);
+  const prompt = buildSystemPrompt({
+    evidenceLedger:
+      '{"slot":"overview","tool":"get_portfolio_overview","evidence":{"site":{"headerPhrase":"Hello"}}}',
+  });
+  assert.match(prompt, /Trusted portfolio guide/);
+  assert.match(prompt, /Fresh thread evidence ledger/);
   assert.match(prompt, /untrusted data/i);
+  assert.match(prompt, /Use only entries that cover the current request/);
 
-  const huge = buildSystemPrompt("x".repeat(MAX_EVIDENCE_SNAPSHOT_CHARACTERS * 2));
-  assert.ok(huge.length <= baseline.length + MAX_EVIDENCE_SNAPSHOT_CHARACTERS + 500);
+  const huge = buildSystemPrompt({
+    evidenceLedger: "x".repeat(MAX_EVIDENCE_LEDGER_CHARACTERS * 2),
+  });
+  assert.ok(huge.length <= baseline.length + MAX_EVIDENCE_LEDGER_CHARACTERS + 1_000);
 });
 
 test("keeps unavailable work from becoming pseudo-confirmation plans", () => {
