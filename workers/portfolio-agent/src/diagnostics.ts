@@ -74,6 +74,8 @@ export type PortfolioAgentDiagnostic = {
   attempt?: number;
   elapsedMs?: number;
   toolCount?: number;
+  guideVersion?: number;
+  evidenceEntryCount?: number;
   quotaDecision?: PortfolioAgentQuotaDecision;
   reason?: PortfolioAgentDiagnosticReason;
   requestId?: string;
@@ -129,6 +131,10 @@ export function normalizePortfolioAgentDiagnostic(input: unknown): PortfolioAgen
   if (elapsedMs !== undefined) event.elapsedMs = elapsedMs;
   const toolCount = boundedInteger(record.toolCount, 0, 1_000);
   if (toolCount !== undefined) event.toolCount = toolCount;
+  const guideVersion = boundedInteger(record.guideVersion, 1, 10_000);
+  if (guideVersion !== undefined) event.guideVersion = guideVersion;
+  const evidenceEntryCount = boundedInteger(record.evidenceEntryCount, 0, 100);
+  if (evidenceEntryCount !== undefined) event.evidenceEntryCount = evidenceEntryCount;
   if (isValue(QUOTA_DECISIONS, record.quotaDecision)) {
     event.quotaDecision = record.quotaDecision;
   }
