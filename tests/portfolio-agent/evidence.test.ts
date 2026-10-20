@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  createPortfolioEvidenceEntry,
   createPortfolioEvidenceState,
   extractPortfolioSources,
   extractStructuredContent,
@@ -8,6 +9,7 @@ import {
   hasUsablePortfolioToolResult,
   portfolioToolChoice,
   recordPortfolioToolResult,
+  seedPortfolioEvidenceState,
   selectPortfolioTools,
   shouldStopPortfolioToolLoop,
 } from "../../workers/portfolio-agent/src/evidence.ts";
@@ -145,4 +147,119 @@ test("requires evidence before prose and bounds repeated unusable results", () =
   });
   assert.equal(portfolioToolChoice(state), "auto");
   assert.equal(shouldStopPortfolioToolLoop(state), false);
+});
+
+test("projects, certificates, and snippets receive distinct compact slots", () => {
+  const project = {
+    id: 5,
+    title: "The Hootline",
+    type: "video",
+    url: "https://media.example/hootline.mp4",
+    short_description: "React-Flask mentorship platform",
+    long_description: "long description".repeat(1_000),
+    project_link: "https://github.com/Operator-Syn/peer-tutoring-platform",
+    categories: ["education-platform", "mentorship"],
+    stack: ["react", "flask"],
+    highlights: ["Domain-restricted auth", "Automated scheduling"],
+    display_order: 4,
+    created_at: "2026-01-01",
+  };
+  const projectList = createPortfolioEvidenceEntry(
+    "portfolio_list_projects",
+    {
+      structuredContent: {
+        data: [project],
+        pagination: { limit: 6, total: 1, has_more: false, next_cursor: null },
+      },
+    },
+    1,
+  );
+  assert.ok(projectList);
+  assert.equal(projectList.slot, "projects");
+  const listEvidence = JSON.parse(projectList.snapshot).evidence as {
+    data: Array<Record<string, unknown>>;
+  };
+  assert.deepEqual(listEvidence.data[0]?.categories, ["education-platform", "mentorship"]);
+  assert.deepEqual(listEvidence.data[0]?.stack, ["react", "flask"]);
+  assert.equal("long_description" in (listEvidence.data[0] ?? {}), false);
+
+  const projectDetail = createPortfolioEvidenceEntry(
+    "portfolio_get_project",
+    {
+      structuredContent: {
+        project,
+        gallery: [],
+        canonical_url: "https://syn-forge.com/projects",
+      },
+    },
+    2,
+  );
+  assert.ok(projectDetail);
+  assert.equal(projectDetail.slot, "project:5");
+  const detailEvidence = JSON.parse(projectDetail.snapshot).evidence as {
+    project: { long_description: string };
+  };
+  assert.equal(detailEvidence.project.long_description.length, 2_000);
+
+  const certificate = createPortfolioEvidenceEntry(
+    "portfolio_get_certificate",
+    {
+      structuredContent: {
+        certificate: {
+          id: 9,
+          title: "Virtual Services Internship",
+          type: "image",
+          url: "https://media.example/certificate.png",
+          short_description: "Training record",
+          long_description: "Completed the program",
+          certificate_link: null,
+          display_order: 2,
+          created_at: "2026-01-01",
+        },
+        items: [],
+        canonical_url: "https://syn-forge.com/certificates",
+      },
+    },
+    3,
+  );
+  assert.ok(certificate);
+  assert.equal(certificate.slot, "certificate:9");
+
+  const snippet = createPortfolioEvidenceEntry(
+    "portfolio_read_snippet",
+    {
+      structuredContent: {
+        id: 7,
+        name: "Agent Notes.md",
+        type: "file",
+        modified: "2026-01-01",
+        size: 20,
+        format: "md",
+        path_segments: ["Notes", "Agent Notes.md"],
+        page_url: "https://syn-forge.com/snippets/document/7/agent-notes.md",
+        offset: 0,
+        content: "Public notes",
+        next_offset: 12,
+        total_characters: 12,
+        complete: true,
+      },
+    },
+    4,
+  );
+  assert.ok(snippet);
+  assert.equal(snippet.slot, "snippet:7");
+  assert.match(snippet.snapshot, /Public notes/);
+});
+
+test("seeds evidence state from prior ledger sources", () => {
+  const state = seedPortfolioEvidenceState([
+    { url: "https://syn-forge.com/", title: "Home" },
+    { url: "https://syn-forge.com/ai", title: "AI" },
+  ]);
+  assert.equal(state.successfulResults, 1);
+  assert.equal(state.unusableResults, 0);
+  assert.deepEqual(state.sources, [
+    { url: "https://syn-forge.com/", title: "Home" },
+    { url: "https://syn-forge.com/ai", title: "AI" },
+  ]);
 });
