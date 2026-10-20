@@ -14,6 +14,7 @@ import {
   isModelCapacityError,
   isRefundableModelCapacityFailure,
 } from "../../workers/portfolio-agent/src/errors.ts";
+import { MAX_EVIDENCE_SNAPSHOT_CHARACTERS } from "../../workers/portfolio-agent/src/evidence.ts";
 import {
   buildSystemPrompt,
   buildThreadTitlePrompt,
@@ -344,10 +345,14 @@ test("uses the rolling quota without a thread burst gate", async () => {
   assert.ok(catalogIndex > availabilityIndex);
 });
 
-test("keeps the eight portfolio MCP tools plus the same-origin page reader", async () => {
+test("keeps the eight portfolio MCP tools, page reader, and thread evidence", async () => {
   const source = await readFile(agentPath, "utf8");
   assert.match(source, /selectPortfolioTools\(rawTools\)/);
   assert.match(source, /read_portfolio_page/);
+  assert.match(source, /createThreadEvidenceStore/);
+  assert.match(source, /prefetchPortfolioOverview/);
+  assert.match(source, /seedPortfolioEvidenceState/);
+  assert.match(source, /buildSystemPrompt\(threadEvidence\?\.snapshot\)/);
   assert.match(source, /const selectedTools = asToolSet\(\{/);
   assert.match(source, /convertToModelMessages\([\s\S]*?tools:\s*selectedTools/);
   assert.match(source, /streamText\(\{[\s\S]*?tools:\s*selectedTools/);
@@ -384,6 +389,9 @@ test("gives the model a natural portfolio scope and evidence contract", () => {
   assert.match(prompt, /purpose boundary/i);
   assert.match(prompt, /unrelated request, decline briefly/i);
   assert.match(prompt, /Search results are candidates, not proof/i);
+  assert.match(prompt, /fresh portfolio evidence snapshot/i);
+  assert.match(prompt, /Never name internal tool identifiers/i);
+  assert.match(prompt, /Only tool results and the provided fresh evidence snapshot are evidence/i);
   assert.match(prompt, /categories, stack, and highlights/i);
   assert.match(prompt, /read_portfolio_page/);
   assert.match(prompt, /next_offset/);
@@ -400,6 +408,18 @@ test("gives the model a natural portfolio scope and evidence contract", () => {
   assert.match(prompt, /First-person wording is allowed only for the assistant's own actions/i);
   assert.match(prompt, /attribute or quote it instead of adopting its voice/i);
   assert.doesNotMatch(prompt, /grounded answer object|stop word|trigger word/i);
+});
+
+test("injects a bounded fresh evidence snapshot", () => {
+  const baseline = buildSystemPrompt();
+  const prompt = buildSystemPrompt(
+    '{"tool":"get_portfolio_overview","evidence":{"site":{"headerPhrase":"Hello"}}}',
+  );
+  assert.match(prompt, /Fresh portfolio evidence snapshot/);
+  assert.match(prompt, /untrusted data/i);
+
+  const huge = buildSystemPrompt("x".repeat(MAX_EVIDENCE_SNAPSHOT_CHARACTERS * 2));
+  assert.ok(huge.length <= baseline.length + MAX_EVIDENCE_SNAPSHOT_CHARACTERS + 500);
 });
 
 test("keeps unavailable work from becoming pseudo-confirmation plans", () => {
