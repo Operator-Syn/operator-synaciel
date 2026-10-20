@@ -45,7 +45,12 @@ This release spans five runtime surfaces plus their storage dependencies:
 The API Worker must be available before the MCP Worker because its service
 binding depends on that runtime surface. The portfolio agent is deployed after
 the MCP Worker, and public-auth follows the agent because its service binding
-targets `portfolio-agent`. For the cookie-authenticated WebSocket gateway, keep
+targets `portfolio-agent`. The agent also requires the Browser Rendering
+`BROWSER` binding. Browser Rendering is included on Workers Free (10 minutes
+per day, 3 concurrent browsers) and Workers Paid (10 hours per month, 10
+concurrent; $0.09 per additional browser hour). The binding deploys with the
+agent and needs no separate migration; the agent caches page text for one hour
+and permits at most three page reads per turn. For the cookie-authenticated WebSocket gateway, keep
 that order: agent (internal route and hibernation behavior), public-auth (cookie
 and service-binding gateway), then Pages (browser host and connection query).
 Pages remains a separate Git-integrated deployment from the same main-branch
@@ -103,8 +108,8 @@ The checked-in Worker configurations are authoritative for names and bindings:
 - workers/portfolio-mcp/wrangler.toml declares syn-forge-portfolio-mcp, the
   PORTFOLIO_API service binding, and mcp.syn-forge.com.
 - workers/portfolio-agent/wrangler.toml declares portfolio-agent, Workers AI,
-  the auth D1 binding, the PortfolioAgent Durable Object, and
-  assistant.syn-forge.com.
+  the Browser Rendering `BROWSER` binding, the auth D1 binding, the
+  PortfolioAgent Durable Object, and assistant.syn-forge.com.
 
 ### API Worker secrets
 
