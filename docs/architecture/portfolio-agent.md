@@ -12,9 +12,10 @@ role: reference
 
 # Portfolio Assistant Agent
 
-The public assistant is a browser-only, site-wide floating assistant for
-questions about the Syn-Forge portfolio. It is split into two Worker
-workspaces:
+Feilhann is the public identity of the browser-only, site-wide floating
+assistant for questions about the Syn-Forge portfolio. The assistant UI uses
+that name in launcher and dialog labels, visible speaker identity, `llms.txt`,
+and the `/agent` structured data. It is split into two Worker workspaces:
 
 - `workers/portfolio-public-auth/` owns Google OIDC sign-in, Turnstile
   verification, sessions, thread ownership, quotas, admin controls, and the
@@ -234,8 +235,12 @@ public Portfolio MCP remains unchanged; the page reader is agent-local.
 
 Native model tool parts are the activity source of truth. Successful results
 are inspected only for their documented public shape and canonical link fields;
-the agent does not reinterpret the user's words. Those links are appended to
-the same assistant message after the tool loop. Search and tool output remain
+the agent does not reinterpret the user's words. Sources from the current tool
+result precede older thread evidence. At the stream boundary, those candidates
+are de-duplicated, matched to the completed answer, capped at six, and never
+emitted wholesale from a tool payload. Clearly negated title mentions are
+ignored; when the answer references no source, no source is disclosed. Search
+and tool output remain
 untrusted data, and the model is instructed to use returned canonical URLs
 rather than inventing citations or IDs.
 
