@@ -57,8 +57,10 @@ test("keeps the AI hero balanced with natural title wrapping", async () => {
   );
   assert.match(heroStyles, /align-items:\s*center;/);
   assert.match(heroStyles, /padding:\s*clamp\(2\.5rem,\s*5vw,\s*4\.5rem\)/);
-  assert.match(aiStyles, /\.ai-page h1\s*\{[\s\S]*?max-width:\s*none;/);
-  assert.match(aiStyles, /\.ai-page h1\s*\{[\s\S]*?text-wrap:\s*pretty;/);
+  assert.match(aiStyles, /\.ai-page-hero h1\s*\{[\s\S]*?max-width:\s*none;/);
+  assert.match(aiStyles, /\.ai-page-hero h1\s*\{[\s\S]*?text-wrap:\s*pretty;/);
+  assert.match(aiStyles, /\.ai-page-panel h2\s*\{/);
+  assert.doesNotMatch(aiStyles, /(?:^|\n)\.ai-page\s+(?:h[1-6]|p)(?:\s*,|\s*\{)/);
   assert.match(markStyles, /display:\s*grid;/);
   assert.match(markStyles, /width:\s*min\(100%, 26rem\);/);
   assert.match(markStyles, /min-height:\s*14rem;/);
