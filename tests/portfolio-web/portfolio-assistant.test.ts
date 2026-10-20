@@ -13,6 +13,11 @@ import {
   MODEL_ALLOCATION_MESSAGE,
 } from "../../apps/portfolio-web/src/components/portfolioAssistant/portfolioAssistantErrors.ts";
 import {
+  PORTFOLIO_ASSISTANT_LABEL,
+  PORTFOLIO_ASSISTANT_NAME,
+  PORTFOLIO_ASSISTANT_ROLE,
+} from "../../apps/portfolio-web/src/components/portfolioAssistant/portfolioAssistantIdentity.ts";
+import {
   normalizeAssistantMarkdownHref,
   normalizeAssistantMarkdownText,
   transformAssistantMarkdownUrl,
@@ -41,10 +46,23 @@ import {
 
 const repositoryRoot = resolve(import.meta.dirname, "../../");
 const appPath = resolve(repositoryRoot, "apps/portfolio-web/src/App.tsx");
+const entryPath = resolve(
+  repositoryRoot,
+  "apps/portfolio-web/src/components/portfolioAssistant/PortfolioAssistantEntry.tsx",
+);
 const fabPath = resolve(
   repositoryRoot,
   "apps/portfolio-web/src/components/portfolioAssistant/PortfolioAssistantFab.tsx",
 );
+const agentPagePath = resolve(
+  repositoryRoot,
+  "apps/portfolio-web/src/components/pages/agentPage/Agent.tsx",
+);
+const staticAppPagePath = resolve(
+  repositoryRoot,
+  "apps/portfolio-web/src/components/pages/staticAppPage/StaticAppPage.tsx",
+);
+const llmsPath = resolve(repositoryRoot, "apps/portfolio-web/public/llms.txt");
 const apiPath = resolve(
   repositoryRoot,
   "apps/portfolio-web/src/components/portfolioAssistant/portfolioAssistantApi.ts",
@@ -148,6 +166,30 @@ test("normalizes assistant Markdown links before they reach SPA navigation", () 
   assert.match(rendered, /https:\/\/syn-forge\.com\/<\/a> —is/);
 });
 
+test("publishes Feilhann across assistant UI and public agent metadata", async () => {
+  assert.equal(PORTFOLIO_ASSISTANT_NAME, "Feilhann");
+  assert.equal(PORTFOLIO_ASSISTANT_ROLE, "Portfolio assistant");
+  assert.equal(PORTFOLIO_ASSISTANT_LABEL, "Feilhann portfolio assistant");
+
+  const [entrySource, fabSource, agentPageSource, staticAppPageSource, llms] = await Promise.all([
+    readFile(entryPath, "utf8"),
+    readFile(fabPath, "utf8"),
+    readFile(agentPagePath, "utf8"),
+    readFile(staticAppPagePath, "utf8"),
+    readFile(llmsPath, "utf8"),
+  ]);
+
+  assert.match(entrySource, /Open \$\{PORTFOLIO_ASSISTANT_LABEL\}/);
+  assert.match(fabSource, /aria-label=\{PORTFOLIO_ASSISTANT_LABEL\}/);
+  assert.match(fabSource, /PORTFOLIO_ASSISTANT_NAME} is reading portfolio sources/);
+  assert.ok(fabSource.includes("Ask about Operator-Syn’s work."));
+  assert.match(agentPageSource, /name: PORTFOLIO_ASSISTANT_NAME/);
+  assert.match(agentPageSource, /disambiguatingDescription: PORTFOLIO_ASSISTANT_ROLE/);
+  assert.match(staticAppPageSource, /jsonLd=\{config\.jsonLd\}/);
+  assert.ok(llms.includes(`- Name: ${PORTFOLIO_ASSISTANT_NAME}`));
+  assert.ok(llms.includes(`- Role: ${PORTFOLIO_ASSISTANT_ROLE}`));
+});
+
 test("mounts the portfolio assistant globally with bounded authenticated chat controls", async () => {
   const [appSource, fabSource, apiSource, configSource, cssSource] = await Promise.all([
     readFile(appPath, "utf8"),
@@ -185,7 +227,7 @@ test("mounts the portfolio assistant globally with bounded authenticated chat co
   assert.match(fabSource, /<summary>Show model reasoning<\/summary>/);
   assert.match(fabSource, /AssistantThreadSelect/);
   assert.match(fabSource, /AssistantThreadActionsMenu/);
-  assert.match(fabSource, /Expand portfolio assistant for reading/);
+  assert.match(fabSource, /Expand \$\{PORTFOLIO_ASSISTANT_LABEL\} for reading/);
   assert.match(fabSource, /data-assistant-mode=/);
   assert.match(fabSource, /aria-modal=\{isDialogPresentation \? "true" : undefined\}/);
   assert.match(fabSource, /data-assistant-mobile-modal=/);
@@ -202,7 +244,7 @@ test("mounts the portfolio assistant globally with bounded authenticated chat co
   assert.match(fabSource, /role="listbox"/);
   assert.match(fabSource, /stopImmediatePropagation\(\)/);
   assert.match(fabSource, /assistantUserLabel\(session\.user\?\.displayName\)/);
-  assert.match(fabSource, /message\.role === "user" \? userDisplayName : "Assistant"/);
+  assert.match(fabSource, /message\.role === "user" \? userDisplayName : PORTFOLIO_ASSISTANT_NAME/);
   assert.match(fabSource, /import remarkGfm from "remark-gfm";/);
   assert.match(fabSource, /AssistantMarkdownLink/);
   assert.match(fabSource, /normalizeAssistantMarkdownText\(text\)/);
@@ -305,7 +347,7 @@ test("keeps agent-development with an explicit active assistant gate", async () 
     /portfolioAssistantAvailability: PortfolioAssistantAvailability = "active"/,
   );
   assert.match(fabSource, /portfolioAssistantAvailability === "teaser"/);
-  assert.match(fabSource, /"Open portfolio assistant"/);
+  assert.match(fabSource, /Open \$\{PORTFOLIO_ASSISTANT_LABEL\}/);
 });
 
 test("keeps long assistant content on one readable scroll surface", async () => {
