@@ -1,4 +1,5 @@
 import { expect, test } from "playwright/test";
+import { PORTFOLIO_ASSISTANT_LABEL } from "../../apps/portfolio-web/src/components/portfolioAssistant/portfolioAssistantIdentity.ts";
 import { installAssistantBrowserAudit } from "./playwright-observability.ts";
 
 test("reuses the saved Google session for the portfolio assistant", async ({ page }) => {
@@ -9,7 +10,7 @@ test("reuses the saved Google session for the portfolio assistant", async ({ pag
   const sessionResponsePromise = page.waitForResponse(
     (response) => new URL(response.url()).pathname === "/session",
   );
-  await page.getByRole("button", { name: "Open portfolio assistant" }).click();
+  await page.getByRole("button", { name: `Open ${PORTFOLIO_ASSISTANT_LABEL}` }).click();
 
   const sessionResponse = await sessionResponsePromise;
   expect(sessionResponse.status()).toBe(200);
@@ -29,7 +30,7 @@ test("audits the authenticated assistant WebSocket and grounded response", async
   );
   const audit = installAssistantBrowserAudit(page);
   await page.goto("/ai");
-  await page.getByRole("button", { name: "Open portfolio assistant" }).click();
+  await page.getByRole("button", { name: `Open ${PORTFOLIO_ASSISTANT_LABEL}` }).click();
 
   const panel = page.locator("#portfolio-assistant-panel");
   await expect(panel).toHaveAttribute("data-chat-state", "active");
@@ -87,7 +88,7 @@ test("keeps the assistant contained and touch-sized across the responsive matrix
   test.setTimeout(60_000);
   const audit = installAssistantBrowserAudit(page);
   await page.goto("/ai");
-  await page.getByRole("button", { name: "Open portfolio assistant" }).click();
+  await page.getByRole("button", { name: `Open ${PORTFOLIO_ASSISTANT_LABEL}` }).click();
 
   const panel = page.locator("#portfolio-assistant-panel");
   await expect(panel).toBeVisible();
@@ -101,7 +102,7 @@ test("keeps the assistant contained and touch-sized across the responsive matrix
     await expect(page.locator(".portfolio-assistant-fab")).toHaveCount(0);
     await expect(page.locator(".portfolio-assistant-expanded-backdrop")).toHaveCount(0);
     await expect(
-      panel.getByRole("button", { name: "Expand portfolio assistant for reading" }),
+      panel.getByRole("button", { name: `Expand ${PORTFOLIO_ASSISTANT_LABEL} for reading` }),
     ).toHaveCount(0);
 
     await expect.poll(async () => (await panel.boundingBox())?.x ?? -1, { timeout: 5_000 }).toBe(0);
