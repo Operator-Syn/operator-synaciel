@@ -28,6 +28,7 @@ export type StaticAppPageConfig = {
   policyReturnLabel: string;
   policyReturnTo: string;
   sections: StaticAppSection[];
+  jsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
 };
 
 type StaticAppPageProps = {
@@ -42,7 +43,12 @@ export default function StaticAppPage({ config }: StaticAppPageProps) {
 
   return (
     <>
-      <GlobalHeadManager title={config.title} description={config.description} url={config.url} />
+      <GlobalHeadManager
+        description={config.description}
+        jsonLd={config.jsonLd}
+        title={config.title}
+        url={config.url}
+      />
 
       <CookingArea>
         <main aria-labelledby="static-app-page-title" className="static-app-page">
