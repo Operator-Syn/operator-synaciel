@@ -66,7 +66,7 @@ accepted local origins by the Worker CORS allowlist.
   breakpoint is documented in [[design-system/responsive-layout|the responsive
   layout note]].
 - [`apps/portfolio-web/src/components/quickNavigation/QuickNavigation.tsx`](../../apps/portfolio-web/src/components/quickNavigation/QuickNavigation.tsx)
-  remains available on archive routes but does not cover the homepage.
+  remains available from the homepage coordinate rail and every other railed route.
 - [`apps/portfolio-web/src/components/homePage/HomeSettings.tsx`](../../apps/portfolio-web/src/components/homePage/HomeSettings.tsx) and
   `apps/portfolio-web/src/components/sitePreferences/` own the fixed, browser-local visitor
   preferences utility; it is rendered outside the homepage flow.
