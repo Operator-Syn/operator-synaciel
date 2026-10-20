@@ -20,11 +20,13 @@ The server exposes structured overview, project, certificate, public snippet, an
 
 ## Canonical portfolio pages
 
-- [Home](https://syn-forge.com/): `https://syn-forge.com/`
-- [Projects](https://syn-forge.com/projects): `https://syn-forge.com/projects`
-- [Certificates](https://syn-forge.com/certificates): `https://syn-forge.com/certificates`
-- [Snippets](https://syn-forge.com/snippets): `https://syn-forge.com/snippets`
+- [Home](https://syn-forge.com/): `https://syn-forge.com/` — owner introduction, profile summary, tools, selected work, and public links.
+- [Projects](https://syn-forge.com/projects): `https://syn-forge.com/projects` — public project archive; project records do not have individual site routes.
+- [Certificates](https://syn-forge.com/certificates): `https://syn-forge.com/certificates` — certificate and training archive.
+- [Snippets](https://syn-forge.com/snippets): `https://syn-forge.com/snippets` — technical Markdown notes, reference files, and PDFs. This is not automatically a blog feed; use the blog label only when a document explicitly supports it.
+- Snippet document pattern: `https://syn-forge.com/snippets/document/:id/:slug` — canonical full-document route for a public snippet.
+- [AI and MCP Access](https://syn-forge.com/ai): `https://syn-forge.com/ai` — public documentation for this read-only Portfolio MCP, including its endpoint, tools, resources, and evidence boundary.
 - [Privacy policy](https://syn-forge.com/privacy-policy): `https://syn-forge.com/privacy-policy`
 - [Terms](https://syn-forge.com/terms-and-conditions): `https://syn-forge.com/terms-and-conditions`
 
-Agents should cite these canonical pages, distinguish published evidence from inference, and avoid inventing employers, clients, metrics, or skills.
+Agents should cite these canonical pages, distinguish published evidence from inference, and avoid inventing employers, clients, metrics, routes, or skills.
