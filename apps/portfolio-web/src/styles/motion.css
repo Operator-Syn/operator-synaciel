@@ -96,7 +96,7 @@
         transform: none;
     }
 
-    .coordinate-rail[data-handshake-state="complete"]::after {
+    .coordinate-rail-frame[data-handshake-state="complete"]::after {
         animation: none;
         opacity: 1;
         transform: translate(-50%, -50%) rotate(45deg);
