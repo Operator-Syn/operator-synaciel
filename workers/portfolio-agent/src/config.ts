@@ -1,3 +1,4 @@
+import type { BrowserWorker } from "@cloudflare/puppeteer";
 import type { Ai, D1Database, DurableObjectNamespace } from "@cloudflare/workers-types";
 
 export const AGENT_CLASS_NAME = "PortfolioAgent";
@@ -25,6 +26,7 @@ export type AgentProps = {
 export type PortfolioAgentEnvironment = {
   AI: Ai;
   AUTH_DB: D1Database;
+  BROWSER: BrowserWorker;
   PortfolioAgent: DurableObjectNamespace;
   PORTFOLIO_MCP_URL: string;
   BROWSER_ORIGINS: string;
