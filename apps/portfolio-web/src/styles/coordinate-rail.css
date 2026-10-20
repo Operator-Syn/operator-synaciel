@@ -103,6 +103,29 @@
         padding-inline: 0.75rem;
         text-align: right;
         white-space: nowrap;
+        appearance: none;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        color: inherit;
+        cursor: help;
+        font: inherit;
+        letter-spacing: inherit;
+        text-transform: inherit;
+        transition: color var(--motion-feedback-duration) ease;
+    }
+
+    .coordinate-rail-status[data-handshake-state="arming"] {
+        color: var(--color-signal);
+    }
+
+    .coordinate-rail-status[data-handshake-state="complete"] {
+        color: var(--color-signal-strong);
+    }
+
+    .coordinate-rail-status:focus-visible {
+        outline: 2px solid var(--focus-ring);
+        outline-offset: -2px;
     }
 
     .coordinate-rail-markers {
