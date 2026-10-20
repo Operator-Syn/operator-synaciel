@@ -118,7 +118,7 @@
         display: none;
     }
 
-    .coordinate-rail.has-pointer::after {
+    .coordinate-rail-frame.has-pointer::after {
         display: none;
     }
 
