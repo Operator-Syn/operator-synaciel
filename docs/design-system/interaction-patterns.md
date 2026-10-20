@@ -30,8 +30,9 @@ The rail:
 - hands off browser-owned native PDF viewers explicitly: while that surface is hovered, the rail clears X/Y and its registration mark and labels the viewer instead of showing stale coordinates;
 - reports `TOUCH` briefly for an active touch contact, then returns to the
   system label;
-- moves one registration mark from the actual pointer position using a
-  request-animation-frame update, without a trailing overlay or positional
+- moves one registration mark from the actual pointer position across the full
+  rail frame, including the status and utility-control columns, using a
+  request-animation-frame update without a trailing overlay or positional
   easing, and re-clamps that mark when the rail resizes;
 - accepts a deliberate mouse/pen dwell, touch activation, or keyboard click as
   a bounded signal handshake and announces completion accessibly;
