@@ -39,6 +39,10 @@ test("aligns the guide and public llms manifest on canonical pages", async () =>
   assert.match(PORTFOLIO_GUIDE, /Project records open in the portfolio/i);
   assert.match(llms, /project records do not have individual site routes/i);
   assert.match(PORTFOLIO_GUIDE, /Do not volunteer them as ordinary visitor pages/i);
+  assert.match(llms, /## Feilhann portfolio assistant/);
+  assert.match(llms, /- Name: Feilhann/);
+  assert.match(llms, /- Role: Portfolio assistant/);
+  assert.match(llms, /separate, unauthenticated read-only interface/);
   assert.doesNotMatch(PORTFOLIO_GUIDE, /NetBird|Atelier|\/netbird|\/atelier|\/agent/i);
   assert.doesNotMatch(llms, /NetBird|Atelier|\/netbird|\/atelier|\/agent/i);
 });
