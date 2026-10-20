@@ -119,6 +119,19 @@ gate is enabled:
 npm run test:e2e:live
 ```
 
+The context-reliability replay is separate and also approval-gated:
+
+```bash
+npm run test:e2e:agent-context
+```
+
+It finds or creates one empty authenticated thread, selects it in the assistant,
+replays the `/ai`, page-inventory, onboarding, Snippets/blog, and complete JSON
+project-list prompts, and deletes that thread at the end. The replay asserts that
+answers do not use the verification fallback, do not ask the visitor to choose
+an internal retrieval flow, and do not expose the agent-local page-reader name.
+It can consume additional Workers AI quota and remains outside normal CI.
+
 That dedicated smoke creates a real assistant turn and can consume the rolling
 Workers AI budget, so run it only at the approval-gated live-smoke checkpoint.
 It requires a fresh valid saved Google session and fails if the provider returns
