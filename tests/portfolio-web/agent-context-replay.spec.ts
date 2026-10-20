@@ -1,4 +1,5 @@
 import { type APIRequestContext, expect, test } from "playwright/test";
+import { PORTFOLIO_ASSISTANT_LABEL } from "../../apps/portfolio-web/src/components/portfolioAssistant/portfolioAssistantIdentity.ts";
 import { installAssistantBrowserAudit } from "./playwright-observability.ts";
 
 const DEFAULT_PUBLIC_AUTH_ORIGIN = "https://public-auth.syn-forge.com";
@@ -125,7 +126,7 @@ test.describe("live agent context replay", () => {
     const threadId = await ensureFreshThread(request, authOrigin, origin);
 
     try {
-      await page.getByRole("button", { name: "Open portfolio assistant" }).click();
+      await page.getByRole("button", { name: `Open ${PORTFOLIO_ASSISTANT_LABEL}` }).click();
       const panel = page.locator("#portfolio-assistant-panel");
       await expect(panel).toHaveAttribute("data-chat-state", "active");
       const threadTrigger = panel.locator(".portfolio-assistant-thread-select-trigger");
