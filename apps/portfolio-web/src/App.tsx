@@ -15,27 +15,29 @@ const SnippetDocument = lazy(() => import("./components/pages/snippetsPage/Snipp
 
 function RouteLoadingFallback() {
   return (
-    <LoadingRegion className="app-route-loading page-frame" label="Loading page">
-      <div className="app-route-loading-heading">
-        <LoadingBlock className="app-route-loading-eyebrow" />
-        <LoadingBlock className="app-route-loading-title" />
-        <LoadingBlock className="app-route-loading-summary" />
-      </div>
+    <main aria-label="Loading page">
+      <LoadingRegion className="app-route-loading page-frame" label="Loading page">
+        <div className="app-route-loading-heading">
+          <LoadingBlock className="app-route-loading-eyebrow" />
+          <LoadingBlock className="app-route-loading-title" />
+          <LoadingBlock className="app-route-loading-summary" />
+        </div>
 
-      <div className="app-route-loading-list">
-        {["one", "two", "three"].map((row) => (
-          <div className="app-route-loading-row" key={row}>
-            <LoadingBlock className="app-route-loading-index" />
-            <LoadingBlock className="app-route-loading-media" />
-            <div className="app-route-loading-copy">
-              <LoadingBlock className="app-route-loading-line app-route-loading-line-title" />
-              <LoadingBlock className="app-route-loading-line" />
-              <LoadingBlock className="app-route-loading-line app-route-loading-line-short" />
+        <div className="app-route-loading-list">
+          {["one", "two", "three"].map((row) => (
+            <div className="app-route-loading-row" key={row}>
+              <LoadingBlock className="app-route-loading-index" />
+              <LoadingBlock className="app-route-loading-media" />
+              <div className="app-route-loading-copy">
+                <LoadingBlock className="app-route-loading-line app-route-loading-line-title" />
+                <LoadingBlock className="app-route-loading-line" />
+                <LoadingBlock className="app-route-loading-line app-route-loading-line-short" />
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-    </LoadingRegion>
+          ))}
+        </div>
+      </LoadingRegion>
+    </main>
   );
 }
 
@@ -45,7 +47,7 @@ export default function App() {
       <PageTransition>
         <NavBar brandName={brandName} links={NavLinks} />
 
-        <main className="app-shell">
+        <div className="app-shell">
           <Suspense fallback={<RouteLoadingFallback />}>
             <Routes>
               <Route path="/snippets/document/:id/:slug" element={<SnippetDocument />} />
@@ -68,7 +70,7 @@ export default function App() {
               <QuickNavigation />
             </FloatingControlsDock>
           </Suspense>
-        </main>
+        </div>
       </PageTransition>
     </FloatingControlsProvider>
   );
