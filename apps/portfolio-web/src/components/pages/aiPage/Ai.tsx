@@ -22,6 +22,7 @@ import {
 } from "../../../data/portfolioMcp";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
 import TransitionNavLink from "../../pageTransition/TransitionNavLink";
+import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
 import "./Ai.css";
 
 const AI_PAGE_URL = "https://syn-forge.com/ai";
@@ -102,6 +103,8 @@ export default function Ai() {
       />
 
       <main aria-labelledby="ai-page-title" className="ai-page">
+        <PointerCoordinates className="ai-page-coordinates" markerCount={0} />
+
         <header className="ai-page-hero">
           <div className="ai-page-hero-copy">
             <p className="ai-page-kicker">Public agent interface</p>
