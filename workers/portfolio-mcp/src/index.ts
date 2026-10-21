@@ -1,14 +1,20 @@
 export type { PortfolioMcpEnvironment } from "./config.ts";
 export {
+  GITHUB_BLOB_CACHE_TTL_SECONDS,
   GITHUB_COMMIT_CACHE_TTL_SECONDS,
   GITHUB_COMMIT_FILE_LIMIT,
   GITHUB_COMMIT_LIST_CACHE_TTL_SECONDS,
   GITHUB_COMMIT_MESSAGE_MAX_CHARACTERS,
   GITHUB_COMMIT_REACHABILITY_CACHE_TTL_SECONDS,
+  GITHUB_FILE_MAX_BYTES,
+  GITHUB_FILE_MAX_CHARACTERS,
   GITHUB_README_CACHE_TTL_SECONDS,
   GITHUB_README_MAX_CHARACTERS,
   GITHUB_REPOSITORY_CACHE_TTL_SECONDS,
+  GITHUB_TREE_CACHE_TTL_SECONDS,
+  GITHUB_TREE_FILE_LIMIT,
   MAX_GITHUB_COMMIT_PAGE,
+  MAX_GITHUB_FILE_PAGE,
   MAX_LIST_LIMIT,
   MAX_SEARCH_QUERY_CHARACTERS,
   MAX_SEARCH_RESULTS,
@@ -19,6 +25,11 @@ export {
   PORTFOLIO_MCP_SERVER_NAME,
   PORTFOLIO_MCP_SERVER_VERSION,
 } from "./config.ts";
+export type {
+  GitHubCredentialProvider,
+  GitHubCredentialProviderOptions,
+} from "./github/index.ts";
+export { createGitHubAppCredentialProvider } from "./github/index.ts";
 export { createPortfolioMcpHandler } from "./mcp/handler.ts";
 export type { PortfolioMcpTransportOptions } from "./mcp/server.ts";
 export { createPortfolioMcpServer } from "./mcp/server.ts";
