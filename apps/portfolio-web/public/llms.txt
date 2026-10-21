@@ -8,8 +8,8 @@ Feilhann is Syn-Forge's authenticated, site-wide portfolio assistant. It helps v
 
 - Name: Feilhann
 - Role: Portfolio assistant
-- Scope: public portfolio projects, certificates, snippets, and page content
-- Evidence: the public Portfolio MCP and rendered pages under `https://syn-forge.com`
+- Scope: public portfolio projects, certificates, snippets, page content, and linked public repository evidence
+- Evidence: the public Portfolio MCP, linked public GitHub repositories on `main`, and rendered pages under `https://syn-forge.com`
 - Boundary: read-only; no account, repository, portfolio-record, or external-service changes
 
 Feilhann is the interactive site assistant. The public Portfolio MCP described below remains a separate, unauthenticated read-only interface for compatible agents.
@@ -25,9 +25,9 @@ Syn-Forge provides a public, read-only Model Context Protocol server for agents 
 - Authentication: none for the current public surface
 - Writes: none
 
-The server exposes structured overview, project, certificate, public snippet, and bounded GitHub inspection information. Markdown snippets and linked project READMEs can be read in bounded chunks; PDF snippets expose metadata and canonical links. GitHub inspection is limited to public repositories already referenced by a project, and every GitHub read is pinned to the main branch.
+The server exposes structured overview, project, certificate, public snippet, and bounded GitHub inspection information. Markdown snippets, linked project READMEs, and selected text source files can be read in bounded chunks; PDF snippets expose metadata and canonical links. GitHub inspection is limited to public repositories already referenced by a project, every GitHub read is pinned to the main branch, and private or unlinked repositories are unavailable. Upstream GitHub access uses a server-side GitHub App credential; MCP callers need no GitHub account.
 
-- Tools: `get_portfolio_overview`, `search_portfolio`, `list_projects`, `get_project`, `list_certificates`, `get_certificate`, `list_snippets`, `read_snippet`, `get_project_repository`, `get_project_readme`, `list_project_commits`, `get_project_commit`
+- Tools: `get_portfolio_overview`, `search_portfolio`, `list_projects`, `get_project`, `list_certificates`, `get_certificate`, `list_snippets`, `read_snippet`, `get_project_repository`, `get_project_readme`, `list_project_commits`, `get_project_commit`, `list_project_files`, `get_project_file`
 - Resources: `portfolio://overview`, `portfolio://projects`, `portfolio://certificates`, `portfolio://snippets`
 
 ## Canonical portfolio pages
