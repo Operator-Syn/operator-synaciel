@@ -232,6 +232,7 @@ export function createGitHubClient(options: GitHubClientOptions = {}): GitHubCli
     const response = await transport.getJson<GitHubRepositoryResponse>(
       getGitHubApiRepositoryPath(ref),
       0,
+      ref,
     );
     if (!isPublicRepository(response.data)) {
       throw new PortfolioApiError("The linked GitHub repository is not public.", 404);
@@ -243,6 +244,7 @@ export function createGitHubClient(options: GitHubClientOptions = {}): GitHubCli
     const response = await transport.getJson<GitHubBranchResponse>(
       `${getGitHubApiRepositoryPath(ref)}/branches/${GITHUB_MAIN_BRANCH}`,
       GITHUB_CACHE_TTLS.commitReachability,
+      ref,
     );
     if (
       response.data.name !== GITHUB_MAIN_BRANCH ||
@@ -256,7 +258,11 @@ export function createGitHubClient(options: GitHubClientOptions = {}): GitHubCli
 
   async function getReadmePayload(ref: GitHubRepositoryRef): Promise<GitHubContentResponse> {
     const path = `${getGitHubApiRepositoryPath(ref)}/contents/README.md?ref=${GITHUB_MAIN_BRANCH}`;
-    const response = await transport.getJson<GitHubContentResponse>(path, GITHUB_CACHE_TTLS.readme);
+    const response = await transport.getJson<GitHubContentResponse>(
+      path,
+      GITHUB_CACHE_TTLS.readme,
+      ref,
+    );
     if (
       response.data.type !== "file" ||
       response.data.name !== "README.md" ||
@@ -276,6 +282,7 @@ export function createGitHubClient(options: GitHubClientOptions = {}): GitHubCli
     const response = await transport.getJson<GitHubCommitResponse[]>(
       `${getGitHubApiRepositoryPath(ref)}/commits?${search.toString()}`,
       GITHUB_CACHE_TTLS.commitList,
+      ref,
     );
     if (!Array.isArray(response.data)) {
       throw new PortfolioApiError("GitHub returned an invalid commit list.", 502);
@@ -297,6 +304,7 @@ export function createGitHubClient(options: GitHubClientOptions = {}): GitHubCli
       comparison = await transport.getJson<GitHubCompareResponse>(
         comparisonPath,
         GITHUB_CACHE_TTLS.commitReachability,
+        ref,
       );
     } catch (error) {
       if (isCommitUnavailable(error)) {
@@ -312,6 +320,7 @@ export function createGitHubClient(options: GitHubClientOptions = {}): GitHubCli
     const response = await transport.getJson<GitHubCommitResponse>(
       `${getGitHubApiRepositoryPath(ref)}/commits/${encodeURIComponent(sha)}`,
       GITHUB_CACHE_TTLS.commit,
+      ref,
     );
     const summary = normalizeCommit(ref, response.data);
     if (summary.sha !== sha.toLowerCase()) {
@@ -331,6 +340,7 @@ export function createGitHubClient(options: GitHubClientOptions = {}): GitHubCli
     const response = await transport.getJson<GitHubTreeResponse>(
       `${getGitHubApiRepositoryPath(ref)}/git/trees/${commitSha}?recursive=1`,
       GITHUB_CACHE_TTLS.tree,
+      ref,
     );
     if (!Array.isArray(response.data.tree)) {
       throw new PortfolioApiError("GitHub returned an invalid repository tree.", 502);
@@ -491,6 +501,7 @@ export function createGitHubClient(options: GitHubClientOptions = {}): GitHubCli
     const response = await transport.getJson<GitHubBlobResponse>(
       `${getGitHubApiRepositoryPath(ref)}/git/blobs/${file.blob_sha}`,
       GITHUB_CACHE_TTLS.blob,
+      ref,
     );
     if (
       requireSha(response.data.sha) !== file.blob_sha ||
