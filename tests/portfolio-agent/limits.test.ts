@@ -345,7 +345,7 @@ test("uses the rolling quota without a thread burst gate", async () => {
   assert.ok(catalogIndex > availabilityIndex);
 });
 
-test("keeps the eight portfolio MCP tools, page reader, and thread evidence", async () => {
+test("keeps the fourteen portfolio MCP tools, page reader, and thread evidence", async () => {
   const source = await readFile(agentPath, "utf8");
   assert.match(source, /selectPortfolioTools\(rawTools\)/);
   assert.match(source, /read_portfolio_page/);
@@ -359,6 +359,9 @@ test("keeps the eight portfolio MCP tools, page reader, and thread evidence", as
   assert.match(source, /convertToModelMessages\([\s\S]*?tools:\s*selectedTools/);
   assert.match(source, /streamText\(\{[\s\S]*?tools:\s*selectedTools/);
   assert.doesNotMatch(source, /filterToolSet|requiresGitHubContext|requiresPortfolioOverview/);
+  const prompt = buildSystemPrompt();
+  assert.match(prompt, /linked public GitHub tools/);
+  assert.match(prompt, /Never imply access to private, unlinked, or third-party repositories/);
 });
 
 test("uses natural text streaming with the provider's default reasoning", async () => {
