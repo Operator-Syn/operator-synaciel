@@ -8,7 +8,7 @@ status: in_progress
 plan_id: portfolio-mcp-github-app-rate-limit-hardening
 owner: Operator-Syn
 created: 2026-08-29
-last_reviewed: 2026-08-29
+last_reviewed: 2026-10-21
 risk: high
 scope: public portfolio MCP GitHub read path
 source_of_truth: [workers/portfolio-mcp/, docs/architecture/portfolio-mcp.md]
@@ -16,7 +16,7 @@ source_of_truth: [workers/portfolio-mcp/, docs/architecture/portfolio-mcp.md]
 
 # Syn-Forge Portfolio MCP GitHub App Rate-Limit Hardening
 
-> Status: `in_progress` — the plan is published; implementation stages remain `planned` until their exit gates are evidenced.
+> Status: `in_progress` — authenticated transport, the fresh public-only gate, bounded tree/text-file tools, and Feilhann exposure are implemented in source and covered by tests. External App installation, secret upload, edge deployment, Worker deployment, and live verification remain approval-gated.
 
 ## Purpose
 
@@ -26,10 +26,11 @@ This plan covers five implementation stages, cross-cutting sweeps, milestone gat
 
 ## Current baseline
 
-- `workers/portfolio-mcp/src/github/transport.ts` sends GitHub GET requests with `Accept`, `User-Agent`, and `X-GitHub-Api-Version`; it has no `Authorization` header.
-- The four GitHub tools share one transport and the same unauthenticated upstream quota; the MCP Worker has no application-level user/session/tool bucket.
+- The GitHub transport obtains a short-lived installation token from the configured GitHub App and sends it as a server-held bearer credential on every uncached request.
+- The six GitHub tools resolve only project-linked repositories, check public visibility fresh on every invocation, and remain pinned to `main`.
+- Tree and text-file tools resolve repository-relative paths from the current `main` tree and exclude symlinks, submodules, binary files, and credential-like paths.
 - GitHub `429`, and qualifying rate-limit `403` responses (`x-ratelimit-remaining: 0` or `Retry-After`), become the stable MCP `RATE_LIMITED` envelope.
-- Successful GitHub responses use separate synthetic cache keys with explicit repository, README, commit-list/reachability, and commit-detail TTLs.
+- Successful GitHub responses use separate synthetic cache keys with explicit repository, README, commit-list/reachability, commit-detail, tree-by-SHA, and blob-by-SHA TTLs.
 - The Worker is stateless and public; Cloudflare edge controls and production deployment are separate operational boundaries.
 
 ## Decisions
@@ -37,7 +38,7 @@ This plan covers five implementation stages, cross-cutting sweeps, milestone gat
 | Decision | Selected approach | Reason |
 | --- | --- | --- |
 | Credential | GitHub App installation access token | Service-owned, repository-scoped, rotatable, and higher quota than unauthenticated requests |
-| Installation scope | Only repositories linked by published portfolio projects | Limits blast radius and follows the existing project-link boundary |
+| Installation scope | Only reviewed public repositories linked by published portfolio projects | Limits blast radius and follows the existing project-link boundary |
 | Permissions | Repository metadata and contents, read-only | Fixed reads require no writes, hooks, issues, or administration |
 | Storage | Cloudflare Worker Secrets | Keeps private key and identifiers out of source and MCP traffic |
 | User safeguard | Cloudflare edge rule keyed by client IP | Current public MCP has no authenticated user identity; limitation stays explicit |
@@ -49,9 +50,9 @@ This plan covers five implementation stages, cross-cutting sweeps, milestone gat
 | Stage | Note | Status | Exit gate | Depends on |
 | --- | --- | --- | --- | --- |
 | 1 | [[plans/portfolio-mcp-github-app/stage-1-github-app|GitHub App foundation]] | planned | App installed with reviewed scope and read-only permissions | — |
-| 2 | [[plans/portfolio-mcp-github-app/stage-2-token-lifecycle|Token lifecycle]] | planned | Secret bindings and one-hour token renewal tested without real credentials | 1 |
-| 3 | [[plans/portfolio-mcp-github-app/stage-3-authenticated-transport|Authenticated transport]] | planned | Four GitHub tools send server-side bearer auth and preserve boundaries | 2 |
-| 4 | [[plans/portfolio-mcp-github-app/stage-4-rate-resilience|Rate resilience]] | planned | Cache, backoff, and edge controls prevent avoidable quota exhaustion | 3 |
+| 2 | [[plans/portfolio-mcp-github-app/stage-2-token-lifecycle|Token lifecycle]] | source_complete | Secret bindings and one-hour token renewal tested without real credentials; external secrets pending | 1 |
+| 3 | [[plans/portfolio-mcp-github-app/stage-3-authenticated-transport|Authenticated transport]] | source_complete | Six GitHub tools send server-side bearer auth, stay public-only, and expose bounded source files | 2 |
+| 4 | [[plans/portfolio-mcp-github-app/stage-4-rate-resilience|Rate resilience]] | partial | Tree/blob caches and bounded errors are implemented; edge-rule deployment pending | 3 |
 | 5 | [[plans/portfolio-mcp-github-app/stage-5-verification-rollout|Verification and rollout]] | planned | Source, tests, deployment, and live behavior separately evidenced | 4 |
 
 ## Milestones
@@ -71,7 +72,7 @@ This plan covers five implementation stages, cross-cutting sweeps, milestone gat
 
 ## Scope boundaries
 
-In scope: GitHub App authentication for the existing four GitHub-backed tools, secret/token lifecycle, rate-limit classification, cache preservation, bounded backoff, edge protection, tests, documentation, and rollout evidence.
+In scope: GitHub App authentication for six GitHub-backed tools, bounded public source-file browsing, Feilhann evidence exposure, secret/token lifecycle, rate-limit classification, cache preservation and tree/blob caching, bounded backoff, edge protection, tests, documentation, and rollout evidence.
 
 Out of scope: portfolio API authentication redesign, MCP client authentication, arbitrary GitHub repository/path access, write operations, D1/R2 changes, database migrations, deployment without separate authorization, and high-volume/load testing.
 
