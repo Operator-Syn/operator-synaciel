@@ -36,8 +36,10 @@ Retain the existing synthetic namespace and successful-response-only policy:
 | Commit list | 300 seconds |
 | Main branch/reachability | 300 seconds |
 | Full commit detail | 86,400 seconds |
+| Tree keyed by `main` SHA | 86,400 seconds |
+| Blob keyed by blob SHA | 86,400 seconds |
 
-Cache keys must include the complete fixed pathname and query. Cache hits must not call GitHub. Failed, malformed, oversized, or cookie-bearing responses remain non-cacheable.
+Cache keys must include the complete fixed pathname and query. Cache hits must not call GitHub for content, but every GitHub tool first performs an uncached project-repository visibility check. Failed, malformed, oversized, or cookie-bearing responses remain non-cacheable.
 
 ## Failure handling
 
