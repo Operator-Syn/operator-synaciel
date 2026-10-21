@@ -18,7 +18,9 @@ at `https://mcp.syn-forge.com/mcp`.
 
 The Worker uses the stateless `createMcpHandler` path. The SDK may accept
 stateless legacy-compatible requests, but this deployment is not a sessionful
-`McpAgent`/Durable Object server and it does not use stdio.
+`McpAgent`/Durable Object server and it does not use stdio. MCP callers still
+need no account or GitHub credential. GitHub upstream requests are authenticated
+inside the Worker with a read-only GitHub App installation token.
 
 ## Classification
 
@@ -46,17 +48,25 @@ data: `/api/settings` uses a fixed public setting allowlist, and public snippet
 list/detail responses omit storage paths and ordering metadata. The MCP
 projection remains a second boundary.
 
-Project GitHub inspection is a separate read-only boundary. Each GitHub request
-starts from the matching public project record and its persisted `project_link`;
-the adapter accepts only a strict `https://github.com/owner/repository` URL,
-verifies that the repository is public, and constructs every upstream request
-itself. The only branch reference is the literal `main`; callers cannot supply
-an owner, repository, branch, ref, path, or arbitrary GitHub URL.
+Project GitHub inspection is a separate read-only boundary. Each tool starts
+from a public project record and its persisted `project_link`; the adapter
+accepts only a strict `https://github.com/owner/repository` URL and constructs
+every upstream request itself. The GitHub App installation is limited to the
+currently linked public repositories. Every invocation performs a fresh
+repository-visibility check before returning cached or live content, so a
+repository that becomes private is denied even if matching data is cached. The
+only branch reference is the literal `main`. Callers cannot supply an owner,
+repository, branch, ref, or arbitrary GitHub URL. Source-file paths must match a
+regular text blob in the current `main` tree; symlinks, submodules, binary
+files, credential-like paths, and paths outside that tree are not exposed.
 
-Markdown snippets are available through bounded chunks. PDF snippets return
-metadata and canonical links rather than attempting to extract document text.
-Upstream calls have an eight-second timeout and text responses have a one MiB
-cap before MCP's per-response chunk limit is applied.
+Markdown snippets and linked repository text files are available through bounded
+chunks. PDF snippets return metadata and canonical links rather than attempting
+to extract document text. GitHub tree responses are bounded to 10,000 visible
+text blobs; individual files are limited to one MiB and returned metadata-only
+when they are binary or too large. Upstream calls have an eight-second timeout
+and responses have a bounded transport cap before MCP's per-response chunk limit
+is applied.
 
 ## Cache behavior
 
@@ -80,12 +90,12 @@ through MCP for up to six hours in a previously warmed location. There is no
 KV binding or explicit purge workflow for this read-only cache.
 
 GitHub responses use a separate synthetic cache-key namespace. Repository
-metadata is cached for six hours, main-branch availability for five minutes,
-README responses for one hour, commit lists and main-reachability checks for
-five minutes, and commit details for 24 hours because a full commit SHA
-identifies immutable details.
-Only successful, bounded JSON responses are cached; cache failures remain
-misses and never change the public result.
+visibility checks are uncached; main-branch availability and commit lists use
+five-minute cache entries; README responses use one hour; commit details, trees
+keyed by `main` SHA, and blobs keyed by blob SHA use 24 hours because those
+identifiers are immutable. Only successful, bounded JSON responses are cached;
+cache failures remain misses and never change the public result. A cache entry
+never bypasses the fresh public-repository gate.
 
 ## Output contracts
 
@@ -98,7 +108,7 @@ The schemas are strict and discriminated where a tool has more than one success 
 - Project and certificate collections return `data` plus bounded `pagination`; detail tools return the record, media, and collection `canonical_url`.
 - Search returns the trimmed `query` and discriminated profile, project, certificate, or snippet results without internal ranking scores. Each result includes `matched_terms` and `matched_fields`; the optional `match_mode` input selects broad candidate discovery (the compatibility default) or all-term matching within one record.
 - Snippet listing returns public metadata only. Markdown reads return a bounded chunk with offsets; PDF reads return metadata and canonical links with `content_available: false`.
-- GitHub project tools return normalized repository metadata, root `README.md` chunks, bounded `main` commit pages, and changed-file summaries without patches or arbitrary repository paths.
+- GitHub project tools return normalized repository metadata, root `README.md` chunks, bounded `main` commit pages, text-file trees, and bounded text-file content. They expose no patches, writes, symlinks, submodules, binary content, or paths outside the current public `main` tree.
 
 The adapter reconstructs settings, profile, section, project, certificate, media, and snippet objects from explicit field allowlists before they reach a tool result. Database identifiers remain only where they are needed to retrieve or relate public records; storage paths, unknown upstream fields, and presentation-only fields from profile or section-item rows are omitted. Numeric record and relationship IDs are internal lookup handles for tool chaining; consuming agents should omit them from user-facing summaries unless a user explicitly requests an ID.
 
@@ -128,6 +138,8 @@ The server is intentionally read-only. It exposes no create, update, delete, upl
 | `get_project_readme` | Positive safe integer `project_id`, optional `offset` and `max_chars` | Bounded root `README.md` content from `main`, offsets, completion, and canonical GitHub URL |
 | `list_project_commits` | Positive safe integer `project_id`, optional `limit` (1–12) and server cursor | Bounded commit summaries reachable from `main` with pagination |
 | `get_project_commit` | Positive safe integer `project_id` and full 40-character SHA | A `main`-reachable commit summary and bounded changed-file summaries |
+| `list_project_files` | Positive safe integer `project_id`, optional path prefix, optional `limit` (1–100), and server cursor | Bounded text-file paths and blob SHAs from the current `main` tree with pagination and truncation state |
+| `get_project_file` | Positive safe integer `project_id`, exact tree path, optional `offset` and `max_chars` (up to 32,000) | A bounded text chunk with canonical GitHub URL, or metadata with `content_available: false` for binary or oversized files |
 
 The output schemas are advertised in `tools/list` and validated by the MCP SDK before successful results are returned.
 
@@ -151,10 +163,12 @@ The stable resources are `portfolio://overview`, `portfolio://projects`,
 records and canonical links without cursor pagination. Project and certificate
 list tools cap each requested page at 12 records, search returns at most 200
 results, and a Markdown response chunk is capped at 32,000 characters.
-GitHub commit pages are capped at 12 records, README chunks at 32,000
-characters, commit messages at 2,000 characters, and changed-file summaries
-at 100 files. GitHub commit cursors are server-issued `main:<page>` values and
-are bounded to 100 pages.
+GitHub commit pages are capped at 12 records, README and source-file chunks at
+32,000 characters, commit messages at 2,000 characters, changed-file summaries
+at 100 files, visible tree files at 10,000, and individual text files at one
+MiB. GitHub commit cursors are server-issued `main:<page>` values and are
+bounded to 100 pages. File-tree cursors are server-issued `tree:<offset>` values
+bounded by the visible-tree limit.
 
 ## Discovery
 
@@ -212,7 +226,7 @@ Binding declared in `workers/portfolio-mcp/wrangler.toml`.
 
 ## Implementation plan
 
-The staged GitHub App rate-limit hardening plan is maintained in [[plans/portfolio-mcp-github-app/README|the Portfolio MCP GitHub App plan]]. It is preparatory documentation: App creation, secret upload, edge-rule changes, deployment, and live verification remain separate approval-gated operations.
+The staged GitHub App rate-limit hardening plan is maintained in [[plans/portfolio-mcp-github-app/README|the Portfolio MCP GitHub App plan]]. Its authenticated transport, public-only gate, bounded source-file tools, cache controls, and Feilhann exposure are implemented in source and covered by tests. App creation, secret upload, edge-rule changes, deployment, and live verification remain separate approval-gated operations.
 
 ## Deployment
 
@@ -224,6 +238,10 @@ Before deploying, confirm all of the following:
    binding targets must exist before this Worker is deployed.
 3. `syn-forge.com` is an active Cloudflare zone and
    `mcp.syn-forge.com` does not have a conflicting existing CNAME.
+4. The GitHub App is installed on the reviewed public projects and the
+   `GITHUB_APP_ID`, `GITHUB_INSTALLATION_ID`, and `GITHUB_APP_PRIVATE_KEY`
+   Worker secrets are present. `wrangler deploy` validates these required
+   secrets through the `[secrets]` declaration.
 
 Run the checked-in validation and dry run:
 
