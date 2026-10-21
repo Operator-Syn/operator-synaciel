@@ -21,6 +21,7 @@ Reduce avoidable GitHub calls, prevent retry storms, and constrain one abusive c
 ## Quota model
 
 - Installation tokens have a primary REST limit of at least 5,000 requests/hour per installation, with documented scaling/caps depending on installation target.
+- Per-repository tokens narrow resource access but do not create a separate rate-limit bucket.
 - All MCP users of one installation share that installation bucket.
 - GitHub may apply secondary limits even while primary quota remains.
 - Authentication removes dependence on the unauthenticated originating-IP bucket; it does not make quota infinite or user-specific.
