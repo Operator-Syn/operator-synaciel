@@ -11,6 +11,7 @@ function readRepositoryFile(relativePath: string) {
 
 const publicSourceFiles = [
   "workers/portfolio-mcp/src/config.ts",
+  "workers/portfolio-mcp/src/github/auth.ts",
   "workers/portfolio-mcp/src/github/client.ts",
   "workers/portfolio-mcp/src/github/index.ts",
   "workers/portfolio-mcp/src/github/transport.ts",
@@ -109,9 +110,13 @@ test("keeps public and local MCP documentation aligned with their boundaries", a
   assert.match(discoveryFile, /Operator-Syn/);
   assert.doesNotMatch(discoveryFile, /John-Ronan/);
   assert.match(publicSource, /Operator-Syn/);
+  assert.match(publicSource, /createGitHubAppCredentialProvider/);
   assert.doesNotMatch(publicSource, /John-Ronan/);
   assert.match(publicWorkerConfig, /binding = "PORTFOLIO_API"/);
   assert.match(publicWorkerConfig, /service = "portfolio-api"/);
+  assert.match(publicWorkerConfig, /GITHUB_APP_ID/);
+  assert.match(publicWorkerConfig, /GITHUB_INSTALLATION_ID/);
+  assert.match(publicWorkerConfig, /GITHUB_APP_PRIVATE_KEY/);
   assert.match(publicWorkerConfig, /pattern = "mcp\.syn-forge\.com"/);
   assert.match(publicSource, /outputSchema:/);
   assert.match(publicSource, /structuredContent/);
