@@ -116,6 +116,7 @@ test("keeps public and local MCP documentation aligned with their boundaries", a
   assert.match(publicWorkerConfig, /service = "portfolio-api"/);
   assert.match(publicWorkerConfig, /GITHUB_APP_ID/);
   assert.match(publicWorkerConfig, /GITHUB_INSTALLATION_ID/);
+  assert.match(publicWorkerConfig, /GITHUB_INSTALLATION_OWNER/);
   assert.match(publicWorkerConfig, /GITHUB_APP_PRIVATE_KEY/);
   assert.match(publicWorkerConfig, /pattern = "mcp\.syn-forge\.com"/);
   assert.match(publicSource, /outputSchema:/);
@@ -123,6 +124,9 @@ test("keeps public and local MCP documentation aligned with their boundaries", a
   assert.match(publicSource, /readOnlyHint: true/);
   assert.match(publicDocumentation, /outputSchema/);
   assert.match(publicDocumentation, /structuredContent/);
+  assert.match(publicDocumentation, /All repositories/);
+  assert.match(publicDocumentation, /one repository/);
+  assert.match(publicDocumentation, /GITHUB_INSTALLATION_OWNER/);
   assert.match(
     documentationMap,
     /\[\[architecture\/portfolio-mcp\|Public Portfolio MCP \(Streamable HTTP\)\]\]/,
