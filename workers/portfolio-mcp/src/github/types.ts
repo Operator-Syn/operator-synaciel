@@ -1,6 +1,9 @@
-export type GitHubRepositoryRef = {
+export type GitHubTokenScope = {
   owner: string;
   name: string;
+};
+
+export type GitHubRepositoryRef = GitHubTokenScope & {
   canonical_url: string;
 };
 
@@ -89,7 +92,7 @@ export type GitHubClientOptions = {
   cache?: Pick<Cache, "match" | "put">;
   waitUntil?: (promise: Promise<unknown>) => void;
   fetchImpl?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-  accessToken?: () => Promise<string>;
+  accessToken?: (scope: GitHubTokenScope) => Promise<string>;
   invalidateAccessToken?: (token: string) => void;
 };
 
