@@ -1,9 +1,11 @@
 import {
+  GITHUB_BLOB_CACHE_TTL_SECONDS,
   GITHUB_COMMIT_CACHE_TTL_SECONDS,
   GITHUB_COMMIT_LIST_CACHE_TTL_SECONDS,
   GITHUB_COMMIT_REACHABILITY_CACHE_TTL_SECONDS,
   GITHUB_README_CACHE_TTL_SECONDS,
   GITHUB_REPOSITORY_CACHE_TTL_SECONDS,
+  GITHUB_TREE_CACHE_TTL_SECONDS,
   PORTFOLIO_MCP_ENDPOINT,
 } from "../config.ts";
 import { PortfolioApiError } from "../portfolio-api/errors.ts";
@@ -100,15 +102,10 @@ async function decodeJsonResponse<T>(response: Response): Promise<T> {
 
 export function createGitHubTransport(options: GitHubClientOptions = {}): GitHubTransport {
   const fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
+  const getAccessToken = options.accessToken;
+  const invalidateAccessToken = options.invalidateAccessToken;
 
-  async function getJson<T>(
-    pathname: string,
-    cacheTtlSeconds: number,
-  ): Promise<GitHubTransportResponse<T>> {
-    if (!pathname.startsWith("/") || pathname.startsWith("//")) {
-      throw new PortfolioApiError("The GitHub request path is invalid.", 400);
-    }
-
+  async function requestJson(pathname: string, token: string): Promise<Response> {
     const requestUrl = new URL(pathname, GITHUB_API_ORIGIN);
     if (requestUrl.origin !== GITHUB_API_ORIGIN) {
       throw new PortfolioApiError("The GitHub request origin is invalid.", 400);
@@ -118,11 +115,36 @@ export function createGitHubTransport(options: GitHubClientOptions = {}): GitHub
       method: "GET",
       headers: {
         Accept: "application/vnd.github+json",
+        Authorization: `Bearer ${token}`,
         "User-Agent": GITHUB_USER_AGENT,
         "X-GitHub-Api-Version": "2022-11-28",
       },
     });
-    const cacheKey = options.cache ? createCacheKey(pathname) : undefined;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      return await fetchImpl(request, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async function getJson<T>(
+    pathname: string,
+    cacheTtlSeconds: number,
+  ): Promise<GitHubTransportResponse<T>> {
+    if (!pathname.startsWith("/") || pathname.startsWith("//")) {
+      throw new PortfolioApiError("The GitHub request path is invalid.", 400);
+    }
+    if (new URL(pathname, GITHUB_API_ORIGIN).origin !== GITHUB_API_ORIGIN) {
+      throw new PortfolioApiError("The GitHub request origin is invalid.", 400);
+    }
+    if (!getAccessToken) {
+      throw new PortfolioApiError("GitHub App credentials are not configured.", 502);
+    }
+
+    let accessToken = await getAccessToken();
+    const cacheKey = options.cache && cacheTtlSeconds > 0 ? createCacheKey(pathname) : undefined;
 
     if (cacheKey && options.cache) {
       try {
@@ -142,11 +164,13 @@ export function createGitHubTransport(options: GitHubClientOptions = {}): GitHub
       }
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
     try {
-      const response = await fetchImpl(request, { signal: controller.signal });
+      let response = await requestJson(pathname, accessToken);
+      if (response.status === 401 && invalidateAccessToken) {
+        invalidateAccessToken(accessToken);
+        accessToken = await getAccessToken();
+        response = await requestJson(pathname, accessToken);
+      }
       if (!response.ok) {
         throw new PortfolioApiError(
           `GitHub request failed (${response.status}).`,
@@ -156,13 +180,13 @@ export function createGitHubTransport(options: GitHubClientOptions = {}): GitHub
 
       const cacheResponse = cacheKey ? cloneResponse(response) : undefined;
       const data = await decodeJsonResponse<T>(response);
-      if (cacheResponse) scheduleCacheWrite(options, cacheKey, cacheResponse, cacheTtlSeconds);
+      if (cacheResponse && cacheTtlSeconds > 0) {
+        scheduleCacheWrite(options, cacheKey, cacheResponse, cacheTtlSeconds);
+      }
       return { data, headers: new Headers(response.headers) };
     } catch (error) {
       if (error instanceof PortfolioApiError) throw error;
       throw new PortfolioApiError("GitHub is temporarily unavailable.", 502);
-    } finally {
-      clearTimeout(timeout);
     }
   }
 
@@ -170,9 +194,11 @@ export function createGitHubTransport(options: GitHubClientOptions = {}): GitHub
 }
 
 export const GITHUB_CACHE_TTLS = {
+  blob: GITHUB_BLOB_CACHE_TTL_SECONDS,
   commit: GITHUB_COMMIT_CACHE_TTL_SECONDS,
   commitList: GITHUB_COMMIT_LIST_CACHE_TTL_SECONDS,
   commitReachability: GITHUB_COMMIT_REACHABILITY_CACHE_TTL_SECONDS,
   readme: GITHUB_README_CACHE_TTL_SECONDS,
   repository: GITHUB_REPOSITORY_CACHE_TTL_SECONDS,
+  tree: GITHUB_TREE_CACHE_TTL_SECONDS,
 } as const;
