@@ -1,4 +1,4 @@
-import { MAX_GITHUB_COMMIT_PAGE } from "../config.ts";
+import { GITHUB_TREE_FILE_LIMIT, MAX_GITHUB_COMMIT_PAGE } from "../config.ts";
 import { PortfolioApiError } from "../portfolio-api/errors.ts";
 
 const GITHUB_SHA_PATTERN = /^[0-9a-f]{40}$/i;
@@ -38,4 +38,19 @@ export function decodeGitHubCommitCursor(cursor: string | undefined): number {
     throw new PortfolioApiError("The GitHub commit cursor is invalid.", 400);
   }
   return page;
+}
+
+export function encodeGitHubFileCursor(offset: number): string {
+  return `tree:${offset}`;
+}
+
+export function decodeGitHubFileCursor(cursor: string | undefined): number {
+  if (cursor === undefined) return 0;
+
+  const match = /^tree:([0-9]+)$/.exec(cursor.trim());
+  const offset = match ? Number(match[1]) : Number.NaN;
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset > GITHUB_TREE_FILE_LIMIT) {
+    throw new PortfolioApiError("The GitHub file cursor is invalid.", 400);
+  }
+  return offset;
 }
