@@ -16,7 +16,8 @@ Use this checklist at every stage gate. Complete a sweep only when evidence is r
 
 ## Security sweep
 
-- [ ] App repository selection is minimal and reviewed.
+- [ ] App installation is **All repositories** under Operator-Syn, with no manual per-repository installation edits.
+- [ ] Runtime credentials accept only the configured owner and narrow each token to one linked repository.
 - [ ] Metadata and contents permissions are read-only.
 - [ ] Private key, JWT, installation token, and bearer header are absent from source, tests, docs, logs, and snapshots.
 - [ ] Inbound MCP authorization headers cannot override Worker credentials.
@@ -43,7 +44,7 @@ Use this checklist at every stage gate. Complete a sweep only when evidence is r
 ## Traffic and quota sweep
 
 - [ ] Installation quota assumptions cite current GitHub documentation.
-- [ ] Shared installation quota is explicit; no per-user isolation is implied.
+- [ ] Shared installation quota is explicit; no per-user or per-repository isolation is implied.
 - [ ] Edge policy method/path/key/window/threshold/response/owner are recorded.
 - [ ] Retry handling is bounded and header-aware.
 - [ ] No load testing or high-volume probing is performed.
@@ -75,9 +76,9 @@ Use this checklist at every stage gate. Complete a sweep only when evidence is r
 
 | Milestone | Required evidence | Status | Owner |
 | --- | --- | --- | --- |
-| M1 | App, installation, repository scope, and permissions review | planned | Operator-Syn |
-| M2 | Secret contract and mocked token lifecycle tests | planned | Worker maintainer |
-| M3 | Authenticated transport and four-tool regression tests | planned | Worker maintainer |
+| M1 | App, **All repositories** installation, owner boundary, and permissions review | planned | Operator-Syn |
+| M2 | Secret contract and mocked per-repository token lifecycle tests | planned | Worker maintainer |
+| M3 | Authenticated transport and six-tool regression tests | planned | Worker maintainer |
 | M4 | Cache, rate mapping, bounded backoff, and edge policy review | planned | Worker/Cloudflare owner |
 | M5 | Checks, dry run, deployment, smoke, monitoring, and rollback evidence | planned | Operator-Syn |
 
