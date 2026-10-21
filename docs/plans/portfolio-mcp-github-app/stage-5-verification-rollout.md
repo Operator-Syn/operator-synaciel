@@ -33,13 +33,13 @@ Use the repository MCP fixed `mcp` or `repository` profile where available. Do n
 
 ## Production gates
 
-1. Confirm App installation, repository selection, permissions, App ID, and installation ID.
+1. Confirm the App is installed on **All repositories** under Operator-Syn, has only Metadata and Contents read permissions, and that App ID, installation ID, and the non-secret owner configuration are recorded.
 2. Confirm Cloudflare account/zone ownership with `npx wrangler whoami`.
 3. Upload production secrets through Wrangler or the dashboard; never put values in source or command history.
 4. Deploy only after source and dry-run checks pass and deployment is separately authorized.
 5. Confirm Worker version and service binding target.
 6. Exercise `tools/list`, one portfolio tool, repository metadata, one README chunk, one file-tree page, and one source-file chunk with low-volume smoke traffic.
-7. Confirm the catalog contains 14 tools, private/unlinked repositories remain unavailable, and logs contain no credential or source-content leakage.
+7. Confirm the catalog contains 14 tools, a newly linked public Operator-Syn repository works without installation changes, private/unlinked repositories remain unavailable, and logs contain no credential or source-content leakage.
 8. Record deployment and live evidence separately from source/test evidence.
 
 ## Monitoring
