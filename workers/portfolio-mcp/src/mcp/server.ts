@@ -9,6 +9,7 @@ import {
   createGitHubAppCredentialProvider,
   createGitHubClient,
   type GitHubClientOptions,
+  type GitHubTokenScope,
 } from "../github/index.ts";
 import {
   createPortfolioApiClient,
@@ -19,7 +20,7 @@ import { registerPortfolioResources } from "./resources.ts";
 import { registerPortfolioTools } from "./tools/index.ts";
 
 export type PortfolioMcpTransportOptions = PortfolioApiTransportOptions & {
-  githubAccessToken?: () => Promise<string>;
+  githubAccessToken?: (scope: GitHubTokenScope) => Promise<string>;
   githubFetch?: GitHubClientOptions["fetchImpl"];
   githubInvalidateAccessToken?: (token: string) => void;
   githubNow?: () => number;
@@ -40,7 +41,7 @@ export function createPortfolioMcpServer(
         now: transportOptions?.githubNow,
       });
   const github = createGitHubClient({
-    accessToken: () => credentials.getToken(),
+    accessToken: (scope) => credentials.getToken(scope),
     cache: transportOptions?.cache,
     fetchImpl: transportOptions?.githubFetch,
     invalidateAccessToken: (token) => credentials.invalidate(token),
