@@ -766,7 +766,7 @@ test("advertises strict output schemas and returns structured public results", a
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
 
   const tools = await client.listTools();
-  assert.equal(tools.tools.length, 12);
+  assert.equal(tools.tools.length, 14);
   for (const tool of tools.tools) {
     assert.ok(tool.outputSchema, "Every public tool should advertise an output schema.");
     assert.equal(tool.annotations?.readOnlyHint, true);
@@ -929,6 +929,8 @@ test("exposes the read-only portfolio contract through MCP tools and resources",
       "get_project_readme",
       "list_project_commits",
       "get_project_commit",
+      "list_project_files",
+      "get_project_file",
     ],
   );
   assert.deepEqual(
