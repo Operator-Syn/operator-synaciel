@@ -51,9 +51,12 @@ projection remains a second boundary.
 Project GitHub inspection is a separate read-only boundary. Each tool starts
 from a public project record and its persisted `project_link`; the adapter
 accepts only a strict `https://github.com/owner/repository` URL and constructs
-every upstream request itself. The GitHub App installation is limited to the
-currently linked public repositories. Every invocation performs a fresh
-repository-visibility check before returning cached or live content, so a
+every upstream request itself. The GitHub App is installed under Operator-Syn
+on **All repositories**, because GitHub has no all-public-only installation
+scope. The non-secret `GITHUB_INSTALLATION_OWNER` setting rejects other owners,
+and every token exchange is narrowed to the one repository being read. Only
+repositories referenced by published projects are reachable. Every invocation
+performs a fresh repository-visibility check before returning cached or live content, so a
 repository that becomes private is denied even if matching data is cached. The
 only branch reference is the literal `main`. Callers cannot supply an owner,
 repository, branch, ref, or arbitrary GitHub URL. Source-file paths must match a
@@ -238,10 +241,12 @@ Before deploying, confirm all of the following:
    binding targets must exist before this Worker is deployed.
 3. `syn-forge.com` is an active Cloudflare zone and
    `mcp.syn-forge.com` does not have a conflicting existing CNAME.
-4. The GitHub App is installed on the reviewed public projects and the
-   `GITHUB_APP_ID`, `GITHUB_INSTALLATION_ID`, and `GITHUB_APP_PRIVATE_KEY`
-   Worker secrets are present. `wrangler deploy` validates these required
-   secrets through the `[secrets]` declaration.
+4. The GitHub App is installed under Operator-Syn on **All repositories**. The
+   non-secret `GITHUB_INSTALLATION_OWNER` Wrangler variable is `Operator-Syn`,
+   and the `GITHUB_APP_ID`, `GITHUB_INSTALLATION_ID`, and
+   `GITHUB_APP_PRIVATE_KEY` Worker secrets are present. Runtime tokens are
+   requested for one linked repository at a time. `wrangler deploy` validates
+   these required secrets through the `[secrets]` declaration.
 
 Run the checked-in validation and dry run:
 
