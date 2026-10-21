@@ -2,6 +2,9 @@ name = "syn-forge-portfolio-mcp"
 main = "src/index.ts"
 compatibility_date = "2026-08-27"
 
+[secrets]
+required = ["GITHUB_APP_ID", "GITHUB_INSTALLATION_ID", "GITHUB_APP_PRIVATE_KEY"]
+
 [[services]]
 binding = "PORTFOLIO_API"
 service = "portfolio-api"
