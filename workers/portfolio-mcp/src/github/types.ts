@@ -50,10 +50,47 @@ export type GitHubReadme = {
   text: string;
 };
 
+export type GitHubTreeFile = {
+  path: string;
+  size: number;
+  blob_sha: string;
+};
+
+export type GitHubFilePage = {
+  commit_sha: string;
+  files: GitHubTreeFile[];
+  total_files: number;
+  tree_truncated: boolean;
+  has_more: boolean;
+  next_offset: number | null;
+};
+
+export type GitHubFileMetadata = {
+  commit_sha: string;
+  path: string;
+  size: number;
+  blob_sha: string;
+  canonical_url: string;
+};
+
+export type GitHubFileText = GitHubFileMetadata & {
+  content_available: true;
+  text: string;
+};
+
+export type GitHubFileUnavailable = GitHubFileMetadata & {
+  content_available: false;
+  reason: "binary" | "sensitive" | "too_large";
+};
+
+export type GitHubFile = GitHubFileText | GitHubFileUnavailable;
+
 export type GitHubClientOptions = {
   cache?: Pick<Cache, "match" | "put">;
   waitUntil?: (promise: Promise<unknown>) => void;
   fetchImpl?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+  accessToken?: () => Promise<string>;
+  invalidateAccessToken?: (token: string) => void;
 };
 
 export type GitHubClient = {
@@ -61,4 +98,11 @@ export type GitHubClient = {
   getReadme(ref: GitHubRepositoryRef): Promise<GitHubReadme>;
   listCommits(ref: GitHubRepositoryRef, limit: number, page: number): Promise<GitHubCommitPage>;
   getCommit(ref: GitHubRepositoryRef, sha: string): Promise<GitHubCommitDetails>;
+  listFiles(
+    ref: GitHubRepositoryRef,
+    prefix: string | undefined,
+    offset: number,
+    limit: number,
+  ): Promise<GitHubFilePage>;
+  getFile(ref: GitHubRepositoryRef, path: string): Promise<GitHubFile>;
 };
