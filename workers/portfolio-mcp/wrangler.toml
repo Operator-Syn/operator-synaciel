@@ -2,6 +2,9 @@ name = "syn-forge-portfolio-mcp"
 main = "src/index.ts"
 compatibility_date = "2026-08-27"
 
+[vars]
+GITHUB_INSTALLATION_OWNER = "Operator-Syn"
+
 [secrets]
 required = ["GITHUB_APP_ID", "GITHUB_INSTALLATION_ID", "GITHUB_APP_PRIVATE_KEY"]
 
@@ -14,6 +17,7 @@ pattern = "mcp.syn-forge.com"
 custom_domain = true
 
 [env.local.vars]
+GITHUB_INSTALLATION_OWNER = "Operator-Syn"
 PORTFOLIO_API_BASE_URL = "https://personal-portfolio.syn-forge.com"
 
 [observability.logs]
