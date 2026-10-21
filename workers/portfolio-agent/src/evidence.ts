@@ -7,6 +7,12 @@ export const PORTFOLIO_MCP_TOOL_NAMES = [
   "get_certificate",
   "list_snippets",
   "read_snippet",
+  "get_project_repository",
+  "get_project_readme",
+  "list_project_commits",
+  "get_project_commit",
+  "list_project_files",
+  "get_project_file",
 ] as const;
 
 export const PORTFOLIO_PAGE_TOOL_NAME = "read_portfolio_page" as const;
@@ -50,6 +56,7 @@ const SOURCE_FIELDS = new Set([
   "canonical_url",
   "page_url",
   "download_url",
+  "repository_url",
   "project_link",
   "certificate_link",
   "target_url",
@@ -283,6 +290,65 @@ function compactPagination(value: unknown): Record<string, unknown> | null {
   return pagination;
 }
 
+function compactGitHubCommit(value: unknown): Record<string, unknown> | null {
+  const record = objectValue(value);
+  if (!record) return null;
+  const commit: Record<string, unknown> = {};
+  for (const [key, maximum] of [
+    ["sha", 40],
+    ["message", 2_000],
+    ["authored_at", 64],
+    ["committed_at", 64],
+    ["canonical_url", 2_048],
+  ] as const) {
+    const text = boundedString(record[key], maximum);
+    if (text !== undefined) commit[key] = text;
+  }
+  const author = objectValue(record.author);
+  if (author) {
+    commit.author = {
+      login: boundedString(author.login, 100) ?? null,
+      name: boundedString(author.name, 200) ?? null,
+    };
+  }
+  return commit;
+}
+
+function compactGitHubChangedFile(value: unknown): Record<string, unknown> | null {
+  const record = objectValue(value);
+  if (!record) return null;
+  const file: Record<string, unknown> = {};
+  const filename = boundedString(record.filename, 512);
+  const status = boundedString(record.status, 32);
+  if (filename !== undefined) file.filename = filename;
+  if (status !== undefined) file.status = status;
+  for (const key of ["additions", "deletions", "changes"] as const) {
+    const count = boundedNumber(record[key]);
+    if (count !== undefined) file[key] = count;
+  }
+  return file;
+}
+
+function compactGitHubFileMetadata(value: Record<string, unknown>): Record<string, unknown> {
+  const metadata: Record<string, unknown> = {};
+  for (const [key, maximum] of [
+    ["commit_sha", 40],
+    ["path", 1_024],
+    ["blob_sha", 40],
+    ["canonical_url", 2_048],
+    ["reason", 32],
+  ] as const) {
+    const text = boundedString(value[key], maximum);
+    if (text !== undefined) metadata[key] = text;
+  }
+  const size = boundedNumber(value.size);
+  if (size !== undefined) metadata.size = size;
+  if (typeof value.content_available === "boolean") {
+    metadata.content_available = value.content_available;
+  }
+  return metadata;
+}
+
 function evidenceProjection(name: PortfolioToolName, root: Record<string, unknown>): unknown {
   switch (name) {
     case "get_portfolio_overview": {
@@ -369,6 +435,93 @@ function evidenceProjection(name: PortfolioToolName, root: Record<string, unknow
         total_characters: boundedNumber(root.total_characters),
         complete: root.complete,
       };
+    case "get_project_repository": {
+      const repository = objectValue(root.repository) ?? {};
+      return {
+        project_id: boundedNumber(root.project_id),
+        repository: {
+          owner: boundedString(repository.owner, 39),
+          name: boundedString(repository.name, 100),
+          full_name: boundedString(repository.full_name, 140),
+          description: boundedString(repository.description, 500) ?? null,
+          canonical_url: boundedString(repository.canonical_url, 2_048),
+          branch: boundedString(repository.branch, 16),
+          main_available: repository.main_available,
+          main_sha: boundedString(repository.main_sha, 40) ?? null,
+          readme_available: repository.readme_available,
+          commit_history_available: repository.commit_history_available,
+        },
+      };
+    }
+    case "get_project_readme":
+      return {
+        project_id: boundedNumber(root.project_id),
+        repository_url: boundedString(root.repository_url, 2_048),
+        path: boundedString(root.path, 1_024),
+        canonical_url: boundedString(root.canonical_url, 2_048),
+        content: boundedString(root.content, 11_000),
+        content_truncated: typeof root.content === "string" && root.content.length > 11_000,
+        offset: boundedNumber(root.offset),
+        next_offset: boundedNumber(root.next_offset),
+        total_characters: boundedNumber(root.total_characters),
+        complete: root.complete,
+      };
+    case "list_project_commits": {
+      const commits = Array.isArray(root.commits) ? root.commits : [];
+      return {
+        project_id: boundedNumber(root.project_id),
+        repository_url: boundedString(root.repository_url, 2_048),
+        commits: commits.slice(0, 12).flatMap((entry) => {
+          const commit = compactGitHubCommit(entry);
+          return commit ? [commit] : [];
+        }),
+        commits_truncated: commits.length > 12,
+        pagination: compactPagination(root.pagination),
+      };
+    }
+    case "get_project_commit": {
+      const commit = objectValue(root.commit);
+      const files = Array.isArray(commit?.files) ? commit.files : [];
+      return {
+        project_id: boundedNumber(root.project_id),
+        repository_url: boundedString(root.repository_url, 2_048),
+        commit: compactGitHubCommit(commit),
+        files: files.slice(0, 100).flatMap((entry) => {
+          const file = compactGitHubChangedFile(entry);
+          return file ? [file] : [];
+        }),
+        files_truncated: commit?.files_truncated,
+      };
+    }
+    case "list_project_files": {
+      const files = Array.isArray(root.files) ? root.files : [];
+      return {
+        project_id: boundedNumber(root.project_id),
+        repository_url: boundedString(root.repository_url, 2_048),
+        commit_sha: boundedString(root.commit_sha, 40),
+        files: files.slice(0, 200).flatMap((entry) => {
+          const file = objectValue(entry);
+          if (!file) return [];
+          return [compactGitHubFileMetadata({ ...file, blob_sha: file.blob_sha })];
+        }),
+        files_truncated: files.length > 200,
+        total_files: boundedNumber(root.total_files),
+        tree_truncated: root.tree_truncated,
+        pagination: compactPagination(root.pagination),
+      };
+    }
+    case "get_project_file":
+      return {
+        project_id: boundedNumber(root.project_id),
+        repository_url: boundedString(root.repository_url, 2_048),
+        ...compactGitHubFileMetadata(root),
+        content: boundedString(root.content, 11_000),
+        content_truncated: typeof root.content === "string" && root.content.length > 11_000,
+        offset: boundedNumber(root.offset),
+        next_offset: boundedNumber(root.next_offset),
+        total_characters: boundedNumber(root.total_characters),
+        complete: root.complete,
+      };
     case "read_portfolio_page":
       return {
         path: boundedString(root.path, 2_048),
@@ -407,6 +560,32 @@ function evidenceSlot(name: PortfolioToolName, root: Record<string, unknown>): s
     case "read_snippet": {
       const id = boundedNumber(root.id);
       return id !== undefined ? `snippet:${String(id)}` : "snippet";
+    }
+    case "get_project_repository": {
+      const id = boundedNumber(root.project_id);
+      return id !== undefined ? `repository:${String(id)}` : "repository";
+    }
+    case "get_project_readme": {
+      const id = boundedNumber(root.project_id);
+      return id !== undefined ? `readme:${String(id)}` : "readme";
+    }
+    case "list_project_commits": {
+      const id = boundedNumber(root.project_id);
+      return id !== undefined ? `commits:${String(id)}` : "commits";
+    }
+    case "get_project_commit": {
+      const id = boundedNumber(root.project_id);
+      const sha = boundedString(objectValue(root.commit)?.sha, 40);
+      return id !== undefined && sha ? `commit:${String(id)}:${sha}` : "commit";
+    }
+    case "list_project_files": {
+      const id = boundedNumber(root.project_id);
+      return id !== undefined ? `repository-files:${String(id)}` : "repository-files";
+    }
+    case "get_project_file": {
+      const id = boundedNumber(root.project_id);
+      const path = boundedString(root.path, 140);
+      return id !== undefined && path ? `repository-file:${String(id)}:${path}` : "repository-file";
     }
     case "read_portfolio_page": {
       const path = boundedString(root.path, 180);
@@ -508,6 +687,24 @@ export function hasUsablePortfolioToolResult(toolName: string, value: unknown): 
         typeof root.name === "string" &&
         (typeof root.content === "string" || typeof root.page_url === "string")
       );
+    case "get_project_repository": {
+      const repository = objectValue(root.repository);
+      return repository !== null && typeof repository.canonical_url === "string";
+    }
+    case "get_project_readme":
+      return root.path === "README.md" && typeof root.content === "string";
+    case "list_project_commits":
+      return Array.isArray(root.commits);
+    case "get_project_commit":
+      return objectValue(root.commit) !== null && typeof objectValue(root.commit)?.sha === "string";
+    case "list_project_files":
+      return Array.isArray(root.files) && typeof root.commit_sha === "string";
+    case "get_project_file":
+      return (
+        typeof root.path === "string" &&
+        typeof root.canonical_url === "string" &&
+        (root.content_available === false || typeof root.content === "string")
+      );
     case "read_portfolio_page":
       return (
         typeof root.page_url === "string" &&
@@ -531,7 +728,7 @@ function sourceTitle(value: Record<string, unknown>, fallback: string): string {
   for (const candidate of [value.title, value.name, value.label]) {
     if (typeof candidate === "string" && candidate.trim()) return candidate.trim().slice(0, 256);
   }
-  for (const field of ["project", "certificate"]) {
+  for (const field of ["project", "certificate", "repository"]) {
     const nested = objectValue(value[field]);
     if (nested) {
       const title = sourceTitle(nested, "");
