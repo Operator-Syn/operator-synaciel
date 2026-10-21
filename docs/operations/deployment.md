@@ -156,8 +156,13 @@ PORTFOLIO_API Service Binding and separately owns the GitHub App credential.
 
 Create the read-only GitHub App under the Operator-Syn account with no webhook,
 callback, event subscription, or write permission. Grant only repository
-**Metadata: read** and **Contents: read**, and install it on the public
-repositories referenced by published project records. Store these required
+**Metadata: read** and **Contents: read**, and install it on **All
+repositories**. GitHub has no all-public-only installation mode. The non-secret
+`GITHUB_INSTALLATION_OWNER=Operator-Syn` Worker variable restricts the owner,
+and each runtime installation token is narrowed to one public repository linked
+by a published project. Adding another Operator-Syn public repository to a
+project therefore does not require editing the App installation; private,
+unlinked, and third-party repositories remain unavailable. Store these required
 production secrets on `syn-forge-portfolio-mcp` through an interactive
 operator-owned Wrangler step:
 
@@ -530,9 +535,9 @@ and mcp.syn-forge.com custom domain.
 
 The MCP Worker is public and unauthenticated to callers. Portfolio API reads are
 cached for six hours at the transport boundary. GitHub upstream requests use
-the server-held read-only GitHub App installation token; callers never supply a
-GitHub credential. GitHub repository visibility is checked fresh on every tool
-call, while immutable trees and blobs are cached by SHA. Cache entries are local
+a server-held read-only GitHub App installation token narrowed to one linked
+repository at a time; callers never supply a GitHub credential. GitHub
+repository visibility is checked fresh on every tool call, while immutable trees and blobs are cached by SHA. Cache entries are local
 to the data center that fills them, and content updates may remain visible until
 their documented TTL expires. Deployment does not purge already-warmed cache
 entries.
