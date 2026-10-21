@@ -1,6 +1,7 @@
 import { importPKCS8, SignJWT } from "jose";
 import type { PortfolioMcpEnvironment } from "../config.ts";
 import { PortfolioApiError } from "../portfolio-api/errors.ts";
+import type { GitHubTokenScope } from "./types.ts";
 
 const GITHUB_API_ORIGIN = "https://api.github.com";
 const GITHUB_USER_AGENT = "syn-forge-portfolio-mcp";
@@ -10,9 +11,11 @@ const JWT_LIFETIME_SECONDS = 9 * 60;
 const TOKEN_REFRESH_SKEW_MS = 5 * 60 * 1_000;
 
 const NUMERIC_ID_PATTERN = /^[1-9][0-9]*$/;
+const OWNER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;
+const REPOSITORY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$/;
 
 export type GitHubCredentialProvider = {
-  getToken(): Promise<string>;
+  getToken(scope: GitHubTokenScope): Promise<string>;
   invalidate(token: string): void;
 };
 
@@ -29,6 +32,13 @@ type CachedToken = {
 type TokenResponse = {
   token?: unknown;
   expires_at?: unknown;
+  repositories?: unknown;
+};
+
+type RepositoryTokenScope = {
+  key: string;
+  owner: string;
+  name: string;
 };
 
 function requiredConfig(value: unknown, label: string): string {
@@ -136,6 +146,63 @@ function normalizePrivateKey(value: unknown): string {
   throw new PortfolioApiError("GitHub App private key is invalid.", 502);
 }
 
+function repositoryScopeError(): PortfolioApiError {
+  return new PortfolioApiError("The linked GitHub repository is not available.", 404);
+}
+
+function normalizeRepositoryTokenScope(
+  scope: GitHubTokenScope,
+  configuredOwner: unknown,
+): RepositoryTokenScope {
+  const owner = typeof scope?.owner === "string" ? scope.owner.trim().toLowerCase() : "";
+  const name = typeof scope?.name === "string" ? scope.name.trim().toLowerCase() : "";
+  const installationOwner = requiredConfig(
+    configuredOwner,
+    "GitHub App installation owner",
+  ).toLowerCase();
+
+  if (!OWNER_PATTERN.test(installationOwner)) {
+    throw new PortfolioApiError("GitHub App installation owner is invalid.", 502);
+  }
+  if (!OWNER_PATTERN.test(owner) || !REPOSITORY_PATTERN.test(name) || owner !== installationOwner) {
+    throw repositoryScopeError();
+  }
+  return { key: `${owner}/${name}`, owner, name };
+}
+
+function validateTokenRepositoryScope(value: unknown, scope: RepositoryTokenScope): void {
+  if (value === undefined) return;
+  if (!Array.isArray(value) || value.length !== 1) {
+    throw new PortfolioApiError("GitHub authentication returned an invalid repository scope.", 502);
+  }
+
+  const repository = value[0];
+  if (!repository || typeof repository !== "object" || Array.isArray(repository)) {
+    throw new PortfolioApiError("GitHub authentication returned an invalid repository scope.", 502);
+  }
+  const candidate = repository as {
+    name?: unknown;
+    full_name?: unknown;
+    owner?: { login?: unknown };
+  };
+  const name = typeof candidate.name === "string" ? candidate.name.toLowerCase() : "";
+  const fullName =
+    typeof candidate.full_name === "string" ? candidate.full_name.toLowerCase() : null;
+  const ownerLogin =
+    typeof candidate.owner?.login === "string" ? candidate.owner.login.toLowerCase() : null;
+
+  if (
+    name !== scope.name ||
+    (fullName !== null && fullName !== scope.key) ||
+    (ownerLogin !== null && ownerLogin !== scope.owner)
+  ) {
+    throw new PortfolioApiError(
+      "GitHub authentication returned a different repository scope.",
+      502,
+    );
+  }
+}
+
 function tokenEndpoint(installationId: string): string {
   return `/app/installations/${installationId}/access_tokens`;
 }
@@ -174,8 +241,8 @@ export function createGitHubAppCredentialProvider(
 ): GitHubCredentialProvider {
   const fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
   const now = options.now ?? Date.now;
-  let cached: CachedToken | null = null;
-  let refresh: Promise<string> | null = null;
+  const cachedTokens = new Map<string, CachedToken>();
+  const refreshes = new Map<string, Promise<string>>();
   let signingKey: Promise<CryptoKey> | null = null;
 
   async function getSigningKey(): Promise<CryptoKey> {
@@ -206,7 +273,7 @@ export function createGitHubAppCredentialProvider(
     }
   }
 
-  async function exchangeInstallationToken(): Promise<CachedToken> {
+  async function exchangeInstallationToken(scope: RepositoryTokenScope): Promise<CachedToken> {
     const appId = numericConfig(environment.GITHUB_APP_ID, "GitHub App ID");
     const installationId = numericConfig(
       environment.GITHUB_INSTALLATION_ID,
@@ -223,9 +290,14 @@ export function createGitHubAppCredentialProvider(
         headers: {
           Accept: "application/vnd.github+json",
           Authorization: `Bearer ${jwt}`,
+          "Content-Type": "application/json",
           "User-Agent": GITHUB_USER_AGENT,
           "X-GitHub-Api-Version": "2022-11-28",
         },
+        body: JSON.stringify({
+          repositories: [scope.name],
+          permissions: { contents: "read" },
+        }),
         signal: controller.signal,
       });
       if (!response.ok) {
@@ -242,6 +314,7 @@ export function createGitHubAppCredentialProvider(
       if (typeof payload.expires_at !== "string") {
         throw new PortfolioApiError("GitHub authentication returned no expiry.", 502);
       }
+      validateTokenRepositoryScope(payload.repositories, scope);
       const expiresAtMs = Date.parse(payload.expires_at);
       if (!Number.isFinite(expiresAtMs) || expiresAtMs <= now()) {
         throw new PortfolioApiError("GitHub authentication returned an expired token.", 502);
@@ -255,26 +328,33 @@ export function createGitHubAppCredentialProvider(
     }
   }
 
-  async function getToken(): Promise<string> {
+  async function getToken(rawScope: GitHubTokenScope): Promise<string> {
+    const scope = normalizeRepositoryTokenScope(rawScope, environment.GITHUB_INSTALLATION_OWNER);
     const currentTime = now();
+    const cached = cachedTokens.get(scope.key);
     if (cached && cached.expiresAtMs - currentTime > TOKEN_REFRESH_SKEW_MS) {
       return cached.token;
     }
-    if (!refresh) {
-      refresh = exchangeInstallationToken()
-        .then((next) => {
-          cached = next;
-          return next.token;
-        })
-        .finally(() => {
-          refresh = null;
-        });
-    }
+
+    const inFlight = refreshes.get(scope.key);
+    if (inFlight) return inFlight;
+
+    const refresh = exchangeInstallationToken(scope)
+      .then((next) => {
+        cachedTokens.set(scope.key, next);
+        return next.token;
+      })
+      .finally(() => {
+        if (refreshes.get(scope.key) === refresh) refreshes.delete(scope.key);
+      });
+    refreshes.set(scope.key, refresh);
     return refresh;
   }
 
   function invalidate(token: string): void {
-    if (cached?.token === token) cached = null;
+    for (const [key, cached] of cachedTokens) {
+      if (cached.token === token) cachedTokens.delete(key);
+    }
   }
 
   return { getToken, invalidate };
