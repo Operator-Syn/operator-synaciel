@@ -23,18 +23,17 @@ const portfolioNames = [
   "get_certificate",
   "list_snippets",
   "read_snippet",
+  "get_project_repository",
+  "get_project_readme",
+  "list_project_commits",
+  "get_project_commit",
+  "list_project_files",
+  "get_project_file",
 ];
 
-test("selects the eight portfolio capabilities without inspecting question text", () => {
+test("selects the fourteen portfolio capabilities without inspecting question text", () => {
   const catalog = Object.fromEntries(
-    [
-      ...portfolioNames,
-      "get_project_repository",
-      "get_project_readme",
-      "list_project_commits",
-      "get_project_commit",
-      "arbitrary_remote_tool",
-    ].map((name) => [`portfolio_${name}`, { name }]),
+    [...portfolioNames, "arbitrary_remote_tool"].map((name) => [`portfolio_${name}`, { name }]),
   );
 
   const selected = selectPortfolioTools(catalog);
@@ -249,6 +248,86 @@ test("projects, certificates, and snippets receive distinct compact slots", () =
   assert.ok(snippet);
   assert.equal(snippet.slot, "snippet:7");
   assert.match(snippet.snapshot, /Public notes/);
+});
+
+test("keeps linked repository metadata, files, and content in distinct evidence slots", () => {
+  const repositoryResult = {
+    structuredContent: {
+      project_id: 5,
+      repository: {
+        owner: "operator-syn",
+        name: "peer-tutoring-platform",
+        full_name: "operator-syn/peer-tutoring-platform",
+        description: "Mentorship platform",
+        canonical_url: "https://github.com/operator-syn/peer-tutoring-platform",
+        branch: "main",
+        main_available: true,
+        main_sha: "a".repeat(40),
+        readme_available: true,
+        commit_history_available: true,
+      },
+    },
+  };
+  assert.equal(hasUsablePortfolioToolResult("get_project_repository", repositoryResult), true);
+  const repository = createPortfolioEvidenceEntry(
+    "portfolio_get_project_repository",
+    repositoryResult,
+    10,
+  );
+  assert.ok(repository);
+  assert.equal(repository.slot, "repository:5");
+  assert.deepEqual(extractPortfolioSources("get_project_repository", repositoryResult), [
+    {
+      url: "https://github.com/operator-syn/peer-tutoring-platform",
+      title: "peer-tutoring-platform",
+    },
+  ]);
+
+  const files = createPortfolioEvidenceEntry(
+    "portfolio_list_project_files",
+    {
+      structuredContent: {
+        project_id: 5,
+        repository_url: "https://github.com/operator-syn/peer-tutoring-platform",
+        commit_sha: "a".repeat(40),
+        files: [{ path: "src/index.ts", size: 26, blob_sha: "b".repeat(40) }],
+        total_files: 1,
+        tree_truncated: false,
+        pagination: { limit: 50, has_more: false, next_cursor: null },
+      },
+    },
+    11,
+  );
+  assert.ok(files);
+  assert.equal(files.slot, "repository-files:5");
+  assert.match(files.snapshot, /src\/index\.ts/);
+
+  const fileResult = {
+    structuredContent: {
+      project_id: 5,
+      repository_url: "https://github.com/operator-syn/peer-tutoring-platform",
+      commit_sha: "a".repeat(40),
+      path: "src/index.ts",
+      blob_sha: "b".repeat(40),
+      size: 26,
+      canonical_url: `https://github.com/operator-syn/peer-tutoring-platform/blob/${"a".repeat(40)}/src/index.ts`,
+      content_available: true,
+      offset: 0,
+      content: "export const answer = 42;",
+      next_offset: 26,
+      total_characters: 26,
+      complete: true,
+    },
+  };
+  const file = createPortfolioEvidenceEntry("portfolio_get_project_file", fileResult, 12);
+  assert.ok(file);
+  assert.equal(file.slot, "repository-file:5:src/index.ts");
+  assert.match(file.snapshot, /export const answer/);
+  assert.ok(
+    extractPortfolioSources("get_project_file", fileResult).some((source) =>
+      source.url.endsWith(`/blob/${"a".repeat(40)}/src/index.ts`),
+    ),
+  );
 });
 
 test("prioritizes sources from the current tool result", () => {
