@@ -16,7 +16,7 @@ depends_on: [stage-2-token-lifecycle]
 
 ## Objective
 
-Wire the installation-token provider into the existing GitHub REST transport while retaining the public read-only contract and input boundaries.
+Wire the installation-token provider into the existing GitHub REST transport, retain the public read-only contract, and add bounded project tree/text-file reads without widening access beyond linked public repositories.
 
 ## Implementation changes
 
@@ -35,6 +35,8 @@ Wire the installation-token provider into the existing GitHub REST transport whi
 | `get_project_readme` | Root `README.md`, `main` only, bounded chunks |
 | `list_project_commits` | Bounded pages and server-issued `main:<page>` cursor |
 | `get_project_commit` | Main reachability, immutable SHA detail, bounded changed files |
+| `list_project_files` | Current `main` tree, regular text blobs only, bounded cursor pagination |
+| `get_project_file` | Exact tree path, one-MiB text ceiling, 32k chunks, binary/oversized metadata fallback |
 
 ## Error behavior
 
@@ -47,8 +49,10 @@ Wire the installation-token provider into the existing GitHub REST transport whi
 
 - Assert exact bearer-header construction with a fake token.
 - Assert inbound `Authorization` cannot replace the Worker token.
-- Assert all four tools use the injected provider.
+- Assert all six tools use the injected provider and a fresh public-visibility check.
 - Assert absent App configuration cannot fall back to unauthenticated requests.
+- Assert private repositories are rejected on metadata, README, commit, tree, and file paths.
+- Assert tree paths exclude symlinks, submodules, binary files, traversal, and credential-like names.
 - Assert cache hits return data without invoking GitHub.
 - Re-run URL, branch, size, pagination, and output-schema regressions.
 
