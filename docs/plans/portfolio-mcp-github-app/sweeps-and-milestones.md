@@ -26,7 +26,7 @@ Use this checklist at every stage gate. Complete a sweep only when evidence is r
 ## Contract sweep
 
 - [ ] Worker environment type and Wrangler configuration agree.
-- [ ] All four GitHub tools use authenticated transport.
+- [ ] All six GitHub tools use authenticated transport and a fresh public-only gate.
 - [ ] Strict project-link, public-repository, `main`-branch, size, pagination, and output-schema boundaries remain unchanged.
 - [ ] Stable `RATE_LIMITED`, `NOT_FOUND`, `INVALID_INPUT`, and `INTERNAL_ERROR` envelopes remain unchanged.
 - [ ] No portfolio API or database contract changes.
@@ -34,7 +34,7 @@ Use this checklist at every stage gate. Complete a sweep only when evidence is r
 ## Cache sweep
 
 - [ ] Synthetic GitHub cache keys remain distinct from MCP POST requests.
-- [ ] Repository, README, commit-list/reachability, and commit-detail TTLs match source constants.
+- [ ] Repository visibility is uncached; README, commit-list/reachability, commit-detail, tree-by-SHA, and blob-by-SHA TTLs match source constants.
 - [ ] Only successful bounded responses are cached.
 - [ ] Cache hits avoid GitHub calls.
 - [ ] Cache failures and malformed entries remain misses.
