@@ -25,9 +25,13 @@ const githubToolNames = [
   "get_project_readme",
   "list_project_commits",
   "get_project_commit",
+  "list_project_files",
+  "get_project_file",
 ] as const;
 
-const results: Record<(typeof portfolioToolNames)[number], unknown> = {
+const allToolNames = [...portfolioToolNames, ...githubToolNames] as const;
+
+const results: Record<(typeof allToolNames)[number], unknown> = {
   get_portfolio_overview: {
     structuredContent: { site: { headerPhrase: "Build with intent" }, profile: [], sections: [] },
   },
@@ -88,16 +92,103 @@ const results: Record<(typeof portfolioToolNames)[number], unknown> = {
       page_url: "https://syn-forge.com/snippets/document/7/agent-notes.md",
     },
   },
+  get_project_repository: {
+    structuredContent: {
+      project_id: 5,
+      repository: {
+        owner: "operator-syn",
+        name: "peer-tutoring-platform",
+        full_name: "operator-syn/peer-tutoring-platform",
+        description: "Mentorship platform",
+        canonical_url: "https://github.com/operator-syn/peer-tutoring-platform",
+        branch: "main",
+        main_available: true,
+        main_sha: "a".repeat(40),
+        readme_available: true,
+        commit_history_available: true,
+      },
+    },
+  },
+  get_project_readme: {
+    structuredContent: {
+      project_id: 5,
+      repository_url: "https://github.com/operator-syn/peer-tutoring-platform",
+      branch: "main",
+      path: "README.md",
+      canonical_url: "https://github.com/operator-syn/peer-tutoring-platform/blob/main/README.md",
+      offset: 0,
+      content: "# Peer Tutoring Platform",
+      next_offset: 24,
+      total_characters: 24,
+      complete: true,
+    },
+  },
+  list_project_commits: {
+    structuredContent: {
+      project_id: 5,
+      repository_url: "https://github.com/operator-syn/peer-tutoring-platform",
+      branch: "main",
+      commits: [],
+      pagination: { limit: 6, has_more: false, next_cursor: null },
+    },
+  },
+  get_project_commit: {
+    structuredContent: {
+      project_id: 5,
+      repository_url: "https://github.com/operator-syn/peer-tutoring-platform",
+      branch: "main",
+      commit: {
+        sha: "a".repeat(40),
+        message: "Initial implementation",
+        author: { login: "operator-syn", name: "Operator-Syn" },
+        authored_at: null,
+        committed_at: null,
+        canonical_url: `https://github.com/operator-syn/peer-tutoring-platform/commit/${"a".repeat(40)}`,
+        files: [],
+        files_truncated: false,
+      },
+    },
+  },
+  list_project_files: {
+    structuredContent: {
+      project_id: 5,
+      repository_url: "https://github.com/operator-syn/peer-tutoring-platform",
+      branch: "main",
+      commit_sha: "a".repeat(40),
+      files: [{ path: "src/index.ts", size: 26, blob_sha: "b".repeat(40) }],
+      total_files: 1,
+      tree_truncated: false,
+      pagination: { limit: 50, has_more: false, next_cursor: null },
+    },
+  },
+  get_project_file: {
+    structuredContent: {
+      project_id: 5,
+      repository_url: "https://github.com/operator-syn/peer-tutoring-platform",
+      branch: "main",
+      commit_sha: "a".repeat(40),
+      path: "src/index.ts",
+      blob_sha: "b".repeat(40),
+      size: 26,
+      canonical_url: `https://github.com/operator-syn/peer-tutoring-platform/blob/${"a".repeat(40)}/src/index.ts`,
+      content_available: true,
+      offset: 0,
+      content: "export const answer = 42;",
+      next_offset: 26,
+      total_characters: 26,
+      complete: true,
+    },
+  },
 };
 
 function makeTools() {
   return Object.fromEntries(
-    [...portfolioToolNames, ...githubToolNames].map((name) => [
+    allToolNames.map((name) => [
       `portfolio_${name}`,
       tool({
         description: `Fixture tool ${name}`,
         inputSchema: z.object({}).passthrough(),
-        execute: async () => results[name as (typeof portfolioToolNames)[number]] ?? {},
+        execute: async () => results[name],
       }),
     ]),
   );
@@ -207,6 +298,7 @@ test("lets one model/tool loop choose list, get, read, and search tools across p
       "Compare the React and Flask evidence, then tell me more about the strongest match.",
       ["search_portfolio", "get_project"],
     ],
+    ["What does src/index.ts implement?", ["get_project", "get_project_file"]],
   ] as const;
 
   for (const [question, calls] of fixtures) {
@@ -217,8 +309,7 @@ test("lets one model/tool loop choose list, get, read, and search tools across p
     assert.equal(run.evidenceState.successfulResults, calls.length);
     for (const catalog of run.seenToolCatalogs) {
       const suffixes = catalog.map((name) => name.replace(/^portfolio_/, ""));
-      assert.deepEqual(suffixes.sort(), [...portfolioToolNames].sort());
-      assert.ok(githubToolNames.every((name) => !suffixes.includes(name)));
+      assert.deepEqual(suffixes.sort(), [...allToolNames].sort());
     }
   }
 });
