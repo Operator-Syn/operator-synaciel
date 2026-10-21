@@ -23,7 +23,7 @@ Create and install a GitHub App that can perform only the public, read-only REST
 1. Create the App under the account or organization that owns the linked portfolio repositories.
 2. Set a descriptive name and leave unused event subscriptions, writes, webhooks, and callbacks disabled.
 3. Grant only repository **Metadata: read-only** and **Contents: read-only** permissions.
-4. Select only repositories reachable through published portfolio `project_link` records.
+4. Select only reviewed public repositories reachable through published portfolio `project_link` records: `Operator-Syn/peer-tutoring-platform`, `Operator-Syn/CCC151-Development-Environment`, `Operator-Syn/studentDatabaseMySQLIntegration`, and `Operator-Syn/nltk-intent-chat-bot`.
 5. Install the App on that owner and record App ID and installation ID as non-secret deployment inputs.
 6. Record the selected repository set and permission review date in the deployment handoff, not source code.
 
