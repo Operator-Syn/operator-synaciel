@@ -20,12 +20,13 @@ Wire the installation-token provider into the existing GitHub REST transport, re
 
 ## Implementation changes
 
-- Extend `PortfolioMcpEnvironment` with the App configuration required by the token provider.
-- Keep token acquisition in a dedicated provider seam so the transport can receive a credential callback and tests can inject deterministic tokens.
+- Extend `PortfolioMcpEnvironment` with the App secrets and `GITHUB_INSTALLATION_OWNER` configuration required by the token provider.
+- Keep token acquisition in a dedicated provider seam whose credential callback receives the requested repository scope and rejects owners other than `Operator-Syn`.
+- Make every transport request pass its repository scope to token acquisition and cache tokens per repository.
 - Add `Authorization: Bearer <installation-token>` to every GitHub request created by `workers/portfolio-mcp/src/github/transport.ts`.
 - Keep `Accept`, `User-Agent`, API version, eight-second timeout, response-size cap, fixed `api.github.com` origin, and strict path checks unchanged.
 - Never forward inbound MCP headers to GitHub; the Worker remains the sole authority for upstream authorization.
-- Keep `createGitHubClient` and cache injection testable for all four tools.
+- Keep `createGitHubClient` and cache injection testable for all six tools.
 
 ## Tool coverage
 
@@ -47,9 +48,10 @@ Wire the installation-token provider into the existing GitHub REST transport, re
 
 ## Tests
 
-- Assert exact bearer-header construction with a fake token.
+- Assert exact bearer-header construction with a fake token and repository scope propagation.
 - Assert inbound `Authorization` cannot replace the Worker token.
-- Assert all six tools use the injected provider and a fresh public-visibility check.
+- Assert all six tools use the scoped injected provider and a fresh public-visibility check.
+- Assert a `401` invalidates only the repository token that produced it and retries once.
 - Assert absent App configuration cannot fall back to unauthenticated requests.
 - Assert private repositories are rejected on metadata, README, commit, tree, and file paths.
 - Assert tree paths exclude symlinks, submodules, binary files, traversal, and credential-like names.
