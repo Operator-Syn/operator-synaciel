@@ -4,7 +4,7 @@ export const PORTFOLIO_MCP_SERVER_NAME = "syn-forge-portfolio";
 export const PORTFOLIO_MCP_SERVER_VERSION = "1.2.0";
 export const PORTFOLIO_MCP_ENDPOINT = "https://mcp.syn-forge.com/mcp";
 export const PORTFOLIO_MCP_INSTRUCTIONS =
-  'This is the public, read-only Syn-Forge portfolio source for Operator-Syn. Prefer structured tools and resources, use get_portfolio_overview for complete public links including social/contact targets, use collection tools for category-wide requests, cite canonical portfolio URLs, distinguish portfolio evidence from inference, and never invent employers, clients, metrics, or skills. Numeric record and relationship IDs are internal lookup handles: use them only for detail-tool calls and omit them from user-facing summaries unless the user explicitly asks for an ID. Search matches only caller-provided terms and returns matched_terms and matched_fields provenance; match_mode "all" requires every supplied term to match one record. Search results are candidates until detail fields are checked. GitHub inspection is limited to public repositories already linked by a project. Every GitHub read is pinned to main, callers supply only a project ID, and source browsing is text-only and bounded.';
+  'This is the public, read-only Syn-Forge portfolio source for Operator-Syn. Prefer structured tools and resources, use get_portfolio_overview for complete public links including social/contact targets, use collection tools for category-wide requests, cite canonical portfolio URLs, distinguish portfolio evidence from inference, and never invent employers, clients, metrics, or skills. Numeric record and relationship IDs are internal lookup handles: use them only for detail-tool calls and omit them from user-facing summaries unless the user explicitly asks for an ID. Search matches only caller-provided terms and returns matched_terms and matched_fields provenance; match_mode "all" requires every supplied term to match one record. Search results are candidates until detail fields are checked. GitHub inspection is limited to public Operator-Syn repositories already linked by a project. Every GitHub read is pinned to main, callers supply only a project ID, and source browsing is text-only and bounded.';
 
 export const MAX_LIST_LIMIT = 12;
 export const MAX_SEARCH_RESULTS = 200;
@@ -39,5 +39,6 @@ export const PORTFOLIO_MCP_ALLOWED_ORIGIN_HOSTNAMES = [
 export type PortfolioMcpEnvironment = PortfolioApiEnvironment & {
   GITHUB_APP_ID?: string;
   GITHUB_INSTALLATION_ID?: string;
+  GITHUB_INSTALLATION_OWNER?: string;
   GITHUB_APP_PRIVATE_KEY?: string;
 };
