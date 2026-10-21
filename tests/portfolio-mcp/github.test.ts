@@ -232,7 +232,11 @@ function readStructuredContent(result: unknown): Record<string, unknown> {
 async function createClient(projectLink = "https://github.com/Operator-Syn/Demo") {
   const github = createGitHubFetch();
   const server = createPortfolioMcpServer(createProjectEnvironment(projectLink), {
-    githubAccessToken: async () => TOKEN,
+    githubAccessToken: async (scope) => {
+      assert.equal(scope.owner, "operator-syn");
+      assert.equal(scope.name, "demo");
+      return TOKEN;
+    },
     githubFetch: github.fetchImpl,
   });
   const client = new Client({ name: "portfolio-mcp-github-test", version: "1.0.0" });
@@ -385,7 +389,11 @@ test("caches immutable commit details while keeping GitHub requests read-only", 
   const github = createGitHubFetch();
   const cache = createFakeCache();
   const client = createGitHubClient({
-    accessToken: async () => TOKEN,
+    accessToken: async (scope) => {
+      assert.equal(scope.owner, "operator-syn");
+      assert.equal(scope.name, "demo");
+      return TOKEN;
+    },
     cache: cache.cache,
     fetchImpl: github.fetchImpl,
     waitUntil: cache.waitUntil,
@@ -413,7 +421,11 @@ test("caches immutable commit details while keeping GitHub requests read-only", 
 test("reports missing main without falling back to the repository default branch", async () => {
   const calls: URL[] = [];
   const client = createGitHubClient({
-    accessToken: async () => TOKEN,
+    accessToken: async (scope) => {
+      assert.equal(scope.owner, "operator-syn");
+      assert.equal(scope.name, "demo");
+      return TOKEN;
+    },
     fetchImpl: async (input, init) => {
       const request = new Request(input, init);
       const url = new URL(request.url);
@@ -448,7 +460,11 @@ test("reports missing main without falling back to the repository default branch
 test("rejects private repositories on every GitHub client path", async () => {
   const calls: URL[] = [];
   const client = createGitHubClient({
-    accessToken: async () => TOKEN,
+    accessToken: async (scope) => {
+      assert.equal(scope.owner, "operator-syn");
+      assert.equal(scope.name, "private-demo");
+      return TOKEN;
+    },
     fetchImpl: async (input, init) => {
       const request = new Request(input, init);
       assert.equal(request.headers.get("Authorization"), `Bearer ${TOKEN}`);
