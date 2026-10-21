@@ -30,7 +30,7 @@ compatibility block in sync.
 | `src/mcp/server.ts` | `McpServer` construction and registration order |
 | `src/mcp/resources.ts` | The four public JSON resources |
 | `src/mcp/tools/` | Tool schemas and callbacks grouped by overview, search, projects, certificates, and snippets |
-| `src/mcp/tools/github.ts` | Project-linked GitHub repository, README, and commit tool registration |
+| `src/mcp/tools/github.ts` | Project-linked GitHub repository, README, commit, tree, and source-file tool registration |
 | `src/mcp/search.ts` | Bounded cross-domain search and ranking |
 | `src/mcp/snippets.ts` | Public snippet metadata projection |
 | `src/mcp/schemas.ts` | Strict Zod 4 output schemas for every public tool |
@@ -42,7 +42,7 @@ compatibility block in sync.
 | `src/portfolio-api/snippets.ts` and `urls.ts` | Snippet-tree normalization and public URL helpers |
 | `src/portfolio-api/index.ts` | Internal API adapter barrel |
 | `src/portfolioApi.ts` | Compatibility barrel only; it contains no adapter implementation |
-| `src/github/` | Strict project-link parsing, fixed-`main` GitHub REST reads, normalization, and cache transport |
+| `src/github/` | GitHub App token lifecycle, strict project-link and path parsing, fresh public visibility checks, fixed-`main` REST reads, normalization, tree/blob bounds, and cache transport |
 
 ## Convention
 
