@@ -21,6 +21,7 @@ export type {
   GitHubReadme,
   GitHubRepositoryMetadata,
   GitHubRepositoryRef,
+  GitHubTokenScope,
   GitHubTreeFile,
 } from "./types.ts";
 export {
