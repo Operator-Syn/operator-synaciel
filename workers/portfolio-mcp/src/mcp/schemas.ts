@@ -2,7 +2,10 @@ import { z } from "zod";
 import {
   GITHUB_COMMIT_FILE_LIMIT,
   GITHUB_COMMIT_MESSAGE_MAX_CHARACTERS,
+  GITHUB_FILE_MAX_CHARACTERS,
   GITHUB_README_MAX_CHARACTERS,
+  GITHUB_TREE_FILE_LIMIT,
+  MAX_GITHUB_FILE_PAGE,
   MAX_LIST_LIMIT,
   MAX_SEARCH_QUERY_CHARACTERS,
   MAX_SEARCH_RESULTS,
@@ -171,6 +174,23 @@ const githubCommitDetailsSchema = githubCommitSummarySchema.extend({
   files_truncated: z.boolean(),
 });
 
+const githubTreeFileSchema = z.strictObject({
+  path: z.string().min(1).max(1_024),
+  size: z.number().int().nonnegative(),
+  blob_sha: z.string().regex(/^[0-9a-f]{40}$/i),
+});
+
+const githubFileMetadata = {
+  project_id: z.number().int().positive(),
+  repository_url: z.string().url(),
+  branch: z.literal("main"),
+  commit_sha: z.string().regex(/^[0-9a-f]{40}$/i),
+  path: z.string().min(1).max(1_024),
+  blob_sha: z.string().regex(/^[0-9a-f]{40}$/i),
+  size: z.number().int().nonnegative(),
+  canonical_url: z.string().url(),
+};
+
 export const portfolioOverviewOutputSchema = z.strictObject({
   site: siteSchema,
   profile: z.array(profileRecordSchema),
@@ -306,3 +326,35 @@ export const getProjectCommitOutputSchema = z.strictObject({
   branch: z.literal("main"),
   commit: githubCommitDetailsSchema,
 });
+
+export const listProjectFilesOutputSchema = z.strictObject({
+  project_id: z.number().int().positive(),
+  repository_url: z.string().url(),
+  branch: z.literal("main"),
+  commit_sha: z.string().regex(/^[0-9a-f]{40}$/i),
+  files: z.array(githubTreeFileSchema).max(MAX_GITHUB_FILE_PAGE),
+  total_files: z.number().int().nonnegative().max(GITHUB_TREE_FILE_LIMIT),
+  tree_truncated: z.boolean(),
+  pagination: z.strictObject({
+    limit: z.number().int().min(1).max(MAX_GITHUB_FILE_PAGE),
+    has_more: z.boolean(),
+    next_cursor: z.string().nullable(),
+  }),
+});
+
+export const getProjectFileOutputSchema = z.discriminatedUnion("content_available", [
+  z.strictObject({
+    ...githubFileMetadata,
+    content_available: z.literal(true),
+    offset: z.number().int().nonnegative().max(GITHUB_FILE_MAX_CHARACTERS),
+    content: z.string().max(MAX_SNIPPET_CHUNK_CHARACTERS),
+    next_offset: z.number().int().nonnegative().max(GITHUB_FILE_MAX_CHARACTERS),
+    total_characters: z.number().int().nonnegative().max(GITHUB_FILE_MAX_CHARACTERS),
+    complete: z.boolean(),
+  }),
+  z.strictObject({
+    ...githubFileMetadata,
+    content_available: z.literal(false),
+    reason: z.enum(["binary", "sensitive", "too_large"]),
+  }),
+]);
