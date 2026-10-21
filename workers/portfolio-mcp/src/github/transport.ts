@@ -9,7 +9,7 @@ import {
   PORTFOLIO_MCP_ENDPOINT,
 } from "../config.ts";
 import { PortfolioApiError } from "../portfolio-api/errors.ts";
-import type { GitHubClientOptions } from "./types.ts";
+import type { GitHubClientOptions, GitHubTokenScope } from "./types.ts";
 
 const GITHUB_API_ORIGIN = "https://api.github.com";
 const GITHUB_USER_AGENT = "syn-forge-portfolio-mcp";
@@ -23,7 +23,11 @@ export type GitHubTransportResponse<T> = {
 };
 
 export type GitHubTransport = {
-  getJson<T>(pathname: string, cacheTtlSeconds: number): Promise<GitHubTransportResponse<T>>;
+  getJson<T>(
+    pathname: string,
+    cacheTtlSeconds: number,
+    scope: GitHubTokenScope,
+  ): Promise<GitHubTransportResponse<T>>;
 };
 
 function createCacheKey(pathname: string): Request {
@@ -132,6 +136,7 @@ export function createGitHubTransport(options: GitHubClientOptions = {}): GitHub
   async function getJson<T>(
     pathname: string,
     cacheTtlSeconds: number,
+    scope: GitHubTokenScope,
   ): Promise<GitHubTransportResponse<T>> {
     if (!pathname.startsWith("/") || pathname.startsWith("//")) {
       throw new PortfolioApiError("The GitHub request path is invalid.", 400);
@@ -143,7 +148,7 @@ export function createGitHubTransport(options: GitHubClientOptions = {}): GitHub
       throw new PortfolioApiError("GitHub App credentials are not configured.", 502);
     }
 
-    let accessToken = await getAccessToken();
+    let accessToken = await getAccessToken(scope);
     const cacheKey = options.cache && cacheTtlSeconds > 0 ? createCacheKey(pathname) : undefined;
 
     if (cacheKey && options.cache) {
@@ -168,7 +173,7 @@ export function createGitHubTransport(options: GitHubClientOptions = {}): GitHub
       let response = await requestJson(pathname, accessToken);
       if (response.status === 401 && invalidateAccessToken) {
         invalidateAccessToken(accessToken);
-        accessToken = await getAccessToken();
+        accessToken = await getAccessToken(scope);
         response = await requestJson(pathname, accessToken);
       }
       if (!response.ok) {
