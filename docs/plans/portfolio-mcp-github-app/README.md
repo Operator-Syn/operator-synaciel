@@ -26,7 +26,7 @@ This plan covers five implementation stages, cross-cutting sweeps, milestone gat
 
 ## Current baseline
 
-- The GitHub transport obtains a short-lived installation token from the configured GitHub App and sends it as a server-held bearer credential on every uncached request.
+- The GitHub App is installed on **All repositories** under Operator-Syn. The transport requests short-lived installation tokens narrowed to the single project-linked repository being read and sends them as server-held bearer credentials on every uncached request.
 - The six GitHub tools resolve only project-linked repositories, check public visibility fresh on every invocation, and remain pinned to `main`.
 - Tree and text-file tools resolve repository-relative paths from the current `main` tree and exclude symlinks, submodules, binary files, and credential-like paths.
 - GitHub `429`, and qualifying rate-limit `403` responses (`x-ratelimit-remaining: 0` or `Retry-After`), become the stable MCP `RATE_LIMITED` envelope.
@@ -38,7 +38,7 @@ This plan covers five implementation stages, cross-cutting sweeps, milestone gat
 | Decision | Selected approach | Reason |
 | --- | --- | --- |
 | Credential | GitHub App installation access token | Service-owned, repository-scoped, rotatable, and higher quota than unauthenticated requests |
-| Installation scope | Only reviewed public repositories linked by published portfolio projects | Limits blast radius and follows the existing project-link boundary |
+| Installation scope | GitHub App installed on **All repositories** under Operator-Syn; each runtime token is narrowed to one published-project repository | No all-public-only installation scope exists; owner and linked-repository checks constrain runtime access without per-project installation edits |
 | Permissions | Repository metadata and contents, read-only | Fixed reads require no writes, hooks, issues, or administration |
 | Storage | Cloudflare Worker Secrets | Keeps private key and identifiers out of source and MCP traffic |
 | User safeguard | Cloudflare edge rule keyed by client IP | Current public MCP has no authenticated user identity; limitation stays explicit |
@@ -57,7 +57,7 @@ This plan covers five implementation stages, cross-cutting sweeps, milestone gat
 
 ## Milestones
 
-- **M1 — App foundation:** ownership, selected repositories, permissions, installation ID, and App ID reviewed.
+- **M1 — App foundation:** ownership, **All repositories** installation, one-repository runtime token scope, permissions, installation ID, and App ID reviewed.
 - **M2 — Credential lifecycle:** secret contract, JWT/token exchange, renewal, and failure paths verified with mocks.
 - **M3 — Authenticated transport:** only Worker-side credentials authorize GitHub; inbound client headers cannot override them.
 - **M4 — Resilience:** cache hits avoid upstream calls, rate errors remain bounded, and edge controls constrain abusive clients.
