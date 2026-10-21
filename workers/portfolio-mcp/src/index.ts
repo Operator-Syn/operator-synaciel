@@ -28,6 +28,7 @@ export {
 export type {
   GitHubCredentialProvider,
   GitHubCredentialProviderOptions,
+  GitHubTokenScope,
 } from "./github/index.ts";
 export { createGitHubAppCredentialProvider } from "./github/index.ts";
 export { createPortfolioMcpHandler } from "./mcp/handler.ts";
