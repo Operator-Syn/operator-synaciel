@@ -149,8 +149,27 @@ The server-held `ADMIN_INTERNAL_KEY` is provisioned as a Worker secret and is
 the only write credential accepted from the Eury gateway; it is not part of
 these non-secret values.
 
-Do not add the API secrets to the MCP Worker. The MCP Worker only needs its
-PORTFOLIO_API Service Binding in production.
+Do not add the API secrets to the MCP Worker. The MCP Worker keeps its
+PORTFOLIO_API Service Binding and separately owns the GitHub App credential.
+
+### Portfolio MCP GitHub App secrets
+
+Create the read-only GitHub App under the Operator-Syn account with no webhook,
+callback, event subscription, or write permission. Grant only repository
+**Metadata: read** and **Contents: read**, and install it on the public
+repositories referenced by published project records. Store these required
+production secrets on `syn-forge-portfolio-mcp` through an interactive
+operator-owned Wrangler step:
+
+- GITHUB_APP_ID;
+- GITHUB_INSTALLATION_ID; and
+- GITHUB_APP_PRIVATE_KEY.
+
+The Worker configuration declares these names under `[secrets] required`, so a
+dry run or deployment fails if one is missing. Never paste their values into
+source, documentation, command-line arguments, logs, or issue reports. The App
+installation scope is an operational control in addition to the Worker's fresh
+public-visibility check.
 
 ## Public-auth runtime provisioning
 
@@ -509,10 +528,14 @@ The script uses the top-level production configuration. The env.local block is
 for local development only. Production uses the PORTFOLIO_API Service Binding
 and mcp.syn-forge.com custom domain.
 
-The MCP Worker is public and unauthenticated. Its public data reads are cached
-for six hours at the portfolio API transport boundary. Cache entries are local
-to the data center that fills them, and content updates may remain visible for
-up to six hours. Deployment does not purge already-warmed cache entries.
+The MCP Worker is public and unauthenticated to callers. Portfolio API reads are
+cached for six hours at the transport boundary. GitHub upstream requests use
+the server-held read-only GitHub App installation token; callers never supply a
+GitHub credential. GitHub repository visibility is checked fresh on every tool
+call, while immutable trees and blobs are cached by SHA. Cache entries are local
+to the data center that fills them, and content updates may remain visible until
+their documented TTL expires. Deployment does not purge already-warmed cache
+entries.
 
 ## Deploy the portfolio agent Worker
 
@@ -683,12 +706,15 @@ and the browser console has no deployment-specific errors.
 Register https://mcp.syn-forge.com/mcp in an MCP-capable client and confirm:
 
 - the endpoint initializes;
-- tools/list exposes the eight public tools;
+- tools/list exposes the fourteen public tools;
 - resources/list exposes the four portfolio resources;
 - get_portfolio_overview returns the current public overview;
 - search_portfolio returns bounded results;
 - list_projects and list_certificates support documented limits and cursors;
-- list_snippets and read_snippet return expected metadata/content behavior; and
+- list_snippets and read_snippet return expected metadata/content behavior;
+- a linked public project supports repository metadata, README, commit,
+  file-tree, and text-file reads;
+- a private or unlinked repository remains unavailable; and
 - an untrusted browser Origin is rejected.
 
 Inspect live logs while making a representative request:
