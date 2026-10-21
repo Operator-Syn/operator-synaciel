@@ -16,6 +16,10 @@ const MAIN_SHA = "a".repeat(40);
 const OLD_SHA = "b".repeat(40);
 const OTHER_SHA = "c".repeat(40);
 const BASE_SHA = "d".repeat(40);
+const SOURCE_SHA = "e".repeat(40);
+const BINARY_SHA = "f".repeat(40);
+const TOKEN = "test-installation-token";
+const DEMO_SOURCE = "export const answer = 42;\n";
 
 function encodeBase64(value: string): string {
   const bytes = new TextEncoder().encode(value);
@@ -54,6 +58,7 @@ function createProjectEnvironment(projectLink: string): PortfolioMcpEnvironment 
 function createGitHubFetch() {
   const calls: URL[] = [];
   const readme = "# Demo project\n\nA bounded README for the portfolio MCP.\n";
+  const source = DEMO_SOURCE;
   const commits = [
     {
       sha: MAIN_SHA,
@@ -85,6 +90,7 @@ function createGitHubFetch() {
     calls.push(url);
     assert.equal(url.origin, "https://api.github.com");
     assert.equal(request.headers.get("User-Agent"), "syn-forge-portfolio-mcp");
+    assert.equal(request.headers.get("Authorization"), `Bearer ${TOKEN}`);
 
     if (url.pathname === "/repos/operator-syn/demo") {
       return Response.json({
@@ -126,6 +132,33 @@ function createGitHubFetch() {
     }
     if (url.pathname === `/repos/operator-syn/demo/compare/${OTHER_SHA}...main`) {
       return Response.json({ merge_base_commit: { sha: BASE_SHA } });
+    }
+    if (url.pathname === `/repos/operator-syn/demo/git/trees/${MAIN_SHA}`) {
+      assert.equal(url.searchParams.get("recursive"), "1");
+      return Response.json({
+        sha: MAIN_SHA,
+        truncated: false,
+        tree: [
+          { path: "src", mode: "040000", type: "tree", sha: OTHER_SHA },
+          { path: ".env", mode: "100644", type: "blob", size: 20, sha: OTHER_SHA },
+          { path: "assets/logo.png", mode: "100644", type: "blob", size: 20, sha: BINARY_SHA },
+          {
+            path: "src/index.ts",
+            mode: "100644",
+            type: "blob",
+            size: source.length,
+            sha: SOURCE_SHA,
+          },
+        ],
+      });
+    }
+    if (url.pathname === `/repos/operator-syn/demo/git/blobs/${SOURCE_SHA}`) {
+      return Response.json({
+        sha: SOURCE_SHA,
+        size: source.length,
+        encoding: "base64",
+        content: encodeBase64(source),
+      });
     }
     if (url.pathname === `/repos/operator-syn/demo/commits/${OLD_SHA}`) {
       return Response.json({
@@ -199,6 +232,7 @@ function readStructuredContent(result: unknown): Record<string, unknown> {
 async function createClient(projectLink = "https://github.com/Operator-Syn/Demo") {
   const github = createGitHubFetch();
   const server = createPortfolioMcpServer(createProjectEnvironment(projectLink), {
+    githubAccessToken: async () => TOKEN,
     githubFetch: github.fetchImpl,
   });
   const client = new Client({ name: "portfolio-mcp-github-test", version: "1.0.0" });
@@ -231,11 +265,13 @@ test("registers and serves bounded GitHub project inspection tools", async () =>
   const { client, github, server } = await createClient();
   const tools = await client.listTools();
   const toolNames = tools.tools.map((tool) => tool.name);
-  assert.deepEqual(toolNames.slice(-4), [
+  assert.deepEqual(toolNames.slice(-6), [
     "get_project_repository",
     "get_project_readme",
     "list_project_commits",
     "get_project_commit",
+    "list_project_files",
+    "get_project_file",
   ]);
   for (const tool of tools.tools) {
     assert.equal(tool.annotations?.readOnlyHint, true);
@@ -295,6 +331,42 @@ test("registers and serves bounded GitHub project inspection tools", async () =>
   assert.equal((commit.files as unknown[]).length, 2);
   assert.equal(commit.files_truncated, false);
 
+  const filesResult = await client.callTool({
+    name: "list_project_files",
+    arguments: { project_id: 11, path_prefix: "src", limit: 1 },
+  });
+  const files = readStructuredContent(filesResult);
+  assert.equal(files.commit_sha, MAIN_SHA);
+  assert.equal(files.total_files, 1);
+  assert.deepEqual(files.files, [
+    { path: "src/index.ts", size: DEMO_SOURCE.length, blob_sha: SOURCE_SHA },
+  ]);
+  assert.deepEqual(files.pagination, { limit: 1, has_more: false, next_cursor: null });
+
+  const fileResult = await client.callTool({
+    name: "get_project_file",
+    arguments: { project_id: 11, path: "src/index.ts", max_chars: 12 },
+  });
+  const file = readStructuredContent(fileResult);
+  assert.equal(file.content_available, true);
+  assert.equal(file.content, DEMO_SOURCE.slice(0, 12));
+  assert.equal(file.next_offset, 12);
+  assert.equal(file.complete, false);
+  assert.equal(file.blob_sha, SOURCE_SHA);
+  assert.equal(
+    file.canonical_url,
+    `https://github.com/operator-syn/demo/blob/${MAIN_SHA}/src/index.ts`,
+  );
+
+  const binaryResult = await client.callTool({
+    name: "get_project_file",
+    arguments: { project_id: 11, path: "assets/logo.png" },
+  });
+  const binary = readStructuredContent(binaryResult);
+  assert.equal(binary.content_available, false);
+  assert.equal(binary.reason, "binary");
+  assert.equal("content" in binary, false);
+
   const requestUrls = github.calls.map((url) => url.toString());
   assert.ok(requestUrls.some((url) => url.includes("/branches/main")));
   assert.ok(requestUrls.some((url) => url.includes("/contents/README.md?ref=main")));
@@ -313,6 +385,7 @@ test("caches immutable commit details while keeping GitHub requests read-only", 
   const github = createGitHubFetch();
   const cache = createFakeCache();
   const client = createGitHubClient({
+    accessToken: async () => TOKEN,
     cache: cache.cache,
     fetchImpl: github.fetchImpl,
     waitUntil: cache.waitUntil,
@@ -340,6 +413,7 @@ test("caches immutable commit details while keeping GitHub requests read-only", 
 test("reports missing main without falling back to the repository default branch", async () => {
   const calls: URL[] = [];
   const client = createGitHubClient({
+    accessToken: async () => TOKEN,
     fetchImpl: async (input, init) => {
       const request = new Request(input, init);
       const url = new URL(request.url);
@@ -368,6 +442,41 @@ test("reports missing main without falling back to the repository default branch
   assert.equal(
     calls.some((url) => url.toString().includes("develop")),
     false,
+  );
+});
+
+test("rejects private repositories on every GitHub client path", async () => {
+  const calls: URL[] = [];
+  const client = createGitHubClient({
+    accessToken: async () => TOKEN,
+    fetchImpl: async (input, init) => {
+      const request = new Request(input, init);
+      assert.equal(request.headers.get("Authorization"), `Bearer ${TOKEN}`);
+      const url = new URL(request.url);
+      calls.push(url);
+      if (url.pathname === "/repos/operator-syn/private-demo") {
+        return Response.json({ private: true, visibility: "private", description: "Private" });
+      }
+      return new Response("Unexpected GitHub request", { status: 500 });
+    },
+  });
+  const ref = parseGitHubRepositoryUrl("https://github.com/operator-syn/private-demo");
+  const unavailable = [
+    () => client.getRepository(ref),
+    () => client.getReadme(ref),
+    () => client.listCommits(ref, 1, 1),
+    () => client.getCommit(ref, OLD_SHA),
+    () => client.listFiles(ref, undefined, 0, 10),
+    () => client.getFile(ref, "src/index.ts"),
+  ];
+
+  for (const operation of unavailable) {
+    await assert.rejects(operation, /not public/);
+  }
+  assert.equal(calls.length, unavailable.length);
+  assert.equal(
+    calls.every((url) => url.pathname === "/repos/operator-syn/private-demo"),
+    true,
   );
 });
 
