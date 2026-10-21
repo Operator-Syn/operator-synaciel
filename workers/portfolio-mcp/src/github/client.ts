@@ -250,7 +250,7 @@ export function createGitHubClient(options: GitHubClientOptions = {}): GitHubCli
       response.data.name !== GITHUB_MAIN_BRANCH ||
       typeof response.data.commit?.sha !== "string"
     ) {
-      throw new PortfolioApiError("GitHub returned an invalid main branch.", 502);
+      throw new PortfolioApiError("GitHub did not expose a main branch.", 404);
     }
     requireSha(response.data.commit.sha);
     return response.data;
