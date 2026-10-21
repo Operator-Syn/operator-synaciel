@@ -457,6 +457,38 @@ test("reports missing main without falling back to the repository default branch
   );
 });
 
+test("reports a redirected non-main branch as unavailable", async () => {
+  const calls: URL[] = [];
+  const client = createGitHubClient({
+    accessToken: async (scope) => {
+      assert.equal(scope.owner, "operator-syn");
+      assert.equal(scope.name, "demo");
+      return TOKEN;
+    },
+    fetchImpl: async (input, init) => {
+      const request = new Request(input, init);
+      const url = new URL(request.url);
+      calls.push(url);
+      if (url.pathname === "/repos/operator-syn/demo") {
+        return Response.json({ private: false, visibility: "public" });
+      }
+      if (url.pathname === "/repos/operator-syn/demo/branches/main") {
+        return Response.json({ name: "root", commit: { sha: MAIN_SHA } });
+      }
+      return new Response("Unexpected GitHub request", { status: 500 });
+    },
+  });
+  const ref = parseGitHubRepositoryUrl("https://github.com/operator-syn/demo");
+
+  const repository = await client.getRepository(ref);
+
+  assert.equal(repository.main_available, false);
+  assert.equal(repository.main_sha, null);
+  assert.equal(repository.readme_available, false);
+  assert.equal(repository.commit_history_available, false);
+  assert.equal(calls.length, 2);
+});
+
 test("rejects private repositories on every GitHub client path", async () => {
   const calls: URL[] = [];
   const client = createGitHubClient({
