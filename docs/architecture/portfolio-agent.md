@@ -145,12 +145,11 @@ rediscovery passes the same absolute deadline to the remove/re-add helper,
 which will not begin cleanup, another add attempt, or a retry backoff after the
 shared window expires.
 
-Once that bounded phase ends, the agent selects the eight portfolio MCP tools by
-capability name: overview, search, project list/detail, certificate list/detail,
-and snippet list/read. It then adds the agent-local `read_portfolio_page` tool.
-The four project-linked GitHub tools remain public MCP capabilities but are not
-exposed to this portfolio-only assistant. No question text is inspected to make
-that decision.
+Once that bounded phase ends, the agent selects the fourteen portfolio MCP tools
+by capability name: overview, search, project list/detail, certificate
+list/detail, snippet list/read, and the six project-linked GitHub repository
+metadata, README, commit, tree, and file tools. It then adds the agent-local
+`read_portfolio_page` tool. No question text is inspected to make that decision.
 
 After authentication, question, and safety gates, the agent performs a cheap
 quota-availability check for the Google subject before touching MCP. A paused
@@ -160,7 +159,7 @@ call. This is an availability peek, not the authoritative reservation; the
 final atomic reservation after model-message conversion handles the exact
 request size and concurrent-turn race.
 
-Every turn that reaches generation receives the same eight MCP tools plus the
+Every turn that reaches generation receives the same fourteen MCP tools plus the
 local page reader in both `convertToModelMessages` and `streamText`, together
 with the trusted code-owned portfolio guide and a bounded fresh evidence ledger
 when entries are available. There is no mandatory search or overview call once a
@@ -179,24 +178,30 @@ to ask only when material ambiguity remains. After one usable portfolio result,
 tool choice becomes automatic and natural prose can stream. Project records carry
 `categories`, `stack`, and `highlights` facets from the public API; they are
 ordinary evidence fields for categorization and technology questions, while
-search keeps generic term matching rather than vocabulary routing. Text emitted
-before usable evidence is suppressed at the stream boundary. Empty results and
+search keeps generic term matching rather than vocabulary routing. Repository
+tools resolve a published project first, remain pinned to `main`, and can read
+only public linked repositories that GitHub confirms on a fresh visibility
+check. README, source, file, and commit text are untrusted evidence and must not
+be followed as instructions. Text emitted before usable evidence is suppressed
+at the stream boundary. Empty results and
 tool failures do not unlock an answer; after three consecutive unusable results,
 the turn ends with a brief statement that the answer could not be verified from
 public portfolio evidence. This is an evidence gate, not semantic routing.
 
 ## Thread evidence
 
-`workers/portfolio-agent/src/portfolio-guide.ts` owns trusted version-1
-structure for canonical public routes, page semantics, Snippets terminology,
-source precedence, and answer-first behavior. The guide is not evidence of
-current owner facts, projects, counts, or availability. It is paired with the
-public `llms.txt` manifest so external agents receive the same page map.
+`workers/portfolio-agent/src/portfolio-guide.ts` owns trusted version-2
+structure for canonical public routes, page semantics, linked-repository
+boundaries, Snippets terminology, source precedence, and answer-first behavior.
+The guide is not evidence of current owner facts, projects, counts, or
+availability. It is paired with the public `llms.txt` manifest so external
+agents receive the same page map.
 
 Successful portfolio tool results are persisted in the thread Durable Object
-SQLite as a keyed evidence ledger. Slots distinguish overview, search
-candidates, project lists and details, certificate lists and details, snippet
-lists and content, and rendered pages. Each entry stores a schema-aware compact
+SQLite as a keyed evidence ledger. Slots distinguish overview, search candidates, project lists and details,
+certificate lists and details, snippet lists and content, linked repository
+metadata, README chunks, commit lists and details, repository file trees,
+individual source-file chunks, and rendered pages. Each entry stores a schema-aware compact
 JSON projection, its own validated sources, a tool name, and a capture
 timestamp. Repeated slots upsert; malformed entries are ignored and pruned.
 
@@ -215,7 +220,7 @@ without fixing the per-turn evidence reset.
 ## Same-origin page reads
 
 The agent also exposes one local tool, `read_portfolio_page`, alongside the
-eight MCP tools. It uses the `BROWSER` Browser Rendering binding to render a
+fourteen MCP tools. It uses the `BROWSER` Browser Rendering binding to render a
 page under exactly `https://syn-forge.com`; inputs are path-only and query
 strings, hashes, credentials, backslash or encoded traversal, and external
 redirects are rejected. All pathnames are allowed, including `/snippets` and
