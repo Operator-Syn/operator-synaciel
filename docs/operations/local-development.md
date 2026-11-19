@@ -85,9 +85,9 @@ Create the ignored storage directory and start the recorder from the repository
 root:
 
 ```bash
-mkdir -p playwright/.auth
+mkdir -p apps/portfolio-web/playwright/.auth
 npx playwright codegen \
-  --save-storage=playwright/.auth/google.json \
+  --save-storage=apps/portfolio-web/playwright/.auth/google.json \
   http://localhost:5173/ai
 ```
 
@@ -103,14 +103,15 @@ Run the authenticated browser checks with:
 npm run test:e2e
 ```
 
-The suite loads `playwright/.auth/google.json`, opens `/ai`, checks that
-`/session` returns an authenticated profile, and exercises the active assistant
-connection through the public-auth gateway. Every test installs the redacted
-browser audit from `tests/portfolio-web/playwright-observability.ts`: it keeps
-only event kinds and URL parameter names, detects JWT-shaped values without
-retaining them, and flags the premature-close console error. Playwright writes
-no trace or HAR; output goes to the ignored `playwright/.artifacts/` directory.
-Set `E2E_BASE_URL` to target a local Pages preview instead of Vite.
+The suite loads `apps/portfolio-web/playwright/.auth/google.json`, opens `/ai`,
+checks that `/session` returns an authenticated profile, and exercises the
+active assistant connection through the public-auth gateway. Every test installs
+the redacted browser audit from
+`apps/portfolio-web/tests/playwright-observability.ts`: it keeps only event
+kinds and URL parameter names, detects JWT-shaped values without retaining
+them, and flags the premature-close console error. Playwright writes no trace or
+HAR; output goes to the ignored `apps/portfolio-web/playwright/.artifacts/`
+directory. Set `E2E_BASE_URL` to target a local Pages preview instead of Vite.
 
 The grounded model question is intentionally skipped unless the explicit live
 gate is enabled:
@@ -151,9 +152,9 @@ future auth implementation stores tokens in IndexedDB, save the state with
 ### Optional Nix shell for Playwright browsers
 
 The repository includes an optional Nix flake for Playwright browser runtime
-libraries on Linux and browser-cache policy on macOS. It does not install Node,
-npm, Python, or Pipenv; use the host's supported Node.js runtime (Node 22 or
-newer, matching CI).
+libraries on Linux and browser-cache policy on macOS. It does not install
+Node.js or npm; use the host's supported Node.js runtime (Node 22 or newer,
+matching CI).
 
 Enter it manually with `nix develop`, or run `direnv allow` to use the guarded
 root `.envrc`. If the flake files are still untracked in a working tree, use
@@ -165,9 +166,9 @@ explicitly:
 npx playwright install chromium firefox webkit
 ```
 
-Downloads stay in the ignored `.playwright-browsers/` directory, and
-`PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` prevents dependency installation from
-silently downloading a second browser set. Do not use
+Downloads stay in the ignored root `.playwright-browsers/` directory (the Nix
+shell default), and `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` prevents dependency
+installation from silently downloading a second browser set. Do not use
 `npx playwright install-deps` on NixOS; that command targets apt-based hosts.
 The shell does not enable system-wide `nix-ld`; Linux hosts need an existing
 compatible ELF loader for downloaded WebKit binaries. Authentication storage
@@ -179,8 +180,8 @@ and the host system is declared by the flake, the hook suggests `nix develop
 --command <command>` for browser/runtime-sensitive checks. If Nix is missing or
 compatibility cannot be confirmed, it reports that and leaves commands in the
 host environment. It does not run `nix develop`, call `direnv allow`, source
-`.envrc`, or provide Node/npm/Python/Pipenv; a child hook cannot change the
-parent shell.
+`.envrc`, or provide Node.js and npm; a child hook cannot change the parent
+shell.
 
 ### Assistant connection troubleshooting
 
@@ -296,7 +297,7 @@ application.
 
 The public, read-only portfolio MCP is isolated in `workers/portfolio-mcp/`.
 It is a remote stateless Cloudflare Worker using Streamable HTTP at
-`https://mcp.syn-forge.com/mcp`; it is not the local stdio repository MCP.
+`https://mcp.syn-forge.com/mcp`; it is separate from local repository tooling.
 Check and test it with:
 
 ```bash
@@ -313,42 +314,40 @@ post-deploy verification contract. See
 [[architecture/portfolio-mcp-modules|Public Portfolio MCP module structure]] when changing its
 internal Worker modules.
 
-## Local repository MCP — stdio
+## Git hooks and repository tooling
 
-The local repository-only MCP is the `tools/repository-mcp/` workspace. It is a
-stdio subprocess with no public URL. Its root-safe client bridge remains
-`scripts/mcp-launcher.mjs` so `.mcp.json` and Codex can resolve a relocated Git
-checkout.
-
-Use [[operations/repository-mcp|Local Repository MCP (stdio) and Commit Pipeline]]
-for the guarded change and commit workflow. The local checks for repository
-tooling are:
+Activate the versioned hooks after installing dependencies:
 
 ```bash
-npm run mcp:check
-npm run skills:check
-npm run mcp:typecheck
-npm run test:mcp
 npm run setup:git-hooks
 ```
 
-This MCP is local-only. It does not expose the public portfolio contract, deploy,
-access Cloudflare credentials, or apply D1 migrations. Graphify updates remain
-an explicit separate step.
+Keep `core.hooksPath=.githooks` active. The `pre-commit` hook validates the
+staged change and the `pre-push` hook audits the outgoing commit range. Do not
+use `--no-verify`, delete the hooks, or repoint `core.hooksPath` to bypass them.
 
-## Graphify
-
-Graphify is managed by Pipenv and keeps generated state under
-`graphify-out/`:
+Repository-tooling checks:
 
 ```bash
-pipenv install --dev --deploy
-pipenv run graphify query "How does the frontend connect to the Hono API?"
-pipenv run graphify update . --no-cluster
+npm run docs:check
+npm run skills:check
+npm run test:tooling
 ```
 
-The repository Graphify configuration is code-only. Use the vault map for
-Markdown documentation rather than expecting the code graph to contain notes.
+These checks do not deploy, access Cloudflare credentials, or apply D1
+migrations. Markdown documentation is navigated through [[README|the vault map]]
+rather than a generated code graph.
+
+## Skill validation
+
+After installing npm dependencies, run the repository's Node-based validator.
+It discovers checked-out skills under `.agents/skills/`, the common location
+for Codex and Hermes, and checks their YAML frontmatter and optional agent
+metadata:
+
+```bash
+npm run skills:check
+```
 
 ## D1 workflow
 
