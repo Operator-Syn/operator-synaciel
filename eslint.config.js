@@ -21,13 +21,7 @@ export default tseslint.config([
     },
   },
   {
-    files: [
-      "apps/portfolio-web/scripts/**/*.ts",
-      "tools/**/*.ts",
-      "workers/**/*.ts",
-      "scripts/**/*.ts",
-      "tests/**/*.{ts,tsx}",
-    ],
+    files: ["apps/portfolio-web/scripts/**/*.ts", "workers/**/*.ts", "scripts/**/*.ts"],
     languageOptions: {
       ecmaVersion: 2023,
       globals: globals.node,
