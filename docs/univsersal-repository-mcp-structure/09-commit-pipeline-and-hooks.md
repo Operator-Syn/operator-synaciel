@@ -8,7 +8,7 @@ tags:
   - git
   - hooks
 role: reference
-status: verified-repository
+status: historical
 last_verified: 2026-09-03
 source_scope: "revision 6f4112b3fc5801e3298c80876c43cbbf0af8428e"
 related:
@@ -47,12 +47,12 @@ in MCP output. Read grants do not grant commit or write access.
 - `.githooks/pre-push` invokes `scripts/audit-one-file-history.ts` and rejects
   merge, empty, or multi-path outgoing commits.
 - `.codex/hooks/repository-commit-gate.mjs` denies direct shell Git commits.
-- `.codex/hooks.json` loads session guidance, Graphify checks, documentation
+- `.codex/hooks.json` loads session guidance, tooling checks, documentation
   checks, Biome feedback, and the commit gate.
 - PostToolUse feedback is advisory and cannot roll back a completed edit.
 
 The repository does not provide a generic filesystem writer and does not
-automatically rebuild Graphify after commits.
+automatically rebuild generated navigation output after commits.
 
 Related:
 [[univsersal-repository-mcp-structure/10-errors-security-and-boundaries|security boundary]] ·
