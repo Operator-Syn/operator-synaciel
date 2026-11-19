@@ -141,7 +141,7 @@ test("keeps Pages head rewriting and static image routing in the Pages boundary"
   assert.doesNotMatch(component, /John-Ronan/);
 
   const routesConfig = JSON.parse(routes);
-  assert.ok(routesConfig.include.includes("/projects/*"));
+  assert.ok(routesConfig.include.includes("/*"));
   for (const assetPath of socialPreviewAssetPaths) {
     assert.ok(routesConfig.exclude.includes(assetPath));
   }
