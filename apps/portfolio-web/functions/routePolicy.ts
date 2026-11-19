@@ -8,11 +8,12 @@ function normalizePathForMatch(pathname: string) {
 }
 
 /**
- * Decides whether the Pages middleware serves the app shell for a path.
+ * Decides whether the Pages Function may serve the app shell for a path.
  *
- * Every path under `/snippets/` is accepted on purpose: the Snippets page
- * generates and documents folder URLs, and the SPA parses them. A snippet
- * document existence check belongs to item 1.3, not this allowlist.
+ * Every path under `/snippets/` is accepted here so real folder URLs can be
+ * served. Existence is decided in `_middleware.ts` against the cached snippet
+ * tree: missing folders 404, unknown folder state still serves. This allowlist
+ * only decides whether the Function runs.
  */
 export function isKnownRoute(pathname: string) {
   const normalized = normalizePathForMatch(pathname);
