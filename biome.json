@@ -10,9 +10,7 @@
     "includes": [
       "apps/**/*.{css,js,jsx,ts,tsx}",
       "workers/**/*.{js,jsx,mjs,ts,tsx,toml}",
-      "tools/**/*.{cjs,js,jsx,mjs,ts,tsx}",
       "scripts/**/*.{cjs,js,jsx,mjs,ts,tsx}",
-      "tests/**/*.{cjs,js,jsx,mjs,ts,tsx}",
       "biome.json",
       "eslint.config.js",
       "**/drizzle.config.ts",
@@ -20,8 +18,7 @@
       "**/package.json",
       "**/tsconfig*.json",
       "**/vite.config.ts",
-      "**/wrangler.toml",
-      ".mcp.json"
+      "**/wrangler.toml"
     ]
   },
   "formatter": {
