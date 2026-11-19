@@ -8,7 +8,7 @@ tags:
   - tools
   - schemas
 role: reference
-status: verified-repository
+status: historical
 last_verified: 2026-09-03
 source_scope: "revision 6f4112b3fc5801e3298c80876c43cbbf0af8428e"
 related:
@@ -26,7 +26,7 @@ functions and output schemas. The current registry is
 
 | Order | Tool | Responsibility |
 | ---: | --- | --- |
-| 1 | `repository_workflow_status` | root, tooling, Graphify, hooks, and capability readiness |
+| 1 | `repository_workflow_status` | root, tooling, hooks, and capability readiness |
 | 2 | `search_repository` | bounded literal search over visible profile files |
 | 3 | `read_repository_files` | bounded source snapshots by offset or line range |
 | 4 | `grant_repository_read_access` | approval-gated exact-path temporary/permanent read grant |
