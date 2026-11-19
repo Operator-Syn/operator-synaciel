@@ -8,6 +8,7 @@ import {
   SOCIAL_PREVIEW_HEIGHT,
   SOCIAL_PREVIEW_WIDTH,
 } from "../src/data/socialPreview.ts";
+import { buildStructuredDataScript } from "../src/data/structuredData.ts";
 import { createCanonicalRouteRedirect } from "./canonicalRedirect.ts";
 import {
   type ContentExistence,
@@ -39,6 +40,7 @@ function buildManagedHead(
   metadata: ReturnType<typeof getSocialPreviewMetadata>,
   pageUrl: string,
   imageUrl: string,
+  structuredDataScript: string,
   articleDates?: ArticleDates,
 ) {
   const title = `${metadata.title} | Syn-Forge`;
@@ -74,7 +76,7 @@ function buildManagedHead(
     `<meta name="twitter:image" content="${escapeHtml(imageUrl)}" />`,
   ];
 
-  return [...tags, ...articleTags].join("");
+  return [...tags, ...articleTags, structuredDataScript].join("");
 }
 
 function isHtmlResponse(response: PagesResponse) {
@@ -162,6 +164,15 @@ function rewriteDocumentHead(
   url.search = "";
   url.hash = "";
 
+  // One graph per route, owned by the server. The graph is tagged so it stays
+  // identifiable after hydration; GlobalHeadManager no longer emits JSON-LD.
+  const structuredDataScript = buildStructuredDataScript({
+    pathname: url.pathname,
+    origin: url.origin,
+    metadata,
+    articleDates,
+  });
+
   let rewriter = new HTMLRewriter()
     .on("title", {
       element(element) {
@@ -170,13 +181,20 @@ function rewriteDocumentHead(
     })
     .on("head", {
       element(element) {
-        element.append(buildManagedHead(metadata, url.href, imageUrl, articleDates), {
-          html: true,
-        });
+        element.append(
+          buildManagedHead(metadata, url.href, imageUrl, structuredDataScript, articleDates),
+          {
+            html: true,
+          },
+        );
       },
     });
 
   const selectorsToRemove = [
+    // The server now owns the graph. Removing any pre-existing block makes the
+    // rewrite replace rather than stack, including the former static Person
+    // block that used to live in index.html.
+    'script[type="application/ld+json"]',
     'meta[name="description"]',
     'link[rel="canonical"]',
     'meta[property="og:title"]',
