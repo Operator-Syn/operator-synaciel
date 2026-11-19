@@ -7,7 +7,7 @@ tags:
   - blueprint
   - configuration
 role: reference
-status: blueprint
+status: historical
 last_verified: 2026-09-03
 source_scope: "revision 6f4112b3fc5801e3298c80876c43cbbf0af8428e"
 related:
@@ -21,7 +21,7 @@ Use these neutral names in reusable designs. Replace each placeholder through
 one repository configuration mapping rather than spreading product names through
 the implementation.
 
-| Placeholder | Meaning | Current implementation mapping |
+| Placeholder | Meaning | Retired implementation mapping |
 | --- | --- | --- |
 | `{{SERVER_NAME}}` | MCP server identity | `operator-synaciel-repository` in `policy.ts` |
 | `{{SERVER_VERSION}}` | protocol/tool-schema version | `2.0.0` in `policy.ts` |
@@ -56,9 +56,9 @@ the implementation.
 - Treat server version changes and input/output schema changes as reconnect
   boundaries for long-lived clients.
 
-## Current implementation mapping
+## Retired implementation mapping
 
-The current values are verified in
+The values were verified at retirement in
 `tools/repository-mcp/src/policy.ts`, `src/server.ts`, and
 `scripts/mcp-launcher.mjs`. The root-safe registration rules are enforced by
 `scripts/check-mcp-config.mjs` and `tests/scripts/mcp-config.test.ts`.
