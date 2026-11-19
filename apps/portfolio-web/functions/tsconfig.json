@@ -20,8 +20,10 @@
   "include": [
     "**/*.ts",
     "../src/data/socialPreview.ts",
+    "../src/data/portfolioMcp.ts",
     "../src/data/sitemap.ts",
     "../src/data/canonicalRoutes.ts",
+    "../src/data/structuredData.ts",
     "../src/components/pages/snippetsPage/snippetRoutes.ts"
   ]
 }
