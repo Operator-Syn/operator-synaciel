@@ -4,11 +4,22 @@ import { createSitemapResponse } from "../src/data/sitemap.ts";
 import {
   getSocialPreviewImageUrl,
   getSocialPreviewMetadata,
+  parseSnippetDocumentPath,
   SOCIAL_PREVIEW_HEIGHT,
   SOCIAL_PREVIEW_WIDTH,
 } from "../src/data/socialPreview.ts";
 import { createCanonicalRouteRedirect } from "./canonicalRedirect.ts";
+import {
+  type ContentExistence,
+  classifyContentExistence,
+  fetchContentText,
+} from "./contentFetch.ts";
 import { isKnownRoute } from "./routePolicy.ts";
+
+type ArticleDates = {
+  readonly published?: string;
+  readonly modified?: string;
+};
 
 function escapeHtml(value: string) {
   return value.replace(
@@ -28,8 +39,21 @@ function buildManagedHead(
   metadata: ReturnType<typeof getSocialPreviewMetadata>,
   pageUrl: string,
   imageUrl: string,
+  articleDates?: ArticleDates,
 ) {
   const title = `${metadata.title} | Syn-Forge`;
+  const articleTags: string[] = [];
+  if (articleDates?.published) {
+    articleTags.push(
+      `<meta property="article:published_time" content="${escapeHtml(articleDates.published)}" />`,
+    );
+  }
+  if (articleDates?.modified) {
+    articleTags.push(
+      `<meta property="article:modified_time" content="${escapeHtml(articleDates.modified)}" />`,
+    );
+  }
+
   const tags = [
     `<meta name="description" content="${escapeHtml(metadata.description)}" />`,
     `<link rel="canonical" href="${escapeHtml(pageUrl)}" />`,
@@ -50,7 +74,7 @@ function buildManagedHead(
     `<meta name="twitter:image" content="${escapeHtml(imageUrl)}" />`,
   ];
 
-  return tags.join("");
+  return [...tags, ...articleTags].join("");
 }
 
 function isHtmlResponse(response: PagesResponse) {
@@ -127,7 +151,11 @@ function applyHtmlHeaders(headers: Headers) {
   headers.set("Permissions-Policy", HTML_PERMISSIONS_POLICY);
 }
 
-function rewriteDocumentHead(response: PagesResponse, requestUrl: string) {
+function rewriteDocumentHead(
+  response: PagesResponse,
+  requestUrl: string,
+  articleDates?: ArticleDates,
+) {
   const url = new URL(requestUrl);
   const metadata = getSocialPreviewMetadata(url.pathname);
   const imageUrl = getSocialPreviewImageUrl(url.pathname, url.origin);
@@ -142,7 +170,9 @@ function rewriteDocumentHead(response: PagesResponse, requestUrl: string) {
     })
     .on("head", {
       element(element) {
-        element.append(buildManagedHead(metadata, url.href, imageUrl), { html: true });
+        element.append(buildManagedHead(metadata, url.href, imageUrl, articleDates), {
+          html: true,
+        });
       },
     });
 
@@ -161,6 +191,8 @@ function rewriteDocumentHead(response: PagesResponse, requestUrl: string) {
     'meta[property="og:url"]',
     'meta[property="og:type"]',
     'meta[property="og:site_name"]',
+    'meta[property="article:published_time"]',
+    'meta[property="article:modified_time"]',
     'meta[name="twitter:card"]',
     'meta[name="twitter:title"]',
     'meta[name="twitter:description"]',
@@ -223,6 +255,61 @@ async function serveNotFound(
   }) as unknown as PagesResponse;
 }
 
+function parseApiDate(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  // D1's datetime('now') is UTC without a timezone suffix.
+  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)
+    ? `${value.replace(" ", "T")}Z`
+    : value;
+  const timestamp = Date.parse(normalized);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : undefined;
+}
+
+function readArticleDates(body: string): ArticleDates | undefined {
+  try {
+    const payload = JSON.parse(body) as { data?: unknown };
+    if (!payload || typeof payload !== "object" || !payload.data) return undefined;
+    const data = payload.data as Record<string, unknown>;
+    const modified = parseApiDate(data.modified);
+    if (!modified) return undefined;
+
+    // `/v2/snippets/:id` exposes only a modification timestamp. Emitting that
+    // value as `article:published_time` would assert a publication event the
+    // origin never reported, so only the modification tag is emitted. Populate
+    // `published` here once the API returns a real creation date.
+    return { modified };
+  } catch {
+    return undefined;
+  }
+}
+
+type SnippetDocumentLookup = {
+  readonly existence: ContentExistence;
+  readonly articleDates?: ArticleDates;
+};
+
+/**
+ * Existence check for a snippet document. The 404-vs-serve decision itself is
+ * `classifyContentExistence` in `contentFetch.ts`, kept pure and unit tested:
+ * only an explicit 404 is "missing"; timeout, network, 5xx, and other statuses
+ * are "unknown" and the page is still served.
+ */
+async function lookupSnippetDocument(
+  id: number,
+  apiUrl: string | undefined,
+): Promise<SnippetDocumentLookup> {
+  if (!apiUrl) return { existence: "unknown" };
+
+  const result = await fetchContentText(`${apiUrl.replace(/\/+$/, "")}/v2/snippets/${id}`, {
+    timeoutMs: 4000,
+    cacheTtlSeconds: 3600,
+  });
+  const existence = classifyContentExistence(result);
+  if (!result.ok) return { existence };
+
+  return { existence, articleDates: readArticleDates(result.body) };
+}
+
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const requestUrl = context.request.url;
   const pathname = new URL(requestUrl).pathname;
@@ -241,11 +328,23 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     return serveNotFound(context.env.ASSETS, requestUrl);
   }
 
+  // A snippet document is the only known route whose existence is not implied
+  // by the allowlist. Only an explicit 404 from the API is grounds for a 404.
+  const snippetDocument = parseSnippetDocumentPath(pathname);
+  let articleDates: ArticleDates | undefined;
+  if (snippetDocument) {
+    const lookup = await lookupSnippetDocument(snippetDocument.id, context.env.VITE_API_URL);
+    if (lookup.existence === "missing") {
+      return serveNotFound(context.env.ASSETS, requestUrl);
+    }
+    articleDates = lookup.articleDates;
+  }
+
   const indexResponse = await context.env.ASSETS.fetch(new URL("/index.html", requestUrl));
 
   if (!isHtmlResponse(indexResponse)) {
     return serveNotFound(context.env.ASSETS, requestUrl);
   }
 
-  return rewriteDocumentHead(indexResponse, requestUrl);
+  return rewriteDocumentHead(indexResponse, requestUrl, articleDates);
 };
