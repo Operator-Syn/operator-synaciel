@@ -1,4 +1,5 @@
 import type { PagesFunction, Response as PagesResponse } from "@cloudflare/workers-types";
+import { SITEMAP_STATIC_ROUTES } from "../src/data/canonicalRoutes.ts";
 import { createSitemapResponse } from "../src/data/sitemap.ts";
 import {
   getSocialPreviewImageUrl,
@@ -109,17 +110,79 @@ function rewriteDocumentHead(response: PagesResponse, requestUrl: string) {
   return rewriter.transform(response as unknown as Response) as unknown as PagesResponse;
 }
 
-export const onRequest: PagesFunction<{ VITE_API_URL?: string }> = async (context) => {
-  if (new URL(context.request.url).pathname === "/sitemap.xml") {
+type PagesEnv = {
+  VITE_API_URL?: string;
+  ASSETS: { fetch(resource: URL): Promise<PagesResponse> };
+};
+
+const KNOWN_STATIC_ROUTES = new Set<string>(["/", ...SITEMAP_STATIC_ROUTES]);
+const SNIPPET_DOCUMENT_ROUTE = /^\/snippets\/document\/\d+\/[^/]+$/;
+
+function normalizePathForMatch(pathname: string) {
+  return pathname === "/" ? pathname : pathname.replace(/\/+$/, "");
+}
+
+function isKnownRoute(pathname: string) {
+  const normalized = normalizePathForMatch(pathname);
+  return KNOWN_STATIC_ROUTES.has(normalized) || SNIPPET_DOCUMENT_ROUTE.test(normalized);
+}
+
+function createCaseVariantRedirect(requestUrl: string) {
+  const url = new URL(requestUrl);
+  const lowerPath = url.pathname.toLowerCase();
+
+  if (lowerPath === url.pathname || !isKnownRoute(lowerPath)) {
+    return null;
+  }
+
+  url.pathname = lowerPath;
+  return new Response(null, {
+    status: 301,
+    headers: { Location: url.href },
+  });
+}
+
+async function serveNotFound(
+  assets: PagesEnv["ASSETS"],
+  requestUrl: string,
+): Promise<PagesResponse> {
+  const notFound = await assets.fetch(new URL("/404.html", requestUrl));
+  const headers = new Headers();
+  headers.set("Content-Type", "text/html; charset=utf-8");
+  headers.set("Cache-Control", "no-store");
+  headers.set("X-Robots-Tag", "noindex");
+  return new Response(notFound.body as unknown as BodyInit | null, {
+    status: 404,
+    headers,
+  }) as unknown as PagesResponse;
+}
+
+export const onRequest: PagesFunction<PagesEnv> = async (context) => {
+  const requestUrl = context.request.url;
+  const pathname = new URL(requestUrl).pathname;
+
+  if (pathname === "/sitemap.xml") {
     return (await createSitemapResponse(
       context.request as unknown as Request,
       context.env.VITE_API_URL,
     )) as unknown as PagesResponse;
   }
 
-  const redirect = createCanonicalRouteRedirect(context.request.url);
-  if (redirect) return redirect as unknown as PagesResponse;
+  const canonicalRedirect = createCanonicalRouteRedirect(requestUrl);
+  if (canonicalRedirect) return canonicalRedirect as unknown as PagesResponse;
 
-  const response = await context.next();
-  return isHtmlResponse(response) ? rewriteDocumentHead(response, context.request.url) : response;
+  const caseRedirect = createCaseVariantRedirect(requestUrl);
+  if (caseRedirect) return caseRedirect as unknown as PagesResponse;
+
+  if (!isKnownRoute(pathname)) {
+    return serveNotFound(context.env.ASSETS, requestUrl);
+  }
+
+  const indexResponse = await context.env.ASSETS.fetch(new URL("/index.html", requestUrl));
+
+  if (!isHtmlResponse(indexResponse)) {
+    return serveNotFound(context.env.ASSETS, requestUrl);
+  }
+
+  return rewriteDocumentHead(indexResponse, requestUrl);
 };
