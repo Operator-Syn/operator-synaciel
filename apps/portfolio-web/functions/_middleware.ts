@@ -1,5 +1,4 @@
 import type { PagesFunction, Response as PagesResponse } from "@cloudflare/workers-types";
-import { SITEMAP_STATIC_ROUTES } from "../src/data/canonicalRoutes.ts";
 import { createSitemapResponse } from "../src/data/sitemap.ts";
 import {
   getSocialPreviewImageUrl,
@@ -8,6 +7,7 @@ import {
   SOCIAL_PREVIEW_WIDTH,
 } from "../src/data/socialPreview.ts";
 import { createCanonicalRouteRedirect } from "./canonicalRedirect.ts";
+import { isKnownRoute } from "./routePolicy.ts";
 
 function escapeHtml(value: string) {
   return value.replace(
@@ -115,33 +115,6 @@ type PagesEnv = {
   ASSETS: { fetch(resource: URL): Promise<PagesResponse> };
 };
 
-const KNOWN_STATIC_ROUTES = new Set<string>(["/", ...SITEMAP_STATIC_ROUTES]);
-const SNIPPET_DOCUMENT_ROUTE = /^\/snippets\/document\/\d+\/[^/]+$/;
-
-function normalizePathForMatch(pathname: string) {
-  return pathname === "/" ? pathname : pathname.replace(/\/+$/, "");
-}
-
-function isKnownRoute(pathname: string) {
-  const normalized = normalizePathForMatch(pathname);
-  return KNOWN_STATIC_ROUTES.has(normalized) || SNIPPET_DOCUMENT_ROUTE.test(normalized);
-}
-
-function createCaseVariantRedirect(requestUrl: string) {
-  const url = new URL(requestUrl);
-  const lowerPath = url.pathname.toLowerCase();
-
-  if (lowerPath === url.pathname || !isKnownRoute(lowerPath)) {
-    return null;
-  }
-
-  url.pathname = lowerPath;
-  return new Response(null, {
-    status: 301,
-    headers: { Location: url.href },
-  });
-}
-
 async function serveNotFound(
   assets: PagesEnv["ASSETS"],
   requestUrl: string,
@@ -170,9 +143,6 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
 
   const canonicalRedirect = createCanonicalRouteRedirect(requestUrl);
   if (canonicalRedirect) return canonicalRedirect as unknown as PagesResponse;
-
-  const caseRedirect = createCaseVariantRedirect(requestUrl);
-  if (caseRedirect) return caseRedirect as unknown as PagesResponse;
 
   if (!isKnownRoute(pathname)) {
     return serveNotFound(context.env.ASSETS, requestUrl);
