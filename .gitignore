@@ -27,21 +27,30 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.env.*
+!.env.example
 .dev.vars
 .dev.vars.*
 !.dev.vars.example
 bundle-analysis.html
 
-# Local Python and Graphify output
-.venv
-graphify-out
+# Local Wrangler output
 .wrangler
 
+# Keep old local virtual environments out of Git.
+.venv
+
 # Local Playwright authentication state
+# Root path is retained so other clones that predate the workspace move stay
+# protected.
 /playwright/.auth/
+/apps/portfolio-web/playwright/.auth/
 
 # Redacted Playwright run output (never keep authenticated traces or HAR files)
+# Root path is retained so other clones that predate the workspace move stay
+# protected.
 /playwright/.artifacts/
+/apps/portfolio-web/playwright/.artifacts/
 /apps/portfolio-web/test-results/
 /apps/portfolio-web/playwright-report/
 
@@ -51,9 +60,9 @@ graphify-out
 # Local direnv state
 /.direnv/
 
-# Generated Obsidian graph indexes
-/.obsidian/graph.json
-/docs/.obsidian/graph.json
+# Obsidian settings and workspace state are local.
+/.obsidian/
+/docs/.obsidian/
 
 # Impeccable per-developer state; shared config remains reviewable
 .impeccable/config.local.json
