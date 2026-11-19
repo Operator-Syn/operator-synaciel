@@ -9,15 +9,22 @@ tags:
   - blueprint
   - obsidian
 role: index
-status: blueprint
+status: historical
 last_verified: 2026-09-03
+retired: "the local `tools/repository-mcp/` implementation this blueprint described"
 source_scope: "revision 6f4112b3fc5801e3298c80876c43cbbf0af8428e"
 related:
-  - "[[operations/repository-mcp]]"
   - "[[architecture/repository-layout]]"
+  - "[[operations/local-development]]"
 ---
 
 # Universal Repository MCP Structure Blueprint
+
+> **Historical blueprint.** This vault records a design that was implemented and
+> then retired from this repository; the local `tools/repository-mcp/` workspace
+> and its registration no longer exist. The stages remain reusable reference
+> material, not current repository guidance. For current commands, test
+> locations, and hooks, see [[operations/local-development|Local Development]].
 
 This vault is a reusable implementation blueprint for a local repository MCP.
 It is written for a future maintainer or Luna to reproduce the same safety,
@@ -30,19 +37,21 @@ corrected Universal spelling.
 ## Scope and boundary
 
 This blueprint covers a repository-owned, local MCP server that operates on one
-canonical Git checkout. The current implementation is
-`tools/repository-mcp/`, launched over stdio. It has no public HTTP endpoint,
-portfolio tools, resources, deployment path, migration path, or Cloudflare
-credential access. The separate public Worker is linked only as a boundary:
+canonical Git checkout. The implementation it described was
+`tools/repository-mcp/`, launched over stdio; that workspace has been retired
+from this repository. The blueprint has no public HTTP endpoint, portfolio
+tools, resources, deployment path, migration path, or Cloudflare credential
+access. The separate public Worker is linked only as a boundary:
 [[architecture/portfolio-mcp|Public Portfolio MCP (Streamable HTTP)]].
 
 Generic sections use placeholders such as `{{SERVER_NAME}}` and
-`{{PROJECT_ROOT_ENV}}`. Current repository values are kept in explicitly marked
-`Current implementation mapping` sections so the blueprint remains portable.
+`{{PROJECT_ROOT_ENV}}`. Values from the retired implementation are kept in
+explicitly marked `Retired implementation mapping` sections so the blueprint
+remains portable.
 
-## Current verified baseline
+## Last verified baseline (historical)
 
-| Surface | Current evidence |
+| Surface | Baseline at retirement |
 | --- | --- |
 | Server identity | `operator-synaciel-repository`, protocol version `2.0.0` |
 | Transport | `StdioServerTransport` from `tools/repository-mcp/src/server.ts` |
@@ -50,7 +59,7 @@ Generic sections use placeholders such as `{{SERVER_NAME}}` and
 | Read/write profiles | `app`, `docs`, `mcp`, `database`, `config`, `repository` |
 | Verification profiles | `mcp-fast`, `app`, `docs`, `mcp`, `database`, `config`, `repository`, `full` |
 | Safety contract | canonical Git root, profile paths, hashes, bounded text, redaction, rollback |
-| Current checks | `npm run test:mcp`: 90 passing; `docs:check` and `skills:check` passing |
+| Checks at retirement | `npm run test:mcp`: 90 passing; `docs:check` and `skills:check` passing |
 | Runtime evidence | local workflow status returned `ready` with active `.githooks` |
 
 ## Architecture and data flow
