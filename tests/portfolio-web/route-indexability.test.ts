@@ -1,14 +1,17 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { test } from "node:test";
 import { createCanonicalRouteRedirect } from "../../apps/portfolio-web/functions/canonicalRedirect.ts";
 import { isKnownRoute } from "../../apps/portfolio-web/functions/routePolicy.ts";
 import {
+  NON_INDEXABLE_ROUTES,
   SERVED_STATIC_ROUTES,
   SITEMAP_STATIC_ROUTES,
 } from "../../apps/portfolio-web/src/data/canonicalRoutes.ts";
 import { createSitemapResponse } from "../../apps/portfolio-web/src/data/sitemap.ts";
 
-const EXPECTED_STATIC_ROUTES = [
+const EXPECTED_SERVED_STATIC_ROUTES = [
   "/projects",
   "/certificates",
   "/snippets",
@@ -20,13 +23,31 @@ const EXPECTED_STATIC_ROUTES = [
   "/agent",
 ];
 
+// Item 1.7: six static routes stay indexable; `/netbird`, `/atelier` and
+// `/agent` are served but withheld. `/` is always indexable and is not in this
+// list.
+const EXPECTED_SITEMAP_STATIC_ROUTES = [
+  "/projects",
+  "/certificates",
+  "/snippets",
+  "/privacy-policy",
+  "/terms-and-conditions",
+  "/ai",
+];
+
+const EXPECTED_NON_INDEXABLE_ROUTES = ["/netbird", "/atelier", "/agent"];
+
 const request = new Request("https://preview.example/sitemap.xml");
 const apiUrl = "https://api.example/api";
 const emptySnippets: typeof fetch = async () => Response.json({ data: [] });
 
-test("both lists hold exactly the nine static routes, and the served list covers the sitemap list", () => {
-  assert.deepEqual([...SERVED_STATIC_ROUTES], EXPECTED_STATIC_ROUTES);
-  assert.deepEqual([...SITEMAP_STATIC_ROUTES], EXPECTED_STATIC_ROUTES);
+function loc(route: string) {
+  return new RegExp(`<loc>https://syn-forge\\.com${route}</loc>`);
+}
+
+test("serves nine static routes but lists only six in the sitemap", () => {
+  assert.deepEqual([...SERVED_STATIC_ROUTES], EXPECTED_SERVED_STATIC_ROUTES);
+  assert.deepEqual([...SITEMAP_STATIC_ROUTES], EXPECTED_SITEMAP_STATIC_ROUTES);
   assert.equal(isKnownRoute("/"), true);
 
   for (const route of SITEMAP_STATIC_ROUTES) {
@@ -37,30 +58,52 @@ test("both lists hold exactly the nine static routes, and the served list covers
   }
 });
 
-test("a served route held back from the indexable list is still served and absent from the sitemap", async () => {
-  const heldBack = "/agent";
-  assert.ok((SERVED_STATIC_ROUTES as readonly string[]).includes(heldBack));
+test("withholds exactly the three utility routes from the index without unpublishing them", async () => {
+  assert.deepEqual([...NON_INDEXABLE_ROUTES].sort(), [...EXPECTED_NON_INDEXABLE_ROUTES].sort());
 
-  const indexableWithoutHeldBack = SITEMAP_STATIC_ROUTES.filter((route) => route !== heldBack);
-  assert.ok(!(indexableWithoutHeldBack as readonly string[]).includes(heldBack));
+  for (const route of EXPECTED_NON_INDEXABLE_ROUTES) {
+    assert.ok(
+      (SERVED_STATIC_ROUTES as readonly string[]).includes(route),
+      `${route} is noindex but no longer served`,
+    );
+    assert.ok(!(SITEMAP_STATIC_ROUTES as readonly string[]).includes(route));
+    assert.equal(isKnownRoute(route), true, `${route} must still return 200`);
+    assert.equal(isKnownRoute(`${route}/`), true, `${route}/ must still redirect`);
+  }
 
-  assert.equal(isKnownRoute(heldBack), true);
-  assert.equal(isKnownRoute(`${heldBack}/`), true);
-
-  const response = await createSitemapResponse(
-    request,
-    apiUrl,
-    emptySnippets,
-    indexableWithoutHeldBack,
-  );
+  const response = await createSitemapResponse(request, apiUrl, emptySnippets);
   assert.equal(response.status, 200);
   const xml = await response.text();
-  assert.doesNotMatch(xml, /<loc>https:\/\/syn-forge\.com\/agent<\/loc>/);
-  assert.match(xml, /<loc>https:\/\/syn-forge\.com\/projects<\/loc>/);
-  assert.match(xml, /<loc>https:\/\/syn-forge\.com\/ai<\/loc>/);
+
+  for (const route of EXPECTED_NON_INDEXABLE_ROUTES) {
+    assert.doesNotMatch(xml, loc(route), `${route} must be absent from the sitemap`);
+  }
+  assert.match(xml, loc("/ai"));
+  assert.match(xml, loc("/projects"));
 });
 
-test("every served route canonicalises, including any held back from the sitemap", () => {
+test("corrects the middleware so the noindex header is server-level and scoped", async () => {
+  const middleware = await readFile(
+    resolve(import.meta.dirname, "../../apps/portfolio-web/functions/_middleware.ts"),
+    "utf8",
+  );
+
+  // The decision is derived from the same set that drives the sitemap, not a
+  // second literal list in the middleware.
+  assert.match(middleware, /import \{ NON_INDEXABLE_ROUTES \}/);
+  assert.match(middleware, /if \(NON_INDEXABLE_ROUTES\.has\(url\.pathname\)\) \{/);
+  assert.match(middleware, /headers\.set\("X-Robots-Tag", "noindex, follow"\)/);
+
+  // The 404 path keeps exactly the bare `noindex` value, and the served-path
+  // header is set after the shared HTML headers are applied.
+  assert.match(middleware, /headers\.set\("X-Robots-Tag", "noindex"\);/);
+  assert.ok(
+    middleware.indexOf('headers.set("X-Robots-Tag", "noindex, follow")') >
+      middleware.indexOf("applyHtmlHeaders(headers);"),
+  );
+});
+
+test("every served route canonicalises, including the ones held back from the index", () => {
   for (const route of SERVED_STATIC_ROUTES) {
     const response = createCanonicalRouteRedirect(`https://syn-forge.com${route}/`);
     assert.ok(response, `${route}/ produced no redirect`);
@@ -73,13 +116,17 @@ test("every served route canonicalises, including any held back from the sitemap
   }
 });
 
-test("the default sitemap still lists every currently indexable route", async () => {
+test("the default sitemap lists every indexable route and none of the withheld ones", async () => {
   const response = await createSitemapResponse(request, apiUrl, emptySnippets);
   assert.equal(response.status, 200);
   const xml = await response.text();
-  assert.match(xml, /<loc>https:\/\/syn-forge\.com\/<\/loc>/);
+  assert.match(xml, loc("/"));
 
   for (const route of SITEMAP_STATIC_ROUTES) {
-    assert.match(xml, new RegExp(`<loc>https://syn-forge\\.com${route}</loc>`), route);
+    assert.match(xml, loc(route), route);
+  }
+
+  for (const route of NON_INDEXABLE_ROUTES) {
+    assert.doesNotMatch(xml, loc(route), route);
   }
 });
