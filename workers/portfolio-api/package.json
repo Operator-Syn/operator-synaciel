@@ -12,9 +12,9 @@
     "db:migrations:list:remote": "wrangler d1 migrations list my-personal-portfolio --remote --config wrangler.toml",
     "db:migrations:apply:local": "wrangler d1 migrations apply my-personal-portfolio --local --config wrangler.toml",
     "db:migrations:apply:remote": "wrangler d1 migrations apply my-personal-portfolio --remote --config wrangler.toml",
-    "test": "tsx --test ../../tests/portfolio-api/*.test.ts",
-    "test:media-presign": "tsx --test ../../tests/portfolio-api/media-presign.test.ts",
-    "test:project-pagination": "tsx --test ../../tests/portfolio-api/project-pagination.test.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "test:media-presign": "tsx --test tests/media-presign.test.ts",
+    "test:project-pagination": "tsx --test tests/project-pagination.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
