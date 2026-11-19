@@ -596,7 +596,7 @@ export default function Snippets() {
                 <footer className="snippets-index-note">
                   <Info aria-hidden="true" size={18} />
                   <div>
-                    <p>Folders open to /snippets/&lt;name&gt;/. Markdown and PDF previews.</p>
+                    <p>Folders open to /snippets/&lt;name&gt;. Markdown and PDF previews.</p>
                   </div>
                 </footer>
               </section>
