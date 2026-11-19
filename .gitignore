@@ -59,3 +59,7 @@ graphify-out
 .impeccable/config.local.json
 .impeccable/hook.cache.json
 .impeccable/live/
+
+# Local SEO audit artifacts: private search analytics, backlink data,
+# rendered captures, screenshots, and reports. Never commit.
+/syn-forge.com-audit/
