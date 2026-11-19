@@ -8,7 +8,7 @@ tags:
   - verification
   - status
 role: reference
-status: verified-repository
+status: historical
 last_verified: 2026-09-03
 source_scope: "revision 6f4112b3fc5801e3298c80876c43cbbf0af8428e"
 related:
@@ -20,8 +20,8 @@ related:
 
 ## Fixed command registry
 
-Verification is allowlisted, non-shell, and repository-native. The current
-`SAFE_VERIFICATION_COMMANDS` maps checks to npm invocations:
+Verification is allowlisted, non-shell, and repository-native. The retired
+`SAFE_VERIFICATION_COMMANDS` mapped checks to npm invocations:
 
 ```text
 mcp_config_check       -> npm run mcp:check
@@ -57,7 +57,7 @@ the first failed check.
 ## Workflow status
 
 `repository_workflow_status` reports the canonical root, server identity,
-required file readiness, npm/tsx/Pipenv/Graphify availability, Git hook state,
+required file readiness, npm/tsx availability, Git hook state,
 profiles, warnings, timestamp, and cache hit. It returns `blocked` for an invalid
 root, `attention` for warnings, and `ready` when all requirements pass. Status
 results cache for two seconds; root validation caches for five seconds.
