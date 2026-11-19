@@ -39,6 +39,6 @@ test("keeps the agent discovery identity and static asset route stable", async (
     include: string[];
     exclude: string[];
   };
-  assert.ok(routesConfig.include.includes("/ai"));
+  assert.ok(routesConfig.include.includes("/*"));
   assert.ok(routesConfig.exclude.includes("/llms.txt"));
 });
