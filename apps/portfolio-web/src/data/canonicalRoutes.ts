@@ -17,13 +17,19 @@ export const SERVED_STATIC_ROUTES = [
 ] as const;
 
 /**
- * Served static routes that are deliberately kept out of the sitemap.
+ * Served static routes that are deliberately kept out of the sitemap and marked
+ * `noindex, follow` on the HTML response.
  *
- * Empty today. Item 1.7 adds `/netbird`, `/atelier` and `/agent` here once their
- * indexability is decided. Excluding a route from the sitemap must never remove
- * it from `SERVED_STATIC_ROUTES` — that would 404 a live page.
+ * Item 1.7: `/netbird`, `/atelier` and `/agent` are Google-verification and
+ * app-note pages with no search demand. `/ai` stays indexable because it is the
+ * only page explaining the MCP. Excluding a route here must never remove it
+ * from `SERVED_STATIC_ROUTES` — that would 404 a live page.
  */
-const NON_INDEXABLE_ROUTES: ReadonlySet<string> = new Set([]);
+export const NON_INDEXABLE_ROUTES: ReadonlySet<string> = new Set([
+  "/netbird",
+  "/atelier",
+  "/agent",
+]);
 
 /**
  * The served static routes that belong in the sitemap.
