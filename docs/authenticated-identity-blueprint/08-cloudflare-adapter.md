@@ -73,14 +73,14 @@ names and routes when adapting the design elsewhere.
   hibernation, performs synchronous startup, and connects upstream lazily.
 - [Diagnostics](../../workers/portfolio-agent/src/diagnostics.ts) keeps
   lifecycle events allowlisted.
-- [Browser audit](../../tests/portfolio-web/playwright-observability.ts)
+- [Browser audit](../../apps/portfolio-web/tests/playwright-observability.ts)
   flags JWT-shaped URLs, sensitive query names, premature-close text, and
   unexpected page/request/socket errors. Local development also exposes Vite's
   HMR socket; the audit allowlists only the exact
   `ws://localhost:5173/?token=...` or
   `ws://127.0.0.1:5173/?token=...` shape. A token on a public-auth or agent
   URL remains a failure.
-- [Saved-auth browser spec](../../tests/portfolio-web/google-authenticated.spec.ts)
+- [Saved-auth browser spec](../../apps/portfolio-web/tests/google-authenticated.spec.ts)
   reuses manually captured Google state, checks the authenticated session
   boundary, and exercises responsive geometry without retaining credentials.
 
