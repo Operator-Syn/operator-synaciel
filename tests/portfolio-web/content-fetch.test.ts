@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   type ContentCache,
+  type ContentFetchResult,
+  classifyContentExistence,
   fetchContentText,
 } from "../../apps/portfolio-web/functions/contentFetch.ts";
 
@@ -168,7 +170,7 @@ test("a non-200 with no cache entry returns the http reason", async () => {
     cache,
   });
 
-  assert.deepEqual(result, { ok: false, reason: "http" });
+  assert.deepEqual(result, { ok: false, reason: "http", status: 502 });
   assert.equal(cache.puts, 0);
 });
 
@@ -206,8 +208,57 @@ test("an empty 200 body is distinguishable from a failure", async () => {
   });
 
   assert.deepEqual(success, { ok: true, body: "", fromCache: false, stale: false });
-  assert.deepEqual(failure, { ok: false, reason: "http" });
+  assert.deepEqual(failure, { ok: false, reason: "http", status: 500 });
   assert.notDeepEqual(success, failure);
+});
+
+test("an http failure carries the origin status, so 404 and 500 differ", async () => {
+  const makeFetch = (status: number) =>
+    countingFetch(() => new Response(status === 404 ? "missing" : "broken", { status }))
+      .fetchContent;
+
+  const missing = await fetchContentText(apiUrl, {
+    timeoutMs: 100,
+    cacheTtlSeconds: 60,
+    fetchContent: makeFetch(404),
+    cache: new FakeCache(),
+  });
+  const broken = await fetchContentText(apiUrl, {
+    timeoutMs: 100,
+    cacheTtlSeconds: 60,
+    fetchContent: makeFetch(500),
+    cache: new FakeCache(),
+  });
+
+  assert.deepEqual(missing, { ok: false, reason: "http", status: 404 });
+  assert.deepEqual(broken, { ok: false, reason: "http", status: 500 });
+  assert.notDeepEqual(missing, broken);
+});
+
+test("classifies only an explicit 404 as missing; everything else is unknown", () => {
+  const present: ContentFetchResult = {
+    ok: true,
+    body: "{}",
+    fromCache: false,
+    stale: false,
+  };
+
+  assert.equal(classifyContentExistence(present), "present");
+  assert.equal(
+    classifyContentExistence({
+      ok: true,
+      body: "{}",
+      fromCache: true,
+      stale: true,
+    }),
+    "present",
+  );
+  assert.equal(classifyContentExistence({ ok: false, reason: "http", status: 404 }), "missing");
+  assert.equal(classifyContentExistence({ ok: false, reason: "http", status: 500 }), "unknown");
+  assert.equal(classifyContentExistence({ ok: false, reason: "http", status: 503 }), "unknown");
+  assert.equal(classifyContentExistence({ ok: false, reason: "http", status: 403 }), "unknown");
+  assert.equal(classifyContentExistence({ ok: false, reason: "timeout" }), "unknown");
+  assert.equal(classifyContentExistence({ ok: false, reason: "network" }), "unknown");
 });
 
 test("a successful fetch still returns the body with no cache available", async () => {
