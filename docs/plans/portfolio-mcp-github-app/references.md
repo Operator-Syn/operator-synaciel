@@ -16,7 +16,7 @@ last_reviewed: 2026-08-29
 - [[architecture/portfolio-mcp|Public Portfolio MCP architecture]] — stateless Worker boundary, tools, cache TTLs, error envelope, and deployment separation.
 - [[architecture/portfolio-mcp-modules|Public Portfolio MCP module structure]] — module seams and ownership.
 - [[operations/deployment|Production deployment]] — Cloudflare prerequisites, dry run, deployment, smoke checks, and monitoring boundary.
-- [[operations/local-development|Local development]] — repository-native checks and Graphify workflow.
+- [[operations/local-development|Local development]] — repository-native checks and documentation workflow.
 - `workers/portfolio-mcp/src/config.ts` — cache TTLs and bounded request/output constants.
 - `workers/portfolio-mcp/src/github/transport.ts` — request headers, cache, timeout, response classification, and JSON bounds.
 - `workers/portfolio-mcp/src/github/client.ts` — GitHub call fan-out for repository, README, branch, commit-list, reachability, and commit detail.
