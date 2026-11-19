@@ -1,6 +1,6 @@
-import { SITEMAP_STATIC_ROUTES } from "../src/data/canonicalRoutes.ts";
+import { SERVED_STATIC_ROUTES } from "../src/data/canonicalRoutes.ts";
 
-const KNOWN_STATIC_ROUTES = new Set<string>(["/", ...SITEMAP_STATIC_ROUTES]);
+const KNOWN_STATIC_ROUTES = new Set<string>(["/", ...SERVED_STATIC_ROUTES]);
 const SNIPPET_DOCUMENT_ROUTE = /^\/snippets\/document\/\d+\/[^/]+$/;
 const LEGACY_SNIPPET_INDEX = "/snippets/root";
 const SNIPPET_INDEX = "/snippets";
