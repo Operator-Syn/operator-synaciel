@@ -56,7 +56,6 @@ graph, tests, and canonical notes.
 - frontend, API, MCP, public-auth, and portfolio-agent test suites passed
 - `npm run docs:check`, `npm run mcp:check`, and `npm run mcp:portfolio:check` passed
 - full repository verification profile passed
-- `pipenv run graphify update . --no-cluster` completed
 
 ### Remaining approval-gated work
 
