@@ -1,6 +1,6 @@
-import { SITEMAP_STATIC_ROUTES } from "../src/data/canonicalRoutes.ts";
+import { SERVED_STATIC_ROUTES } from "../src/data/canonicalRoutes.ts";
 
-const KNOWN_STATIC_ROUTES = new Set<string>(["/", ...SITEMAP_STATIC_ROUTES]);
+const KNOWN_STATIC_ROUTES = new Set<string>(["/", ...SERVED_STATIC_ROUTES]);
 const SNIPPETS_PREFIX = "/snippets/";
 
 function normalizePathForMatch(pathname: string) {
