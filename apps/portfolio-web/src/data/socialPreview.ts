@@ -135,8 +135,86 @@ export function normalizeSocialPreviewPath(pathname: string) {
   return normalized || "/";
 }
 
+/**
+ * `/snippets/document/<id>/<slug>` recogniser.
+ *
+ * This is the single copy used by the metadata layer and the Pages middleware.
+ * `functions/canonicalRedirect.ts` has its own private, equivalent regex; it
+ * lives in a module this increment must not edit, so exporting from there was
+ * not an option and a second private copy in the middleware was the worse
+ * choice. Both regexes describe the same app route.
+ */
+const SNIPPET_DOCUMENT_PATH = /^\/snippets\/document\/(\d+)\/([^/]+)$/;
+
+export type SnippetDocumentPath = {
+  readonly id: number;
+  readonly slug: string;
+};
+
+export function parseSnippetDocumentPath(pathname: string): SnippetDocumentPath | null {
+  const match = SNIPPET_DOCUMENT_PATH.exec(normalizeSocialPreviewPath(pathname));
+  if (!match) return null;
+
+  const id = Number.parseInt(match[1], 10);
+  return Number.isSafeInteger(id) ? { id, slug: match[2] } : null;
+}
+
+/**
+ * Title-cases the first letter of a dash-separated word without touching the
+ * rest, so percent-decoded capitalisation such as `Café` survives.
+ */
+function titleCaseWord(word: string) {
+  return word.charAt(0).toUpperCase() + word.slice(1);
+}
+
+function decodeSlug(slug: string) {
+  try {
+    return decodeURIComponent(slug);
+  } catch {
+    // A malformed escape is still a slug; use it literally rather than throw.
+    return slug;
+  }
+}
+
+const SNIPPET_DESCRIPTION_MAX_LENGTH = 155;
+
+function clampDescription(description: string) {
+  if (description.length <= SNIPPET_DESCRIPTION_MAX_LENGTH) return description;
+  const clipped = description.slice(0, SNIPPET_DESCRIPTION_MAX_LENGTH - 1);
+  const lastSpace = clipped.lastIndexOf(" ");
+  const base = lastSpace > 100 ? clipped.slice(0, lastSpace) : clipped;
+  return `${base.trimEnd()}…`;
+}
+
+/**
+ * Derives a snippet document's title and description from its URL slug.
+ *
+ * The description is derived from the filename, not a summary of the
+ * document's content. It stays synchronous and API-free on purpose: a title
+ * that changes when the API is down is worse than a slightly generic one.
+ *
+ * Rule: percent-decode, strip a trailing file extension (only the final
+ * `.ext`, so dots inside the stem survive), split on `-`, title-case each
+ * word, then join with spaces and append `— Code Snippets`.
+ */
+export function deriveSnippetDocumentMetadata(slug: string) {
+  const decoded = decodeSlug(slug);
+  const stem = decoded.replace(/\.[a-z][a-z0-9]{0,7}$/i, "");
+  const words = stem.split("-").filter((word) => word.length > 0);
+  const titleText = words.map(titleCaseWord).join(" ") || "Snippet Document";
+  const description = clampDescription(
+    `Read ${titleText}, a code snippet document in the Syn-Forge portfolio: source code, developer notes, and reference material from Operator-Syn.`,
+  );
+
+  return {
+    title: `${titleText} — Code Snippets`,
+    description,
+  };
+}
+
 export function getSocialPreviewMetadata(pathname: string): SocialPreviewMetadata {
   const normalized = normalizeSocialPreviewPath(pathname);
+  const snippetDocument = parseSnippetDocumentPath(normalized);
   const definition =
     SOCIAL_PREVIEW_ROUTES.find(
       (candidate) =>
@@ -151,6 +229,19 @@ export function getSocialPreviewMetadata(pathname: string): SocialPreviewMetadat
     String(routePosition + 1).padStart(2, "0"),
     String(SOCIAL_PREVIEW_ROUTES.length).padStart(2, "0"),
   ].join(" / ");
+
+  // A document keeps the "snippets" route so its image path and route index
+  // stay `/snippets/social-image.png` and `04 / 10`; only the copy is unique.
+  if (snippetDocument) {
+    const derived = deriveSnippetDocumentMetadata(snippetDocument.slug);
+    return {
+      ...definition,
+      title: derived.title,
+      description: derived.description,
+      imageAlt: `${derived.title} — Syn-Forge social preview`,
+      routeIndex,
+    };
+  }
 
   return {
     ...definition,
