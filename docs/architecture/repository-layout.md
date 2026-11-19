@@ -12,9 +12,11 @@ Operator-Syn is an npm monorepo organized around deployable runtimes and
 repository tooling. The root is an orchestrator and discovery surface; runtime
 implementation belongs to the workspace that owns it.
 
-Runtime relationships are summarized in [[architecture/overview|Architecture Overview]], while commands and deployment boundaries live in [[operations/local-development|Local Development]]. The two MCP workspaces have separate contracts: [[architecture/portfolio-mcp|Public Portfolio MCP (Streamable HTTP)]] and [[operations/repository-mcp|Local Repository MCP (stdio)]].
+Runtime relationships are summarized in [[architecture/overview|Architecture Overview]], while commands and deployment boundaries live in [[operations/local-development|Local Development]]. The public MCP contract is documented separately in [[architecture/portfolio-mcp|Public Portfolio MCP (Streamable HTTP)]].
 
 ## Workspace map
+
+The root declares five npm workspaces:
 
 - `apps/portfolio-web/` - React/Vite portfolio frontend, Cloudflare Pages
   Functions, static assets, social-preview generator, and Pages configuration.
@@ -24,17 +26,30 @@ Runtime relationships are summarized in [[architecture/overview|Architecture Ove
   Streamable HTTP and its read-only portfolio API adapter.
   See [[architecture/portfolio-mcp-modules|Public Portfolio MCP module structure]]
   for its internal seams.
-- `tools/repository-mcp/` - approval-gated repository-only MCP implementation
-  using local stdio.
-- `tests/portfolio-web/` - frontend, route, visual-contract, preference, and
-  social-preview tests.
-- `tests/portfolio-api/` - API Worker model, controller, pagination, and
-  server-error tests.
-- `tests/portfolio-mcp/` - public Streamable HTTP MCP protocol and boundary
+- `workers/portfolio-public-auth/` - Google OIDC, Turnstile, session, and
+  service-binding authentication Worker.
+- `workers/portfolio-agent/` - stateful portfolio assistant Worker, Durable
+  Object, MCP grounding, quotas, and Workers AI boundary.
+
+There is no root `tools/` workspace; workspace-specific tooling lives inside
+the workspace that owns it.
+
+## Test layout
+
+Tests live beside the workspace they cover and are not npm workspaces. There is
+no root `tests/` directory:
+
+- `apps/portfolio-web/tests/` - frontend, route, visual-contract, preference,
+  social-preview, and authenticated Playwright support tests.
+- `workers/portfolio-api/tests/` - API Worker model, controller, pagination,
+  and server-error tests.
+- `workers/portfolio-mcp/tests/` - public Streamable HTTP MCP protocol and
+  boundary tests.
+- `workers/portfolio-public-auth/tests/` - authentication Worker tests.
+- `workers/portfolio-agent/tests/` - assistant Worker, Durable Object,
+  quota, and grounding tests.
+- `scripts/tests/` - shared repository hook, launcher, and skill-validation
   tests.
-- `tests/repository-mcp/` - local stdio repository MCP protocol and
-  commit-pipeline tests.
-- `tests/scripts/` - repository hook, launcher, and skill-validation tests.
 
 ## Portfolio web workspace
 
@@ -53,6 +68,9 @@ Runtime relationships are summarized in [[architecture/overview|Architecture Ove
   generated social-image handling.
 - `apps/portfolio-web/public/` - static assets, discovery files including
   `.well-known/` verification metadata, and generated social-preview images.
+- `apps/portfolio-web/playwright/` - ignored local Playwright auth state and
+  redacted run artifacts; the ignored root `.playwright-browsers/` cache stays
+  at the repository root for the Nix shell default.
 
 ## Portfolio API workspace
 
@@ -77,19 +95,17 @@ The following files intentionally remain at the repository root:
 
 - `package.json` and `package-lock.json` - npm workspace orchestration and
   shared repository commands.
-- `Pipfile` and `Pipfile.lock` - Pipenv-managed Graphify tooling.
 - `tsconfig.json` and `tsconfig.tests.json` - root TypeScript references and
   cross-workspace test checking.
-- `README.md`, `AGENTS.md`, `PRODUCT.md`, and `DESIGN.md` - repository entry
-  points and agent/design context.
-- `.mcp.json` and `.codex/config.toml` - project-scoped MCP discovery and
-  Codex approval policy.
-- `scripts/` - repository-wide documentation, hook, launcher, and validation
-  operations. The root-safe `scripts/mcp-launcher.mjs` remains the stable
-  bridge to local stdio servers.
-- `docs/` - canonical documentation and Obsidian vault.
+- `README.md` and `AGENTS.md` - repository front door and agent routing.
+- `scripts/` - repository-wide documentation, hook, and validation
+  operations, including the shared script tests in `scripts/tests/`.
+- `docs/` - canonical documentation and Obsidian vault. `docs/PRODUCT.md` and
+  `docs/DESIGN.md` are intentional vault-root files discovered by the bundled
+  Impeccable fallback. Obsidian settings and workspace state stay local; see
+  [the Obsidian guide](../obsidian.md).
 - `.githooks/`, `.agents/`, `.codex/`, and `.impeccable/` - repository workflow
   and agent tooling discovered from the root.
 
 Generated or local state such as `dist/`, workspace build output, `.wrangler/`,
-`.venv/`, and `graphify-out/` is not source documentation.
+and `.venv/` is not source documentation.
