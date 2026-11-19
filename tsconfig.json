@@ -10,7 +10,6 @@
     { "path": "./workers/portfolio-mcp" },
     { "path": "./workers/portfolio-public-auth" },
     { "path": "./workers/portfolio-agent" },
-    { "path": "./tools/repository-mcp" },
     { "path": "./tsconfig.tests.json" }
   ]
 }
