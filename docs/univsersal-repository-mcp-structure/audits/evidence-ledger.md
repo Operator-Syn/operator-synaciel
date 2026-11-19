@@ -7,7 +7,7 @@ tags:
   - evidence
   - mcp
 role: audit
-status: verified-repository
+status: historical
 last_verified: 2026-09-03
 source_scope: "revision 6f4112b3fc5801e3298c80876c43cbbf0af8428e"
 related:
@@ -32,9 +32,13 @@ related:
 | Docs are maintained as a vault | `docs/README.md`, docs checker, documentation tests | root MOC and meaningful wikilinks; current local/public boundary | verified-repository / high | all notes |
 | No deployment/live proof | local-only source and checks | no public endpoint or deployment operation exists for this server | verified-repository / high | unresolved questions |
 
-## Verification record
+## Verification record (historical)
 
-- `repository_workflow_status`: `ready`, hooks active, Graphify and tooling present.
+Recorded at the blueprint verification revision; rerun the current checks before
+relying on these results.
+
+- `repository_workflow_status`: `ready`, hooks active, and local tooling present
+  at the recorded run.
 - `npm run mcp:check`: passed.
 - `npm run mcp:typecheck`: passed.
 - `npm run test:mcp`: 90 tests passed after adding the blueprint drift guard.
