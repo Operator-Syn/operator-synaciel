@@ -46,17 +46,17 @@ legal/application surfaces.
 
 ## Impeccable integration
 
-Impeccable `4.1.1` is installed as the repository-local skill under
-`.agents/skills/impeccable/`. Its Codex design hook is enabled through
-`.codex/hooks.json` and runs the detector after UI edits plus a bounded deep
-`Stop` pass.
+The bundled Impeccable skill lives under `.agents/skills/impeccable/`.
+Its [Codex hook configuration](../../.codex/hooks.json) runs the detector
+on UI edits and reports findings at `Stop`. The shared hook policy lives in
+[`.impeccable/config.json`](../../.impeccable/config.json); per-developer
+consent remains local.
 
-The shared hook policy lives in `.impeccable/config.json`; the per-developer
-consent file is ignored. `PRODUCT.md` now records the confirmed audience,
-purpose, positioning, and compatibility constraints. `DESIGN.md` remains
-intentionally separate and should be generated with `/impeccable document`
-from the incumbent tokens, components, and assets. These files complement this
-vault's focused implementation notes and must remain truthful to them.
+Impeccable discovers [product context](../PRODUCT.md) and
+[design context](../DESIGN.md) directly under `docs/`. The product guide
+records audience, purpose, and constraints; the design spec carries shared
+visual rules and machine-readable tokens. Update these canonical files rather
+than generating duplicate copies in the repository root.
 
 Use `npx impeccable detect apps/portfolio-web/src/` for a deterministic detector pass. Current
 baseline findings are documented as follow-up work rather than hidden with
