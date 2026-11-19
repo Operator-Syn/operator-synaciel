@@ -110,7 +110,7 @@ test("Pages routes sitemap through runtime middleware without a build-time snaps
       "utf8",
     ),
   );
-  assert.ok(routes.include.includes("/sitemap.xml"));
+  assert.ok(routes.include.includes("/*"));
   assert.ok(!routes.exclude.includes("/sitemap.xml"));
   const vite = await readFile(
     new URL("../../apps/portfolio-web/vite.config.ts", import.meta.url),
@@ -124,6 +124,6 @@ test("Pages routes sitemap through runtime middleware without a build-time snaps
   assert.match(middleware, /createSitemapResponse/);
   assert.ok(
     middleware.indexOf("return (await createSitemapResponse") <
-      middleware.indexOf("context.next()"),
+      middleware.indexOf("const canonicalRedirect = createCanonicalRouteRedirect"),
   );
 });
