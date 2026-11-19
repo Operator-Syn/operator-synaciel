@@ -74,7 +74,7 @@ export interface ContentFetchOptions {
   cache?: ContentCache | undefined;
 }
 
-function defaultCache(): ContentCache | undefined {
+export function defaultCache(): ContentCache | undefined {
   if (typeof caches === "undefined") return undefined;
   return (caches as unknown as { default?: ContentCache }).default;
 }
