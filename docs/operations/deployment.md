@@ -352,7 +352,8 @@ npm run portfolio-agent:check
 npm run test:portfolio-agent
 npm run test:portfolio-mcp
 npm run docs:check
-npm run mcp:check
+npm run skills:check
+npm run test:tooling
 npm run mcp:portfolio:check
 ~~~
 
@@ -363,12 +364,6 @@ configuration, and unrelated work are not included:
 git diff --check
 git status --short
 git diff --stat
-~~~
-
-Refresh the code graph after source changes:
-
-~~~bash
-pipenv run graphify update . --no-cluster
 ~~~
 
 Do not treat a successful build or dry run as proof that a deployed service is
@@ -809,8 +804,8 @@ results separately from source/build checks; never retain traces, HAR files,
 cookies, authorization headers, or raw WebSocket URLs.
 
 For the release-gated real model turn, use `npm run test:e2e:live` with the
-refreshed `playwright/.auth/google.json` state. This command targets the desktop
-project, requires a new cited assistant message, and fails on the
+refreshed `apps/portfolio-web/playwright/.auth/google.json` state. This command
+targets the desktop project, requires a new cited assistant message, and fails on the
 provider-allocation message or any interrupted-response alert. Do not run it
 repeatedly while the provider allocation is exhausted; each accepted turn can
 reserve application quota units.
