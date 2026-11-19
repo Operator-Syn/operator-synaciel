@@ -3,11 +3,13 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { test } from "node:test";
 import {
+  deriveSnippetDocumentMetadata,
   getSocialPreviewImagePath,
   getSocialPreviewImageUrl,
   getSocialPreviewMetadata,
   HOME_PAGE_DESCRIPTION,
   normalizeSocialPreviewPath,
+  parseSnippetDocumentPath,
   SOCIAL_PREVIEW_AVATAR_URL,
   SOCIAL_PREVIEW_HEIGHT,
   SOCIAL_PREVIEW_ROUTES,
@@ -36,6 +38,74 @@ test("normalizes route paths and falls back safely", () => {
   assert.equal(
     getSocialPreviewMetadata("/snippets/document/22/database-migrations.md").route,
     "snippets",
+  );
+});
+
+test("recognises snippet document paths", () => {
+  assert.deepEqual(parseSnippetDocumentPath("/snippets/document/22/database-migrations.md"), {
+    id: 22,
+    slug: "database-migrations.md",
+  });
+  assert.deepEqual(parseSnippetDocumentPath("/snippets/document/3/readme"), {
+    id: 3,
+    slug: "readme",
+  });
+  assert.equal(parseSnippetDocumentPath("/snippets/document/22"), null);
+  assert.equal(parseSnippetDocumentPath("/snippets/document/not-a-number/doc.md"), null);
+  assert.equal(parseSnippetDocumentPath("/snippets/document/22/doc.md/extra"), null);
+  assert.equal(parseSnippetDocumentPath("/snippets"), null);
+});
+
+test("derives document titles from the slug without the API", () => {
+  assert.equal(
+    deriveSnippetDocumentMetadata("database-migrations.md").title,
+    "Database Migrations — Code Snippets",
+  );
+  assert.equal(
+    deriveSnippetDocumentMetadata("working-with-dots.in.name.md").title,
+    "Working With Dots.in.name — Code Snippets",
+  );
+  assert.equal(deriveSnippetDocumentMetadata("readme").title, "Readme — Code Snippets");
+  assert.equal(
+    deriveSnippetDocumentMetadata("xqubit-handbook.pdf").title,
+    "Xqubit Handbook — Code Snippets",
+  );
+  assert.equal(
+    deriveSnippetDocumentMetadata("caf%C3%A9-notes.md").title,
+    "Café Notes — Code Snippets",
+  );
+});
+
+test("keeps every derived description between 120 and 155 characters", () => {
+  const slugs = [
+    "database-migrations.md",
+    "working-with-dots.in.name.md",
+    "readme",
+    "xqubit-handbook.pdf",
+    "caf%C3%A9-notes.md",
+  ];
+
+  for (const slug of slugs) {
+    const { description } = deriveSnippetDocumentMetadata(slug);
+    assert.ok(description.length >= 120, `${slug}: ${description.length}`);
+    assert.ok(description.length <= 155, `${slug}: ${description.length}`);
+    assert.match(description, /^Read /);
+  }
+});
+
+test("document metadata keeps the snippets route and image mapping", () => {
+  const pathname = "/snippets/document/22/database-migrations.md";
+  const database = getSocialPreviewMetadata(pathname);
+  const other = getSocialPreviewMetadata("/snippets/document/23/xqubit-handbook.pdf");
+
+  assert.equal(database.route, "snippets");
+  assert.equal(database.pathname, "/snippets");
+  assert.equal(database.title, "Database Migrations — Code Snippets");
+  assert.notEqual(database.description, other.description);
+  assert.equal(getSocialPreviewImagePath(pathname), "/snippets/social-image.png");
+  assert.equal(
+    getSocialPreviewImageUrl(pathname),
+    "https://syn-forge.com/snippets/social-image.png",
   );
 });
 
