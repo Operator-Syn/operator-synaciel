@@ -110,7 +110,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Dry run and deploy portfolio API
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -149,7 +149,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Dry run and deploy portfolio MCP
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -181,7 +181,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Dry run and deploy portfolio agent
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -213,7 +213,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Dry run and deploy public auth Worker
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
