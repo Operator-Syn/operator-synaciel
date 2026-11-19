@@ -3,13 +3,7 @@ import { spawn } from "node:child_process";
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const child = spawn(
   npmCommand,
-  [
-    "run",
-    "test:e2e",
-    "--",
-    "--project=desktop",
-    "tests/portfolio-web/agent-context-replay.spec.ts",
-  ],
+  ["run", "test:e2e", "--", "--project=desktop", "tests/agent-context-replay.spec.ts"],
   {
     env: { ...process.env, PLAYWRIGHT_LIVE_AGENT_REPLAY: "1" },
     stdio: "inherit",
