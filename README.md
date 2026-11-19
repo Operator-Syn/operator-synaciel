@@ -90,22 +90,7 @@ npm run lint
 npm run docs:check
 ```
 
-The public frontend lives in `apps/portfolio-web/`. The API and agent-facing
-services have their own workspaces. See [Local development](docs/operations/local-development.md)
-for the complete contributor workflow.
-
-## Repository map
-
-| Location | Purpose |
-| --- | --- |
-| `apps/portfolio-web/` | Public React/Vite website, static assets, and Pages Functions |
-| `workers/portfolio-api/` | Portfolio data, media, and API boundary |
-| `workers/portfolio-mcp/` | Public, read-only interface for AI agents |
-| `tools/repository-mcp/` | Guarded local workflow for repository changes |
-
-## Further reading
-
-- [Documentation map](docs/README.md)
-- [Local development](docs/operations/local-development.md)
-- [Production deployment](docs/operations/deployment.md)
-- [Public Portfolio MCP](docs/architecture/portfolio-mcp.md)
+Start with the [workspace map](docs/architecture/repository-layout.md) to find
+which app, Worker, or tool owns a change. See
+[local development](docs/operations/local-development.md) for contributor
+commands and the [documentation map](docs/README.md) for the rest.
