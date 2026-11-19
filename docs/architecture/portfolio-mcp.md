@@ -9,8 +9,9 @@ role: reference
 # Public Portfolio MCP (Streamable HTTP)
 
 > Scope: this note documents the public portfolio MCP only. It is a remote,
-> read-only service for published portfolio information. It is not the local
-> repository-only MCP; see [[operations/repository-mcp|Local Repository MCP (stdio) and Commit Pipeline]].
+> read-only service for published portfolio information. It is not local
+> repository tooling; see [[operations/local-development|Local Development]]
+> for repository commands and hooks.
 
 The public portfolio MCP is a separate stateless Cloudflare Worker workspace
 under `workers/portfolio-mcp/`. It serves the MCP protocol over Streamable HTTP
@@ -24,14 +25,14 @@ inside the Worker with a read-only GitHub App installation token.
 
 ## Classification
 
-| Property | Public portfolio MCP | Local repository MCP |
-| --- | --- | --- |
-| Transport | Streamable HTTP over HTTPS | stdio subprocess |
-| Workspace | `workers/portfolio-mcp/` | `tools/repository-mcp/` |
-| Authority | Published portfolio reads through `portfolio-api` | The checked-out Git repository |
-| Mutability | Read-only; no portfolio writes | Guarded local changes, verification, and commits |
-| Registration | Client URL: `https://mcp.syn-forge.com/mcp` | Project-scoped `.mcp.json` and `.codex/config.toml` |
-| Deployment | Cloudflare Worker and `mcp.syn-forge.com` | No public deployment or HTTP endpoint |
+| Property | Public portfolio MCP |
+| --- | --- |
+| Transport | Streamable HTTP over HTTPS |
+| Workspace | `workers/portfolio-mcp/` |
+| Authority | Published portfolio reads through `portfolio-api` |
+| Mutability | Read-only; no portfolio writes |
+| Registration | Client URL: `https://mcp.syn-forge.com/mcp` |
+| Deployment | Cloudflare Worker and `mcp.syn-forge.com` |
 
 ## Boundary
 
@@ -198,8 +199,7 @@ The MCP handler validates custom-domain Host and browser Origin allowlists. The
 server is public and unauthenticated in this current surface, so deployment
 monitoring and edge rate limiting remain operational responsibilities.
 
-The public endpoint is not registered in this repository's `.mcp.json` or
-`.codex/config.toml`; those files launch local project tooling. A user or agent
+The public endpoint is not registered by this repository; a user or agent
 client registers the public URL directly.
 
 ## Local workflow
