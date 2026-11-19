@@ -1,6 +1,7 @@
-import { type ContentCache, fetchContentText } from "../../functions/contentFetch.ts";
+import { type ContentCache, defaultCache, fetchContentText } from "../../functions/contentFetch.ts";
 import { getSnippetDocumentRoute } from "../components/pages/snippetsPage/snippetRoutes.ts";
 import { SITEMAP_STATIC_ROUTES } from "./canonicalRoutes.ts";
+import { STATIC_ROUTE_LASTMOD } from "./contentDates.ts";
 
 const SITE_ORIGIN = "https://syn-forge.com";
 
@@ -13,12 +14,20 @@ const SITEMAP_CONTENT_TYPE = "application/xml; charset=utf-8";
  * They do NOT make the Pages edge reuse this response. A Function response is
  * not placed in Cloudflare's edge cache by a Cache-Control header; that
  * requires an explicit `cache.put`. So the origin cost is controlled by
- * `fetchContentText`'s cached API body below, not by this header. Sending a
- * long `s-maxage` here is still correct — it costs nothing and helps any proxy
- * that does honour it — but do not read it as "the edge serves this for an
- * hour".
+ * `fetchContentText`'s cached API body below, plus the last-known-good copy
+ * this module stores on every successful build. Sending a long `s-maxage` here
+ * is still correct — it costs nothing and helps any proxy that does honour it —
+ * but do not read it as "the edge serves this for an hour".
  */
 const SITEMAP_CACHE_CONTROL = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
+
+/**
+ * Cache key for the last complete sitemap this edge built. The path is internal
+ * (it is never linked or routed); it only names the `caches.default` entry.
+ */
+export const SITEMAP_LAST_GOOD_URL = `${SITE_ORIGIN}/.sitemap-last-good.xml`;
+
+const SITEMAP_LAST_GOOD_CACHE_CONTROL = "public, max-age=604800";
 
 function escapeXml(value: string): string {
   return value.replace(
@@ -29,32 +38,89 @@ function escapeXml(value: string): string {
   );
 }
 
-function snippetEntries(nodes: unknown): string[] {
-  if (!Array.isArray(nodes)) throw new Error("Invalid snippet tree");
-  return nodes.flatMap((node: unknown) => {
-    if (!node || typeof node !== "object") throw new Error("Invalid snippet node");
-    const { id, name, type, children, modified } = node as Record<string, unknown>;
-    if (!Number.isSafeInteger(id) || Number(id) <= 0 || typeof name !== "string") {
-      throw new Error("Invalid snippet identity");
-    }
-    if (type === "dir") return snippetEntries(children ?? []);
-    if (type !== "file") throw new Error("Invalid snippet type");
+function parseSnippetModified(value: unknown): number | undefined {
+  if (typeof value !== "string") return undefined;
 
-    // D1's datetime('now') is UTC even though its serialized value has no timezone.
-    const timestamp =
-      typeof modified === "string"
-        ? Date.parse(
-            /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(modified)
-              ? `${modified.replace(" ", "T")}Z`
-              : modified,
-          )
-        : NaN;
-    const lastmod = Number.isFinite(timestamp)
-      ? `<lastmod>${new Date(timestamp).toISOString()}</lastmod>`
-      : "";
-    const location = escapeXml(SITE_ORIGIN + getSnippetDocumentRoute(Number(id), name));
-    return [`<url><loc>${location}</loc>${lastmod}</url>`];
+  // D1's datetime('now') is UTC even though its serialized value has no timezone.
+  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)
+    ? `${value.replace(" ", "T")}Z`
+    : value;
+  const timestamp = Date.parse(normalized);
+  return Number.isFinite(timestamp) ? timestamp : undefined;
+}
+
+function snippetEntries(nodes: unknown): { entries: string[]; latestModified?: string } {
+  let latest = 0;
+
+  function walk(items: unknown): string[] {
+    if (!Array.isArray(items)) throw new Error("Invalid snippet tree");
+    return items.flatMap((node: unknown) => {
+      if (!node || typeof node !== "object") throw new Error("Invalid snippet node");
+      const { id, name, type, children, modified } = node as Record<string, unknown>;
+      if (!Number.isSafeInteger(id) || Number(id) <= 0 || typeof name !== "string") {
+        throw new Error("Invalid snippet identity");
+      }
+      if (type === "dir") return walk(children ?? []);
+      if (type !== "file") throw new Error("Invalid snippet type");
+
+      const timestamp = parseSnippetModified(modified);
+      if (timestamp !== undefined) latest = Math.max(latest, timestamp);
+
+      const location = escapeXml(SITE_ORIGIN + getSnippetDocumentRoute(Number(id), name));
+      const lastmod = timestamp ? `<lastmod>${new Date(timestamp).toISOString()}</lastmod>` : "";
+      return [`<url><loc>${location}</loc>${lastmod}</url>`];
+    });
+  }
+
+  const entries = walk(nodes);
+  return {
+    entries,
+    latestModified: latest ? new Date(latest).toISOString() : undefined,
+  };
+}
+
+function urlEntry(path: string, lastmod?: string) {
+  const location = escapeXml(SITE_ORIGIN + path);
+  const lastmodTag = lastmod ? `<lastmod>${lastmod}</lastmod>` : "";
+  return `<url><loc>${location}</loc>${lastmodTag}</url>`;
+}
+
+function staticEntries(routes: readonly string[], snippetsLastmod?: string) {
+  return ["/", ...routes].map((path) => {
+    const lastmod =
+      path === "/snippets"
+        ? (snippetsLastmod ?? STATIC_ROUTE_LASTMOD[path])
+        : STATIC_ROUTE_LASTMOD[path];
+    return urlEntry(path, lastmod);
   });
+}
+
+function buildSitemapXml(entries: readonly string[]) {
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...new Set(entries)].join("")}</urlset>`;
+}
+
+function lastGoodRequest() {
+  return new Request(SITEMAP_LAST_GOOD_URL);
+}
+
+async function readLastGood(cache: ContentCache | undefined, method: string) {
+  if (!cache) return null;
+
+  try {
+    const cached = await cache.match(lastGoodRequest());
+    if (!cached) return null;
+
+    return new Response(method === "HEAD" ? null : await cached.text(), {
+      status: 200,
+      headers: {
+        "Content-Type": SITEMAP_CONTENT_TYPE,
+        "Cache-Control": "no-store",
+        "X-Sitemap-Fallback": "last-known-good",
+      },
+    });
+  } catch {
+    return null;
+  }
 }
 
 export async function createSitemapResponse(
@@ -62,7 +128,7 @@ export async function createSitemapResponse(
   apiUrl: string | undefined,
   fetchContent: typeof fetch = fetch,
   indexableRoutes: readonly string[] = SITEMAP_STATIC_ROUTES,
-  cache?: ContentCache,
+  cache: ContentCache | undefined = defaultCache(),
 ): Promise<Response> {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return new Response(null, {
@@ -87,18 +153,31 @@ export async function createSitemapResponse(
     if (!payload || typeof payload !== "object" || !("data" in payload)) {
       throw new Error("Invalid snippet response");
     }
-    // Static routes deliberately carry no <lastmod>. No stable per-route
-    // content date exists at runtime: a value read from the request clock
-    // would change on every fetch and tell crawlers the page changes
-    // constantly, which is worse than omitting it. Document entries below keep
-    // the date the API reports for each file.
+
+    const snippets = snippetEntries(payload.data);
     const entries = [
-      ...["/", ...indexableRoutes].map(
-        (path) => `<url><loc>${escapeXml(SITE_ORIGIN + path)}</loc></url>`,
-      ),
-      ...snippetEntries(payload.data),
+      ...staticEntries(indexableRoutes, snippets.latestModified),
+      ...snippets.entries,
     ];
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...new Set(entries)].join("")}</urlset>`;
+    const xml = buildSitemapXml(entries);
+
+    if (cache) {
+      try {
+        await cache.put(
+          lastGoodRequest(),
+          new Response(xml, {
+            headers: {
+              "Content-Type": SITEMAP_CONTENT_TYPE,
+              "Cache-Control": SITEMAP_LAST_GOOD_CACHE_CONTROL,
+            },
+          }),
+        );
+      } catch {
+        // The last-known-good copy is an optimization; a cache failure must not
+        // break a successful sitemap response.
+      }
+    }
+
     return new Response(request.method === "HEAD" ? null : xml, {
       headers: {
         "Content-Type": SITEMAP_CONTENT_TYPE,
@@ -106,6 +185,12 @@ export async function createSitemapResponse(
       },
     });
   } catch {
+    const lastGood = await readLastGood(cache, request.method);
+    if (lastGood) return lastGood;
+
+    // No last-known-good copy exists on this edge. A 200 with only the static
+    // routes would present the missing document URLs as authoritative, so the
+    // cold edge reports a temporary failure and lets crawlers retry.
     return new Response(request.method === "HEAD" ? null : "Sitemap temporarily unavailable", {
       status: 503,
       headers: {
