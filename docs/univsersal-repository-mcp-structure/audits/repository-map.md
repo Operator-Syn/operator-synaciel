@@ -8,7 +8,7 @@ tags:
   - mcp
   - architecture
 role: audit
-status: verified-repository
+status: historical
 last_verified: 2026-09-03
 source_scope: "revision 6f4112b3fc5801e3298c80876c43cbbf0af8428e"
 related:
@@ -18,8 +18,8 @@ related:
 
 # Repository MCP Implementation Map
 
-This map records the current local MCP source seams and the relationships
-confirmed by Graphify plus direct source inspection.
+This map records the retired local MCP source seams and the relationships
+confirmed by direct source inspection before its removal.
 
 ## Runtime and policy seams
 
@@ -63,7 +63,7 @@ confirmed by Graphify plus direct source inspection.
 | `scripts/validate-commit.ts` | staged-path and restricted-path gate | called by pre-commit |
 | `scripts/audit-one-file-history.ts` | outgoing one-file history audit | called by pre-push |
 | `.codex/hooks/repository-commit-gate.mjs` | direct Git commit detection/deny | called by Codex PreToolUse |
-| `.codex/hooks.json` | session, Graphify, docs, Biome, and commit hook topology | client-side workflow integration |
+| `.codex/hooks.json` | session, tooling, docs, Biome, and commit hook topology | client-side workflow integration |
 
 ## Primary directed relations
 
@@ -78,5 +78,5 @@ invalidation
 
 `policy.ts` → path/read/search/change/verify/commit schemas and scripts
 
-This map is a source index, not a claim that every helper is public. Update it
-when a module or boundary moves.
+This map is a source index confirmed by direct source inspection; it is not a
+claim that every helper is public. Update it when a module or boundary moves.
