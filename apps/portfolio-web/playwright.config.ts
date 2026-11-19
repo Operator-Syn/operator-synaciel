@@ -4,20 +4,20 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "playwright/test";
 
 const appRoot = dirname(fileURLToPath(import.meta.url));
-const repositoryRoot = resolve(appRoot, "../..");
-const authStatePath = resolve(repositoryRoot, "playwright/.auth/google.json");
+const playwrightStateRoot = resolve(appRoot, "playwright");
+const authStatePath = resolve(playwrightStateRoot, ".auth/google.json");
 
 if (!existsSync(authStatePath)) {
   throw new Error(
-    "Missing Playwright Google auth state at playwright/.auth/google.json. " +
-      "Run `npx playwright codegen --save-storage=playwright/.auth/google.json http://localhost:5173/ai` from the repository root.",
+    "Missing Playwright Google auth state at apps/portfolio-web/playwright/.auth/google.json. " +
+      "Run `npx playwright codegen --save-storage=playwright/.auth/google.json http://localhost:5173/ai` from apps/portfolio-web.",
   );
 }
 
 export default defineConfig({
-  testDir: resolve(repositoryRoot, "tests/portfolio-web"),
+  testDir: resolve(appRoot, "tests"),
   testMatch: "**/*.spec.ts",
-  outputDir: resolve(repositoryRoot, "playwright/.artifacts"),
+  outputDir: resolve(playwrightStateRoot, ".artifacts"),
   reporter: "line",
   workers: 1,
   use: {
