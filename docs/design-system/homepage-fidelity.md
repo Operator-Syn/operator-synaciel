@@ -147,4 +147,4 @@ Use `http://localhost:5173/` for local content-backed screenshots. Verify at
 least `1600x1000` and an emulated `390x844` viewport. Check the route with
 loaded, loading, empty, and partial-error data; confirm no horizontal overflow,
 console errors, or loss of keyboard focus. Run the repository typecheck, lint,
-build, documentation check, and Graphify refresh after homepage changes.
+build, and documentation check after homepage changes.
