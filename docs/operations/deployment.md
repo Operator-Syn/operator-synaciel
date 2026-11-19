@@ -217,10 +217,11 @@ the already configured Worker bindings only.
 ## GitHub Actions Worker deployment
 
 The checked-in [production Worker workflow](../../.github/workflows/deploy-production-workers.yml)
-runs only for pushes to main. Its validation job installs the lockfile
-dependencies and runs typecheck, lint, Biome, the frontend/API/MCP/public-auth/
-agent test suites, deployment-path assertions, documentation validation, and
-both MCP configuration checks.
+runs for pushes to main, and can also be started manually from main. Its
+validation job resolves which Workers are stale, installs the lockfile
+dependencies, and runs typecheck, lint, Biome, the frontend/API/MCP/public-auth/
+agent test suites, deployment-path and deploy-gate assertions, documentation
+validation, and both MCP configuration checks.
 
 After validation succeeds, the jobs run in this order:
 
@@ -252,6 +253,58 @@ coming-soon teaser. Continue active assistant development on the separate
 and the production Pages branch must not be changed to that development branch.
 If Pages preview builds are enabled for branches, treat them as development
 surfaces and verify their Vite endpoint variables before testing authentication.
+
+### Change-gated deploys
+
+Validation runs for every push to `main`, but a Worker is redeployed only when
+production is actually behind. The workflow keeps one ledger tag per Worker —
+`deploy-portfolio-api`, `deploy-portfolio-mcp`, `deploy-portfolio-agent`, and
+`deploy-portfolio-public-auth` — force-moved onto the deployed commit after each
+successful release. `scripts/detect-deploy-targets.mjs` compares each tag with
+`HEAD` across the paths that can change that Worker's bundle and reports whether
+that Worker is stale.
+
+| Worker | Paths compared |
+| --- | --- |
+| portfolio-api | `workers/portfolio-api`, `package-lock.json` |
+| portfolio-mcp | `workers/portfolio-mcp`, `package-lock.json` |
+| portfolio-agent | `workers/portfolio-agent`, `package-lock.json` |
+| portfolio-public-auth | `workers/portfolio-public-auth`, `package-lock.json` |
+
+The gate asks whether production is stale, not whether this push touched the
+workspace, and that is what makes it self-healing: a deploy that fails never
+advances its tag, so the next run redeploys that Worker even when the push that
+triggered it changed nothing nearby. A Worker that releases cleanly advances its
+tag and is skipped until something changes it again.
+
+`package-lock.json` belongs to every target, so a dependency change redeploys all
+four Workers instead of leaving one running an older bundle. Changes confined to
+Pages source, tests, scripts, or documentation still run the full validation
+suite and redeploy nothing.
+
+Deploy conditions read "not `false`" rather than "`true`" so the gate fails
+open: when it cannot read the ledger, every Worker deploys. Skipping a Worker is
+the unsafe outcome, because production would keep serving a bundle the
+repository had already changed.
+
+Writing the ledger is the one place this workflow needs write access. Each
+deploy job declares `contents: write` and force-pushes only its own tag. The tag
+push may fail without failing the job, because a lagging ledger costs one
+redundant redeploy on the next run.
+
+The deployment order is unchanged — API, then MCP, then agent, then public-auth
+— and each downstream job ignores a skipped predecessor while still stopping
+when an earlier job failed or the run was cancelled. A push that changes only
+public-auth therefore deploys public-auth and nothing before it.
+
+To redeploy every Worker regardless of ledger state, start the workflow manually
+from `main` with the `force` input. Re-running a failed run also recovers, since
+the failed Worker's tag was never advanced.
+
+Migration application remains outside this workflow. A change confined to
+`workers/portfolio-public-auth/migrations/` matches that Worker's paths and
+redeploys it without applying the migration, so run the migration step
+explicitly before or after such a release.
 
 ### Root npm script for the assistant Workers
 
