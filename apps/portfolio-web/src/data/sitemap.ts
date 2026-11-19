@@ -1,7 +1,24 @@
+import { type ContentCache, fetchContentText } from "../../functions/contentFetch.ts";
 import { getSnippetDocumentRoute } from "../components/pages/snippetsPage/snippetRoutes.ts";
 import { SITEMAP_STATIC_ROUTES } from "./canonicalRoutes.ts";
 
 const SITE_ORIGIN = "https://syn-forge.com";
+
+const SITEMAP_CONTENT_TYPE = "application/xml; charset=utf-8";
+
+/**
+ * Browser cache: five minutes. The `s-maxage` and `stale-while-revalidate`
+ * directives are advisory for any downstream cache in front of this site.
+ *
+ * They do NOT make the Pages edge reuse this response. A Function response is
+ * not placed in Cloudflare's edge cache by a Cache-Control header; that
+ * requires an explicit `cache.put`. So the origin cost is controlled by
+ * `fetchContentText`'s cached API body below, not by this header. Sending a
+ * long `s-maxage` here is still correct — it costs nothing and helps any proxy
+ * that does honour it — but do not read it as "the edge serves this for an
+ * hour".
+ */
+const SITEMAP_CACHE_CONTROL = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
 
 function escapeXml(value: string): string {
   return value.replace(
@@ -45,27 +62,36 @@ export async function createSitemapResponse(
   apiUrl: string | undefined,
   fetchContent: typeof fetch = fetch,
   indexableRoutes: readonly string[] = SITEMAP_STATIC_ROUTES,
+  cache?: ContentCache,
 ): Promise<Response> {
-  const headers = {
-    "Content-Type": "application/xml; charset=utf-8",
-    "Cache-Control": "no-store",
-  };
   if (request.method !== "GET" && request.method !== "HEAD") {
-    return new Response(null, { status: 405, headers: { ...headers, Allow: "GET, HEAD" } });
+    return new Response(null, {
+      status: 405,
+      headers: {
+        "Content-Type": SITEMAP_CONTENT_TYPE,
+        "Cache-Control": "no-store",
+        Allow: "GET, HEAD",
+      },
+    });
   }
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 4000);
   try {
     if (!apiUrl) throw new Error("Missing sitemap API URL");
-    const response = await fetchContent(`${apiUrl.replace(/\/+$/, "")}/snippets`, {
-      signal: controller.signal,
-      cache: "no-store",
+    const result = await fetchContentText(`${apiUrl.replace(/\/+$/, "")}/snippets`, {
+      timeoutMs: 4000,
+      cacheTtlSeconds: 86_400,
+      fetchContent,
+      cache,
     });
-    if (!response.ok) throw new Error("Snippet API unavailable");
-    const payload: unknown = await response.json();
+    if (!result.ok) throw new Error("Snippet API unavailable");
+    const payload: unknown = JSON.parse(result.body);
     if (!payload || typeof payload !== "object" || !("data" in payload)) {
       throw new Error("Invalid snippet response");
     }
+    // Static routes deliberately carry no <lastmod>. No stable per-route
+    // content date exists at runtime: a value read from the request clock
+    // would change on every fetch and tell crawlers the page changes
+    // constantly, which is worse than omitting it. Document entries below keep
+    // the date the API reports for each file.
     const entries = [
       ...["/", ...indexableRoutes].map(
         (path) => `<url><loc>${escapeXml(SITE_ORIGIN + path)}</loc></url>`,
@@ -73,7 +99,12 @@ export async function createSitemapResponse(
       ...snippetEntries(payload.data),
     ];
     const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...new Set(entries)].join("")}</urlset>`;
-    return new Response(request.method === "HEAD" ? null : xml, { headers });
+    return new Response(request.method === "HEAD" ? null : xml, {
+      headers: {
+        "Content-Type": SITEMAP_CONTENT_TYPE,
+        "Cache-Control": SITEMAP_CACHE_CONTROL,
+      },
+    });
   } catch {
     return new Response(request.method === "HEAD" ? null : "Sitemap temporarily unavailable", {
       status: 503,
@@ -83,7 +114,5 @@ export async function createSitemapResponse(
         "Retry-After": "60",
       },
     });
-  } finally {
-    clearTimeout(timeout);
   }
 }
