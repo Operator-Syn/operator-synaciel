@@ -9,8 +9,8 @@
     "preview": "npm run build && serve -s dist",
     "pages:dev": "wrangler pages dev dist",
     "generate:social-previews": "tsx --tsconfig tsconfig.node.json scripts/generate-social-previews.ts",
-    "test": "tsx --tsconfig ../../tsconfig.tests.json --test ../../tests/portfolio-web/*.test.ts ../../tests/portfolio-web/*.test.tsx",
-    "test:social-preview": "tsx --tsconfig ../../tsconfig.tests.json --test ../../tests/portfolio-web/social-preview.test.ts",
+    "test": "tsx --tsconfig ../../tsconfig.tests.json --test tests/*.test.ts tests/*.test.tsx",
+    "test:social-preview": "tsx --tsconfig ../../tsconfig.tests.json --test tests/social-preview.test.ts",
     "test:e2e": "playwright test --config=playwright.config.ts",
     "typecheck": "tsc -b --pretty false --noEmit"
   },
