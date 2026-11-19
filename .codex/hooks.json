@@ -1,5 +1,5 @@
 {
-  "description": "Repository-local Graphify, documentation, and guarded commit workflow.",
+  "description": "Repository-local documentation and guarded commit workflow.",
   "hooks": {
     "SessionStart": [
       {
@@ -28,24 +28,6 @@
         ]
       }
     ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -lc 'root=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; cd \"$root\"; exec pipenv run graphify hook-check'",
-            "statusMessage": "Checking Graphify workflow"
-          },
-          {
-            "type": "command",
-            "command": "bash -lc 'root=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"; exec node \"$root/.codex/hooks/repository-commit-gate.mjs\"'",
-            "statusMessage": "Checking repository commit workflow",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|apply_patch",
@@ -59,7 +41,7 @@
         ]
       },
       {
-        "matcher": "Edit|Write|apply_patch|mcp__operator_synaciel_repository__apply_repository_change",
+        "matcher": "Edit|Write|apply_patch",
         "hooks": [
           {
             "type": "command",
