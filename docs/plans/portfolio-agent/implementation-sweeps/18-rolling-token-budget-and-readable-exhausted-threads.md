@@ -36,7 +36,7 @@ efficiency, and quota documentation.
 - [x] Added rolling-window, migration, admin-reset, token-route, history, and
       compaction regression coverage.
 - [x] Re-ran typecheck, Biome, focused Worker/frontend suites, docs check,
-      `git diff --check`, repository mcp-fast/full verification, and Graphify.
+      `git diff --check`, and repository mcp-fast/full verification.
 
 The new migration, Worker deployment, and representative Google/Turnstile/
 WebSocket verification remain operator-authorized. Apply the migration before
