@@ -138,4 +138,4 @@ The source checks are `npm run typecheck`, `npm run lint`,
 `npm run build`. Keep the GitHub-reporter run clean; it is the repository's
 formatter/lint gate. Documentation is checked with `npm run docs:check`; the
 excerpt rule has focused coverage in
-[`tests/portfolio-web/snippet-preview.test.ts`](../../tests/portfolio-web/snippet-preview.test.ts).
+[`apps/portfolio-web/tests/snippet-preview.test.ts`](../../apps/portfolio-web/tests/snippet-preview.test.ts).
