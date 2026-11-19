@@ -75,13 +75,13 @@ jobs:
       - name: Test portfolio MCP
         run: npm run test:portfolio-mcp
       - name: Check deployment paths
-        run: npm exec -- tsx --tsconfig tsconfig.tests.json --test tests/scripts/deployment-paths.test.ts
+        run: npm exec -- tsx --tsconfig tsconfig.tests.json --test scripts/tests/deployment-paths.test.ts
       - name: Check deploy gate
-        run: npm exec -- tsx --tsconfig tsconfig.tests.json --test tests/scripts/detect-deploy-targets.test.ts
+        run: npm exec -- tsx --tsconfig tsconfig.tests.json --test scripts/tests/detect-deploy-targets.test.ts
       - name: Documentation check
         run: npm run docs:check
-      - name: Repository MCP configuration check
-        run: npm run mcp:check
+      - name: Repository tooling tests
+        run: npm run test:tooling
       - name: Portfolio MCP check
         run: npm run mcp:portfolio:check
 
