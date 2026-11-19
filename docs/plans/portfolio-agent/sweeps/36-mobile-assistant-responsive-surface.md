@@ -75,7 +75,7 @@ approval-gated checks.
 - Frontend: `apps/portfolio-web/src/components/portfolioAssistant/PortfolioAssistantFab.tsx`,
   `apps/portfolio-web/src/components/portfolioAssistant/PortfolioAssistant.css`,
   and `apps/portfolio-web/index.html`
-- Tests: `tests/portfolio-web/portfolio-assistant-modal.test.ts`,
-  `tests/portfolio-web/portfolio-assistant.test.ts`, and
-  `tests/portfolio-web/google-authenticated.spec.ts`
+- Tests: `apps/portfolio-web/tests/portfolio-assistant-modal.test.ts`,
+  `apps/portfolio-web/tests/portfolio-assistant.test.ts`, and
+  `apps/portfolio-web/tests/google-authenticated.spec.ts`
 - Canonical interaction contract: [[design-system/interaction-patterns|interaction patterns]]
