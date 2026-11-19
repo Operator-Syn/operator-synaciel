@@ -71,15 +71,15 @@ compatibility block in sync.
 
 For a public MCP structural change:
 
-1. Query Graphify, then confirm the cited imports and callers in source.
+1. Confirm the cited imports and callers in source.
 2. Record the affected seam and its unchanged public contract in the focused
    module or contract note.
 3. Move one responsibility at a time and run the portfolio MCP typecheck and
    protocol tests after each chunk.
-4. Run `npm run test:mcp` so the public/local MCP documentation and module
-   boundary guard remains aligned.
-5. Run `pipenv run graphify update .` after code changes, then review the final
-   diff and `git diff --check`.
+4. Run the portfolio MCP suite and `npm run test:tooling` so the public MCP
+   documentation and module boundary guard remain aligned.
+5. Run the relevant checks after code changes, then review the final diff and
+   `git diff --check`.
 
 Related runtime commands and deployment boundaries remain in
 [[operations/local-development|Local Development]].
