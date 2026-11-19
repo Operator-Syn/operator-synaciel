@@ -1,0 +1,13 @@
+interface:
+  display_name: Dalan
+  short_description: Build expressive, technical web interfaces
+  default_prompt: Use $dalan to turn this reference into a polished, responsive interface.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
