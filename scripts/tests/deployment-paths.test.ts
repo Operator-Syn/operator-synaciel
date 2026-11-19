@@ -135,7 +135,7 @@ test("keeps the legacy root GitHub Pages deployment retired", async () => {
   assert.match(deploymentWorkflow, /deploy-mcp:\n[\s\S]*?needs: deploy-api/);
   assert.match(deploymentWorkflow, /deploy-public-auth:\n[\s\S]*?needs: deploy-agent/);
   assert.match(deploymentWorkflow, /deploy-agent:\n[\s\S]*?needs: deploy-mcp/);
-  assert.equal(deploymentWorkflow.match(/cloudflare\/wrangler-action@v3/g)?.length ?? 0, 4);
+  assert.equal(deploymentWorkflow.match(/cloudflare\/wrangler-action@v4/g)?.length ?? 0, 4);
 
   // Deploy gate: a Worker deploys when its workspace differs from that Worker's
   // last successful deploy, so a deploy that failed is retried by a later run.
