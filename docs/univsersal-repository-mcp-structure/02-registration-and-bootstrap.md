@@ -8,7 +8,7 @@ tags:
   - bootstrap
   - stdio
 role: reference
-status: verified-repository
+status: historical
 last_verified: 2026-09-03
 source_scope: "revision 6f4112b3fc5801e3298c80876c43cbbf0af8428e"
 related:
@@ -34,14 +34,14 @@ the Git root, enters it, and launches the server without machine-specific paths.
 
 ## Current registration
 
-- `.mcp.json` is the clone-shared registration for `graphify` and
-  `operator-synaciel-repository`.
+- `.mcp.json` is the clone-shared registration for the local MCP servers,
+  including `operator-synaciel-repository`.
 - `.codex/config.toml` repeats root-safe launch for Codex, sets write approval,
   and allowlists the 13 local tools.
 - Both registrations call `bash`, resolve `CLAUDE_PROJECT_DIR` when supplied,
   enter `$root`, and execute `scripts/mcp-launcher.mjs`.
-- `scripts/mcp-launcher.mjs` has `repository` and `graphify` modes. The repository
-  mode defaults to `tsx src/server.ts`; compiled mode requires
+- `scripts/mcp-launcher.mjs` resolves the checkout before starting a local mode.
+  The repository mode defaults to `tsx src/server.ts`; compiled mode requires
   `dist/server.js` and fails closed when it is absent.
 - `tools/repository-mcp/package.json` owns the MCP SDK and Zod dependencies.
 
