@@ -39,27 +39,35 @@ import { pathToFileURL } from "node:url";
  *
  * `package-lock.json` belongs to every target because a dependency change
  * rewrites all four bundles, even though it lives outside each workspace.
+ *
+ * `excluded` removes paths that are inside the workspace but cannot change the
+ * deployed bundle. Tests live with their owner, so `workers/<name>/tests` is a
+ * sibling of `src`; a test-only change must not redeploy production.
  */
 const DEPLOY_TARGETS = [
   {
     target: "api",
     tag: "deploy-portfolio-api",
     paths: ["workers/portfolio-api", "package-lock.json"],
+    excluded: ["workers/portfolio-api/tests"],
   },
   {
     target: "mcp",
     tag: "deploy-portfolio-mcp",
     paths: ["workers/portfolio-mcp", "package-lock.json"],
+    excluded: ["workers/portfolio-mcp/tests"],
   },
   {
     target: "agent",
     tag: "deploy-portfolio-agent",
     paths: ["workers/portfolio-agent", "package-lock.json"],
+    excluded: ["workers/portfolio-agent/tests"],
   },
   {
     target: "public_auth",
     tag: "deploy-portfolio-public-auth",
     paths: ["workers/portfolio-public-auth", "package-lock.json"],
+    excluded: ["workers/portfolio-public-auth/tests"],
   },
 ];
 
@@ -99,14 +107,25 @@ function tagExists(tag) {
  *
  * `git diff A B -- paths` needs only the two trees, not a path of ancestry
  * between them, which is why a shallow clone that contains the tag commit and
- * HEAD is enough to answer this.
+ * HEAD is enough to answer this. Exclusion pathspecs are appended after the
+ * include pathspecs, as git requires, so test-only edits inside a workspace
+ * resolve to an empty change list.
  *
- * @param {string} tag - Tag naming the last successfully deployed commit.
- * @param {string[]} paths - Path prefixes to restrict the diff to.
- * @returns {string[]} Changed paths, empty when the Worker is up to date.
+ * @param tag - Tag naming the last successfully deployed commit.
+ * @param paths - Path prefixes to restrict the diff to.
+ * @param excluded - Path prefixes inside `paths` that cannot change the bundle.
+ * @returns Changed paths, empty when the Worker is up to date.
  */
-function changedSince(tag, paths) {
-  const output = git(["diff", "--name-only", `refs/tags/${tag}`, "HEAD", "--", ...paths]);
+function changedSince(tag, paths, excluded = []) {
+  const output = git([
+    "diff",
+    "--name-only",
+    `refs/tags/${tag}`,
+    "HEAD",
+    "--",
+    ...paths,
+    ...excluded.map((path) => `:(exclude)${path}`),
+  ]);
   return output === "" ? [] : output.split("\n");
 }
 
@@ -118,13 +137,13 @@ function changedSince(tag, paths) {
  *   target, in declaration order.
  */
 function detectDeployTargets({ force = false } = {}) {
-  return DEPLOY_TARGETS.map(({ target, tag, paths }) => {
+  return DEPLOY_TARGETS.map(({ target, tag, paths, excluded }) => {
     if (force) return { target, deploy: true, reason: "forced by workflow input" };
     if (!tagExists(tag)) return { target, deploy: true, reason: `no ${tag} tag yet` };
 
     let changed;
     try {
-      changed = changedSince(tag, paths);
+      changed = changedSince(tag, paths, excluded);
     } catch (error) {
       return { target, deploy: true, reason: `could not read ${tag}: ${error.message}` };
     }
