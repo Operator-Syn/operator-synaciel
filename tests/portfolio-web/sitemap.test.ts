@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import type { ContentCache } from "../../apps/portfolio-web/functions/contentFetch.ts";
-import { createSitemapResponse } from "../../apps/portfolio-web/src/data/sitemap.ts";
+import { SITEMAP_STATIC_ROUTES } from "../../apps/portfolio-web/src/data/canonicalRoutes.ts";
+import { STATIC_ROUTE_LASTMOD } from "../../apps/portfolio-web/src/data/contentDates.ts";
+import {
+  createSitemapResponse,
+  SITEMAP_LAST_GOOD_URL,
+} from "../../apps/portfolio-web/src/data/sitemap.ts";
 
 const EDGE_CACHE_CONTROL = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
 
@@ -52,7 +57,7 @@ test("sitemap reflects additions, renames, edits and deletions on consecutive re
   assert.match(deleted, /<loc>https:\/\/syn-forge.com\/projects<\/loc>/);
 });
 
-test("sitemap rejects upstream failures and malformed trees instead of dropping documents", async () => {
+test("sitemap rejects upstream failures when no last-known-good copy exists", async () => {
   const failures: (typeof fetch)[] = [
     async () => new Response(null, { status: 500 }),
     async () => {
@@ -70,6 +75,7 @@ test("sitemap rejects upstream failures and malformed trees instead of dropping 
   for (const fetchContent of failures) {
     const response = await createSitemapResponse(request, apiUrl, fetchContent);
     assert.equal(response.status, 503);
+    assert.equal(response.headers.get("content-type"), "text/plain; charset=utf-8");
     assert.equal(response.headers.get("cache-control"), "no-store");
     assert.equal(response.headers.get("retry-after"), "60");
     assert.doesNotMatch(await response.text(), /<urlset>/);
@@ -103,18 +109,21 @@ test("sitemap omits invalid modification dates and deduplicates document entries
   );
   const xml = await response.text();
   assert.equal(xml.match(/\/1\/a-b.md/g)?.length, 1);
-  assert.doesNotMatch(xml, /<lastmod>|<B>/);
+  assert.doesNotMatch(xml, /\/1\/a-b\.md<\/loc><lastmod>/);
+  assert.doesNotMatch(xml, /<B>/);
 });
 
-test("a cached snippet payload serves the sitemap without calling the content API", async () => {
+test("a cached snippet payload serves the sitemap and stores the last-known-good copy", async () => {
+  const puts: string[] = [];
   const cache: ContentCache = {
     async match(key) {
       assert.equal(key.url, `${apiUrl}/snippets`);
       assert.equal(key.method, "GET");
       return new Response(JSON.stringify({ success: true, data: [file(7, "From Cache.md")] }));
     },
-    async put() {
-      assert.fail("a cache hit must not write to the cache");
+    async put(key) {
+      puts.push(key.url);
+      assert.equal(key.url, SITEMAP_LAST_GOOD_URL);
     },
   };
   let calls = 0;
@@ -129,9 +138,39 @@ test("a cached snippet payload serves the sitemap without calling the content AP
   assert.match(xml, /\/snippets\/document\/7\/from-cache\.md/);
   assert.match(xml, /<lastmod>2026-10-05T01:02:03\.000Z<\/lastmod>/);
   assert.equal(calls, 0);
+  assert.deepEqual(puts, [SITEMAP_LAST_GOOD_URL]);
 });
 
-test("an API failure with no cached body still returns a non-cacheable 503", async () => {
+test("the sitemap writes last-known-good through the platform cache by default", async () => {
+  const puts: string[] = [];
+  const stub: ContentCache = {
+    async match() {
+      return undefined;
+    },
+    async put(key) {
+      puts.push(key.url);
+    },
+  };
+  const globals = globalThis as unknown as { caches?: unknown };
+  const original = globals.caches;
+  globals.caches = { default: stub };
+
+  try {
+    const response = await createSitemapResponse(request, apiUrl, async () =>
+      Response.json({ success: true, data: [file(1, "Notes.md")] }),
+    );
+    assert.equal(response.status, 200);
+    assert.ok(
+      puts.includes(SITEMAP_LAST_GOOD_URL),
+      `last-known-good was not written: ${puts.join(", ")}`,
+    );
+  } finally {
+    if (original === undefined) delete globals.caches;
+    else globals.caches = original;
+  }
+});
+
+test("an API failure with no cached body returns a non-cacheable 503", async () => {
   const response = await createSitemapResponse(request, apiUrl, async () => {
     throw new TypeError("connection reset");
   });
@@ -139,6 +178,34 @@ test("an API failure with no cached body still returns a non-cacheable 503", asy
   assert.equal(response.headers.get("content-type"), "text/plain; charset=utf-8");
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(response.headers.get("retry-after"), "60");
+});
+
+test("an API failure serves the last-known-good sitemap from the edge cache", async () => {
+  const cachedXml =
+    '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://syn-forge.com/</loc><lastmod>2026-10-20</lastmod></url></urlset>';
+  const cache: ContentCache = {
+    async match(key) {
+      if (key.url === SITEMAP_LAST_GOOD_URL) return new Response(cachedXml);
+      return undefined;
+    },
+    async put() {
+      assert.fail("a failed build must not write to the cache");
+    },
+  };
+  const response = await createSitemapResponse(
+    request,
+    apiUrl,
+    async () => {
+      throw new TypeError("connection reset");
+    },
+    undefined,
+    cache,
+  );
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "application/xml; charset=utf-8");
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.headers.get("x-sitemap-fallback"), "last-known-good");
+  assert.equal(await response.text(), cachedXml);
 });
 
 test("withheld utility routes stay out of the sitemap", async () => {
@@ -156,20 +223,40 @@ test("withheld utility routes stay out of the sitemap", async () => {
   assert.match(xml, /<loc>https:\/\/syn-forge\.com\/projects<\/loc>/);
 });
 
-test("static routes carry no lastmod while document entries keep theirs", async () => {
+test("static routes carry a stable lastmod and /snippets follows the newest document", async () => {
   const response = await createSitemapResponse(request, apiUrl, async () =>
     Response.json({ success: true, data: [file(1, "Notes.md")] }),
   );
   const xml = await response.text();
-  const staticEntries = xml.match(/<url><loc>https:\/\/syn-forge\.com\/[^<]*<\/loc><\/url>/g) ?? [];
-  assert.ok(staticEntries.length > 0, "the sitemap must contain static routes");
-  for (const entry of staticEntries) {
-    assert.doesNotMatch(entry, /<lastmod>/);
+  const entries = new Map<string, string | undefined>();
+  for (const match of xml.matchAll(
+    /<url><loc>([^<]+)<\/loc>(?:<lastmod>([^<]+)<\/lastmod>)?<\/url>/g,
+  )) {
+    entries.set(match[1], match[2]);
+  }
+  for (const route of ["/", ...SITEMAP_STATIC_ROUTES]) {
+    const loc = `https://syn-forge.com${route}`;
+    assert.ok(entries.has(loc), `${route} must be in the sitemap`);
+    const lastmod = entries.get(loc);
+    assert.ok(lastmod, `${route} must carry <lastmod>`);
+    if (route === "/snippets") {
+      assert.equal(lastmod, "2026-10-05T01:02:03.000Z");
+    } else {
+      assert.equal(lastmod, STATIC_ROUTE_LASTMOD[route]);
+    }
   }
   assert.match(
     xml,
     /<loc>https:\/\/syn-forge\.com\/snippets\/document\/1\/notes\.md<\/loc><lastmod>2026-10-05T01:02:03\.000Z<\/lastmod>/,
   );
+});
+
+test("every indexable static route has a valid content date", () => {
+  for (const route of ["/", ...SITEMAP_STATIC_ROUTES]) {
+    const date = STATIC_ROUTE_LASTMOD[route];
+    assert.ok(date, `${route} needs a STATIC_ROUTE_LASTMOD entry`);
+    assert.ok(!Number.isNaN(Date.parse(date)), `${route} has an invalid date`);
+  }
 });
 
 test("Pages routes sitemap through runtime middleware without a build-time snapshot", async () => {
