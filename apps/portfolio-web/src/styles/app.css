@@ -15,3 +15,7 @@
 @import "./home-settings.css";
 @import "./motion.css";
 @import "./theme-transition.css";
+
+/* Workspace tests and local browser state are not stylesheet inputs. */
+@source not "../../tests";
+@source not "../../playwright";
