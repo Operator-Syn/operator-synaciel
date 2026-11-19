@@ -47,6 +47,6 @@ remaining recommendations without mixing them into the active sweep notes.
 
 - [[architecture/portfolio-agent|Portfolio Assistant Agent architecture]]
 - [[operations/local-development|Local development and fixed checks]]
-- [[operations/repository-mcp|Local Repository MCP change workflow]]
+- [[architecture/repository-layout|Repository layout and test locations]]
 
 This index is the backlink target for each current sweep and the audit.
