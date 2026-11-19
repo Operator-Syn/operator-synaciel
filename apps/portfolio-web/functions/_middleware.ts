@@ -16,6 +16,11 @@ import {
   fetchContentText,
 } from "./contentFetch.ts";
 import { isKnownRoute } from "./routePolicy.ts";
+import {
+  collectSnippetFolderPaths,
+  decideSnippetFolderRoute,
+  parseSnippetFolderSegments,
+} from "./snippetFolders.ts";
 
 type ArticleDates = {
   readonly published?: string;
@@ -328,6 +333,32 @@ async function lookupSnippetDocument(
   return { existence, articleDates: readArticleDates(result.body) };
 }
 
+/**
+ * Folder existence comes from the same bounded, cached snippet-tree fetch the
+ * rest of the snippet path uses. Any failure is "unknown": the app is still
+ * served, because a broken API must not 404 working deep links. Only an explicit
+ * tree without the requested folder is a missing-folder signal.
+ */
+async function lookupSnippetFolders(
+  apiUrl: string | undefined,
+): Promise<ReadonlySet<string> | undefined> {
+  if (!apiUrl) return undefined;
+
+  const result = await fetchContentText(`${apiUrl.replace(/\/+$/, "")}/snippets`, {
+    timeoutMs: 4000,
+    cacheTtlSeconds: 3600,
+  });
+  if (!result.ok) return undefined;
+
+  try {
+    const payload = JSON.parse(result.body) as { data?: unknown };
+    if (!payload || typeof payload !== "object" || !("data" in payload)) return undefined;
+    return collectSnippetFolderPaths(payload.data);
+  } catch {
+    return undefined;
+  }
+}
+
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const requestUrl = context.request.url;
   const pathname = new URL(requestUrl).pathname;
@@ -356,6 +387,25 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
       return serveNotFound(context.env.ASSETS, requestUrl);
     }
     articleDates = lookup.articleDates;
+  } else {
+    const folderSegments = parseSnippetFolderSegments(pathname);
+    const folders = folderSegments
+      ? await lookupSnippetFolders(context.env.VITE_API_URL)
+      : undefined;
+    const decision = decideSnippetFolderRoute(pathname, folderSegments, folders);
+
+    if (decision.action === "not-found") {
+      return serveNotFound(context.env.ASSETS, requestUrl);
+    }
+
+    if (decision.action === "redirect") {
+      const url = new URL(requestUrl);
+      url.pathname = decision.pathname;
+      return new Response(null, {
+        status: 308,
+        headers: { Location: url.href },
+      }) as unknown as PagesResponse;
+    }
   }
 
   const indexResponse = await context.env.ASSETS.fetch(new URL("/index.html", requestUrl));
