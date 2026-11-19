@@ -8,8 +8,7 @@
     "workers/portfolio-api",
     "workers/portfolio-mcp",
     "workers/portfolio-public-auth",
-    "workers/portfolio-agent",
-    "tools/repository-mcp"
+    "workers/portfolio-agent"
   ],
   "scripts": {
     "dev": "npm run dev --workspace=@syn-forge/portfolio-web --",
@@ -23,10 +22,6 @@
     "db:migrations:list:remote": "npm run db:migrations:list:remote --workspace=@syn-forge/portfolio-api --",
     "db:migrations:apply:local": "npm run db:migrations:apply:local --workspace=@syn-forge/portfolio-api --",
     "db:migrations:apply:remote": "npm run db:migrations:apply:remote --workspace=@syn-forge/portfolio-api --",
-    "mcp:check": "node scripts/check-mcp-config.mjs",
-    "mcp:repository": "node scripts/mcp-launcher.mjs repository",
-    "mcp:graphify": "node scripts/mcp-launcher.mjs graphify",
-    "mcp:context": "npm run mcp:repository",
     "mcp:portfolio:check": "npm run check --workspace=@syn-forge/portfolio-mcp --",
     "mcp:portfolio:dev": "npm run dev --workspace=@syn-forge/portfolio-mcp --",
     "mcp:portfolio:deploy": "npm run deploy --workspace=@syn-forge/portfolio-mcp --",
@@ -39,8 +34,7 @@
     "portfolio-agent:dev": "npm run dev --workspace=@syn-forge/portfolio-agent --",
     "portfolio-agent:check": "npm run check --workspace=@syn-forge/portfolio-agent --",
     "skills:check": "node scripts/validate-skills.mjs",
-    "mcp:typecheck": "npm run typecheck --workspace=@syn-forge/repository-mcp --",
-    "test:mcp": "npm run test --workspace=@syn-forge/repository-mcp --",
+    "test:tooling": "tsx --test scripts/tests/*.test.ts",
     "test:media-presign": "npm run test:media-presign --workspace=@syn-forge/portfolio-api --",
     "test:project-pagination": "npm run test:project-pagination --workspace=@syn-forge/portfolio-api --",
     "test:social-preview": "npm run test:social-preview --workspace=@syn-forge/portfolio-web --",
@@ -62,8 +56,7 @@
     "typecheck:watch": "tsc -b --watch --pretty false",
     "build": "npm run typecheck -- && npm run build --workspace=@syn-forge/portfolio-web --",
     "lint": "eslint .",
-    "preview": "npm run preview --workspace=@syn-forge/portfolio-web --",
-    "mcp:build": "npm run build --workspace=@syn-forge/repository-mcp --"
+    "preview": "npm run preview --workspace=@syn-forge/portfolio-web --"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.11",
@@ -76,7 +69,8 @@
     "rollup-plugin-visualizer": "^6.0.5",
     "tsx": "^4.23.12",
     "typescript": "~5.8.3",
-    "typescript-eslint": "^8.35.1"
+    "typescript-eslint": "^8.35.1",
+    "yaml": "2.9.0"
   },
   "allowScripts": {
     "esbuild@0.18.20": true,
