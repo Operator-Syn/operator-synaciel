@@ -67,9 +67,8 @@ classified failure boundary.
 
 The fixed repository profile passed all 100 checks, including agent/public-auth
 typechecks and tests, docs and skills validation, MCP checks, API and web tests,
-Biome, lint, migration checks, and the production build. Graphify was updated
-successfully. The final diff contains only the scoped source/tests/docs paths;
-no debug instrumentation remains.
+Biome, lint, migration checks, and the production build. The final diff contains
+only the scoped source/tests/docs paths; no debug instrumentation remains.
 
 Pass milestone: source and repository evidence are complete. Deployment and live
 behavior remain separate approval-gated checkpoints.
