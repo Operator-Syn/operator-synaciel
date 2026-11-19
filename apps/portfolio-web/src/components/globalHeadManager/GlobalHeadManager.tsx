@@ -12,18 +12,19 @@ type HeadProps = {
   description?: string;
   image?: string;
   url?: string;
+  /**
+   * Accepted for call-site compatibility and deliberately not emitted.
+   *
+   * JSON-LD is owned by the Pages middleware now. Emitting a graph here would
+   * append a second one after hydration, which is exactly the duplication the
+   * server-side graph exists to remove. The prop stays in the type so existing
+   * pages keep type-checking until their call sites drop it.
+   */
   jsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
   robots?: string;
 };
 
-export default function GlobalHeadManager({
-  title,
-  description,
-  image,
-  url,
-  jsonLd,
-  robots,
-}: HeadProps) {
+export default function GlobalHeadManager({ title, description, image, url, robots }: HeadProps) {
   useEffect(() => {
     const pageUrl = url || window.location.href;
     const pagePath = new URL(pageUrl, window.location.href).pathname;
@@ -98,23 +99,7 @@ export default function GlobalHeadManager({
       const robotsTag = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
       if (robotsTag) robotsTag.content = "index, follow";
     }
-
-    document
-      .querySelectorAll('script[type="application/ld+json"][data-global-head-manager="true"]')
-      .forEach((script) => {
-        script.remove();
-      });
-
-    const structuredData = Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : [];
-
-    structuredData.forEach((entry) => {
-      const script = document.createElement("script");
-      script.type = "application/ld+json";
-      script.setAttribute("data-global-head-manager", "true");
-      script.textContent = JSON.stringify(entry);
-      document.head.appendChild(script);
-    });
-  }, [title, description, image, url, jsonLd, robots]);
+  }, [title, description, image, url, robots]);
 
   return null;
 }
