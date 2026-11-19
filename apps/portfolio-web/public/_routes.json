@@ -1,28 +1,14 @@
 {
   "version": 1,
   "include": [
-    "/sitemap.xml",
-    "/",
-    "/projects",
-    "/projects/*",
-    "/certificates",
-    "/certificates/*",
-    "/snippets",
-    "/snippets/*",
-    "/privacy-policy",
-    "/privacy-policy/*",
-    "/terms-and-conditions",
-    "/terms-and-conditions/*",
-    "/netbird",
-    "/netbird/*",
-    "/atelier",
-    "/atelier/*",
-    "/ai",
-    "/ai/*",
-    "/agent",
-    "/agent/*"
+    "/*"
   ],
   "exclude": [
+    "/assets/*",
+    "/cursors/*",
+    "/cf-fonts/*",
+    "/cdn-cgi/*",
+    "/.well-known/*",
     "/social-image.png",
     "/projects/social-image.png",
     "/certificates/social-image.png",
@@ -33,9 +19,12 @@
     "/atelier/social-image.png",
     "/ai/social-image.png",
     "/agent/social-image.png",
-    "/assets/*",
-    "/cursors/*",
     "/llms.txt",
-    "/robots.txt"
+    "/robots.txt",
+    "/46c433f7dfe14ebe9a009d6eee3865bb.txt",
+    "/404.html",
+    "/index.html",
+    "/yandex_45d261b4fb614693.html",
+    "/yandex_45d261b4fb614693"
   ]
 }
