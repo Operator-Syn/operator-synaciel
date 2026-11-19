@@ -11,8 +11,9 @@ role: index
 # Operator-Syn Documentation Map
 
 `docs/` is both the repository's Obsidian vault and its GitHub-readable
-documentation. Keep only this map and [[obsidian|vault guidance]] at the vault
-root. Topic notes live in focused folders.
+documentation. Keep only this map, [[obsidian|vault guidance]], and the
+tool-discovered [[PRODUCT]] and [[DESIGN]] context files at the vault root.
+Topic notes live in focused folders.
 
 ## Domain notes
 
@@ -44,14 +45,19 @@ root. Topic notes live in focused folders.
 - [[database/drizzle|Drizzle tooling]] - typed schema ownership and migration
   generation boundaries.
 - [[operations/local-development|Local development]] - install, check, build,
-  Graphify, and database commands.
+  test-layout, hook, and database commands.
 - [[operations/deployment|Production deployment]] - production prerequisites, deployment order, smoke checks, and rollback.
 - [[plans/portfolio-agent/README|Portfolio agent reliability plan]] - staged audit and current sweep routing.
 - [[plans/portfolio-agent/implementation-sweeps/README|Portfolio agent implementation ledger]] - historical implementation evidence and rollout gates.
-- [[operations/repository-mcp|Local Repository MCP (stdio)]] - guarded local
-  changes, verification, one-file commits, and versioned Git hooks.
-- [[univsersal-repository-mcp-structure|Universal Repository MCP Structure blueprint]] - reusable, repository-agnostic implementation stages and evidence mapping.
+- [[univsersal-repository-mcp-structure|Universal Repository MCP Structure blueprint]] - historical, repository-agnostic implementation stages; the local implementation it described has been retired.
 - [[authenticated-identity-blueprint|Universal Authenticated Identity and Realtime Gateway blueprint]] - reusable authentication, identity, and protected realtime boundaries.
+
+## Vault-root context
+
+- [[PRODUCT|Product context]] - confirmed audience, purpose, positioning, and
+  compatibility constraints discovered by the Impeccable toolchain.
+- [[DESIGN|Design context]] - the tool-discovered visual system contract that
+  complements the focused design-system notes.
 
 ## Vault rules
 
@@ -64,6 +70,3 @@ root. Topic notes live in focused folders.
    a note and the repository disagree.
 6. Add backlinks for direct source, consumer, or workflow relationships; do not
    link every note to every neighboring note.
-
-Generated Graphify files remain under `graphify-out/` and are not part of this
-human-maintained vault.
