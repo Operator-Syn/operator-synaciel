@@ -127,7 +127,15 @@ test("keeps the legacy root GitHub Pages deployment retired", async () => {
   assert.match(deploymentDocumentation, /wrangler pages deploy/);
 
   assert.ok(deploymentWorkflow.includes("on:\n  push:\n    branches:\n      - main"));
-  assert.doesNotMatch(deploymentWorkflow, /workflow_dispatch:/);
+  assert.ok(
+    deploymentWorkflow.includes("workflow_dispatch:"),
+    "Deployment workflow must expose a manual trigger for a forced redeploy",
+  );
+  assert.match(
+    deploymentWorkflow,
+    /force:\n\s+description: [^\n]+\n\s+type: boolean/,
+    "The manual trigger must accept a force input",
+  );
   assert.equal(
     deploymentWorkflow.match(/if: github\.ref == 'refs\/heads\/main'/g)?.length ?? 0,
     5,
@@ -140,6 +148,75 @@ test("keeps the legacy root GitHub Pages deployment retired", async () => {
   assert.match(deploymentWorkflow, /deploy-public-auth:\n[\s\S]*?needs: deploy-agent/);
   assert.match(deploymentWorkflow, /deploy-agent:\n[\s\S]*?needs: deploy-mcp/);
   assert.equal(deploymentWorkflow.match(/cloudflare\/wrangler-action@v3/g)?.length ?? 0, 4);
+
+  // Deploy gate: a Worker deploys when its workspace differs from that Worker's
+  // last successful deploy, so a deploy that failed is retried by a later run.
+  assert.ok(
+    deploymentWorkflow.includes("node scripts/detect-deploy-targets.mjs"),
+    "Deployment workflow must run the deploy-target gate",
+  );
+  assert.match(deploymentWorkflow, /\n\s+id: targets\n/);
+  assert.ok(
+    deploymentWorkflow.includes("node scripts/detect-deploy-targets.mjs --tags"),
+    "Deployment workflow must fetch the ledger tags the gate compares against",
+  );
+  assert.match(
+    deploymentWorkflow,
+    /FORCE_DEPLOY: \$\{\{ github\.event\.inputs\.force \|\| 'false' \}\}/,
+    "The gate must take its force flag from the manual trigger, not from a constant",
+  );
+  assert.doesNotMatch(
+    deploymentWorkflow,
+    /FORCE_DEPLOY:\s*'?true'?/,
+    "A hardcoded force flag would redeploy every Worker on every run",
+  );
+  for (const flag of ["api", "mcp", "agent", "public_auth"]) {
+    assert.ok(
+      deploymentWorkflow.includes(`${flag}: \${{ steps.targets.outputs.${flag} }}`),
+      `Validate job must expose the ${flag} deploy flag as a job output`,
+    );
+  }
+  const mainGuard = "github.ref == 'refs/heads/main'";
+  for (const [job, flag, chained] of [
+    ["deploy-api", "api", false],
+    ["deploy-mcp", "mcp", true],
+    ["deploy-agent", "agent", true],
+    ["deploy-public-auth", "public_auth", true],
+  ] as const) {
+    const expectedCondition =
+      `${mainGuard} && needs.validate.outputs.${flag} != 'false'` +
+      (chained ? " && !failure() && !cancelled()" : "");
+    assert.ok(
+      deploymentWorkflow.includes(`    if: ${expectedCondition}\n`),
+      `${job} must obey the ${flag} deploy flag, and must not collapse the deploy chain`,
+    );
+  }
+  assert.doesNotMatch(
+    deploymentWorkflow,
+    /needs\.validate\.outputs\.\w+ == 'true'/,
+    "Deploy gates must skip only on an explicit false flag so gate failures still deploy",
+  );
+  // A Worker that never advances its own ledger tag would redeploy on every run.
+  for (const [job, tag] of [
+    ["deploy-api", "deploy-portfolio-api"],
+    ["deploy-mcp", "deploy-portfolio-mcp"],
+    ["deploy-agent", "deploy-portfolio-agent"],
+    ["deploy-public-auth", "deploy-portfolio-public-auth"],
+  ] as const) {
+    assert.ok(
+      deploymentWorkflow.includes(`git tag --force ${tag} "$GITHUB_SHA"`),
+      `${job} must record a successful deploy in the ${tag} ledger tag`,
+    );
+    assert.ok(
+      deploymentWorkflow.includes(`git push --force origin "refs/tags/${tag}"`),
+      `${job} must publish the ${tag} ledger tag for later runs to read`,
+    );
+  }
+  assert.equal(
+    deploymentWorkflow.match(/contents: write/g)?.length ?? 0,
+    4,
+    "only the deploy jobs may write the ledger tags",
+  );
   assert.ok(
     deploymentWorkflow.includes("secrets.CLOUDFLARE_API_TOKEN"),
     "Cloudflare API token secret is not configured",
@@ -162,6 +239,7 @@ test("keeps the legacy root GitHub Pages deployment retired", async () => {
     "npm run portfolio-agent:check",
     "npm run test:portfolio-agent",
     "npm exec -- tsx --tsconfig tsconfig.tests.json --test tests/scripts/deployment-paths.test.ts",
+    "npm exec -- tsx --tsconfig tsconfig.tests.json --test tests/scripts/detect-deploy-targets.test.ts",
     "npm run docs:check",
     "npm run mcp:check",
     "npm run mcp:portfolio:check",
