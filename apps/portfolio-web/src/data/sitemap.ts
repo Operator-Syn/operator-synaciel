@@ -44,6 +44,7 @@ export async function createSitemapResponse(
   request: Request,
   apiUrl: string | undefined,
   fetchContent: typeof fetch = fetch,
+  indexableRoutes: readonly string[] = SITEMAP_STATIC_ROUTES,
 ): Promise<Response> {
   const headers = {
     "Content-Type": "application/xml; charset=utf-8",
@@ -66,7 +67,7 @@ export async function createSitemapResponse(
       throw new Error("Invalid snippet response");
     }
     const entries = [
-      ...["/", ...SITEMAP_STATIC_ROUTES].map(
+      ...["/", ...indexableRoutes].map(
         (path) => `<url><loc>${escapeXml(SITE_ORIGIN + path)}</loc></url>`,
       ),
       ...snippetEntries(payload.data),
