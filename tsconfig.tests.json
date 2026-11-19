@@ -23,6 +23,7 @@
     "apps/portfolio-web/src/**/*.ts",
     "apps/portfolio-web/src/**/*.tsx",
     "apps/portfolio-web/functions/canonicalRedirect.ts",
+    "apps/portfolio-web/functions/contentFetch.ts",
     "apps/portfolio-web/functions/routePolicy.ts",
     "workers/portfolio-api/src/**/*.ts",
     "workers/portfolio-mcp/src/**/*.ts",
