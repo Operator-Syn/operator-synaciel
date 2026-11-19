@@ -10,4 +10,7 @@ if [[ ! -x "$tsx" ]]; then
   echo "Commit blocked: install npm dependencies before using the repository hooks." >&2
   exit 1
 fi
+# See `.githooks/pre-push`: an inherited relative TSX_TSCONFIG_PATH resolves
+# against the wrong cwd and makes tsx fail before the validator runs.
+unset TSX_TSCONFIG_PATH
 exec "$tsx" "$hook_directory/../scripts/validate-commit.ts"
