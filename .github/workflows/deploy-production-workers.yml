@@ -3,6 +3,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Redeploy every Worker even when its recorded deploy is current
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -17,6 +23,11 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      api: ${{ steps.targets.outputs.api }}
+      mcp: ${{ steps.targets.outputs.mcp }}
+      agent: ${{ steps.targets.outputs.agent }}
+      public_auth: ${{ steps.targets.outputs.public_auth }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -25,6 +36,20 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # Each Worker records its last successful deploy as a deploy-* tag. Those
+      # commits usually sit outside the checkout depth, but a shallow fetch of a
+      # tag brings its tree along, which is all the gate diffs against. A missing
+      # tag is normal on the first release and is tolerated here.
+      - name: Fetch deploy tags
+        run: |
+          for tag in $(node scripts/detect-deploy-targets.mjs --tags); do
+            git fetch --quiet --depth 1 origin "+refs/tags/${tag}:refs/tags/${tag}" || true
+          done
+      - name: Detect deploy targets
+        id: targets
+        env:
+          FORCE_DEPLOY: ${{ github.event.inputs.force || 'false' }}
+        run: node scripts/detect-deploy-targets.mjs
       - name: Install dependencies
         run: npm ci
       - name: Typecheck
@@ -51,6 +76,8 @@ jobs:
         run: npm run test:portfolio-mcp
       - name: Check deployment paths
         run: npm exec -- tsx --tsconfig tsconfig.tests.json --test tests/scripts/deployment-paths.test.ts
+      - name: Check deploy gate
+        run: npm exec -- tsx --tsconfig tsconfig.tests.json --test tests/scripts/detect-deploy-targets.test.ts
       - name: Documentation check
         run: npm run docs:check
       - name: Repository MCP configuration check
@@ -58,12 +85,20 @@ jobs:
       - name: Portfolio MCP check
         run: npm run mcp:portfolio:check
 
+  # A Worker deploys when its workspace differs from that Worker's last
+  # successful deploy, so a deploy that failed is retried by the next run instead
+  # of waiting for someone to touch the workspace again. The comparisons are
+  # `!= 'false'` rather than `== 'true'` on purpose: a gate that cannot read state
+  # leaves the output empty, and an empty value must fall through to deploying.
+  # Skipping a Worker is the unsafe outcome; redeploying an unchanged one is not.
   deploy-api:
     name: Deploy portfolio API
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && needs.validate.outputs.api != 'false'
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -82,13 +117,27 @@ jobs:
           wranglerVersion: "4.125.0"
           preCommands: npx wrangler deploy --dry-run --config workers/portfolio-api/wrangler.toml
           command: deploy --config workers/portfolio-api/wrangler.toml
+      # Advancing the ledger is what lets the next run skip this Worker. It runs
+      # only after a successful deploy and never fails the job: if the tag cannot
+      # be pushed, the next run simply deploys this Worker again.
+      - name: Record successful deploy
+        continue-on-error: true
+        run: |
+          git tag --force deploy-portfolio-api "$GITHUB_SHA"
+          git push --force origin "refs/tags/deploy-portfolio-api"
 
+  # The API Worker must be available before the MCP Worker because the MCP
+  # service binding targets it, so the deploy jobs still form an ordered chain.
+  # A skipped predecessor must not skip the rest of the chain, which is why every
+  # downstream job re-asserts its own deploy flag.
   deploy-mcp:
     name: Deploy portfolio MCP
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && needs.validate.outputs.mcp != 'false' && !failure() && !cancelled()
     needs: deploy-api
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -107,38 +156,20 @@ jobs:
           wranglerVersion: "4.125.0"
           preCommands: npx wrangler deploy --dry-run --env="" --config workers/portfolio-mcp/wrangler.toml
           command: deploy --env="" --config workers/portfolio-mcp/wrangler.toml
-
-  deploy-public-auth:
-    name: Deploy public auth Worker
-    if: github.ref == 'refs/heads/main'
-    needs: deploy-agent
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Dry run and deploy public auth Worker
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: "4.125.0"
-          preCommands: npx wrangler deploy --dry-run --env="" --config workers/portfolio-public-auth/wrangler.toml
-          command: deploy --env="" --config workers/portfolio-public-auth/wrangler.toml
+      - name: Record successful deploy
+        continue-on-error: true
+        run: |
+          git tag --force deploy-portfolio-mcp "$GITHUB_SHA"
+          git push --force origin "refs/tags/deploy-portfolio-mcp"
 
   deploy-agent:
     name: Deploy portfolio agent
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && needs.validate.outputs.agent != 'false' && !failure() && !cancelled()
     needs: deploy-mcp
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -157,3 +188,40 @@ jobs:
           wranglerVersion: "4.125.0"
           preCommands: npx wrangler deploy --dry-run --env="" --config workers/portfolio-agent/wrangler.toml
           command: deploy --env="" --config workers/portfolio-agent/wrangler.toml
+      - name: Record successful deploy
+        continue-on-error: true
+        run: |
+          git tag --force deploy-portfolio-agent "$GITHUB_SHA"
+          git push --force origin "refs/tags/deploy-portfolio-agent"
+
+  deploy-public-auth:
+    name: Deploy public auth Worker
+    if: github.ref == 'refs/heads/main' && needs.validate.outputs.public_auth != 'false' && !failure() && !cancelled()
+    needs: deploy-agent
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Dry run and deploy public auth Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.125.0"
+          preCommands: npx wrangler deploy --dry-run --env="" --config workers/portfolio-public-auth/wrangler.toml
+          command: deploy --env="" --config workers/portfolio-public-auth/wrangler.toml
+      - name: Record successful deploy
+        continue-on-error: true
+        run: |
+          git tag --force deploy-portfolio-public-auth "$GITHUB_SHA"
+          git push --force origin "refs/tags/deploy-portfolio-public-auth"
