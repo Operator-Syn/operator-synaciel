@@ -8,8 +8,8 @@ role: concept
 # Architecture Overview
 
 Operator-Syn is an npm monorepo with separate frontend, API Worker, public
-Streamable HTTP MCP, public-auth Worker, stateful portfolio-agent Worker, and
-local repository-only stdio workspaces. The source of
+Streamable HTTP MCP, public-auth Worker, and stateful portfolio-agent Worker
+workspaces. The source of
 truth for the frontend entrypoint
 is [`apps/portfolio-web/src/main.tsx`](../../apps/portfolio-web/src/main.tsx);
 the API Worker entrypoint is
@@ -33,9 +33,8 @@ shell so the authenticated assistant is available on every page. The
 [[architecture/portfolio-public-auth|Public Portfolio Authentication]] notes
 document its separate Worker boundaries. The
 [[architecture/portfolio-mcp|Public Portfolio MCP (Streamable HTTP)]] note
-documents the read-only source boundary, while
-[[operations/repository-mcp|Local Repository MCP (stdio)]] documents the
-development-only repository tooling.
+documents the read-only source boundary. Development tooling, test locations,
+and Git hooks are documented in [[operations/local-development|Local Development]].
 
 ## API and storage
 
