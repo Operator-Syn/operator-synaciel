@@ -69,7 +69,7 @@ repository_dev_shell_guidance() {
   if [[ "$shell_kind" == "flake" && -n "$host_system" && "$flake_content" == *"\"$host_system\""* ]]; then
     printf '%s\n' "- Compatible repository dev shell detected ($marker, $host_system). Consider $shell_command for browser/runtime-sensitive checks."
     if [[ "$browser_runtime_shell" -eq 1 ]]; then
-      printf '%s\n' "- This shell supplies Playwright/browser runtime support only; it does not provide Node/npm/Python/Pipenv. Keep ordinary workspace commands in the host environment."
+      printf '%s\n' "- This shell supplies Playwright/browser runtime support only; it does not provide Node/npm. Keep ordinary workspace commands in the host environment."
     fi
     return 0
   fi
