@@ -1,4 +1,5 @@
 import type { PagesFunction, Response as PagesResponse } from "@cloudflare/workers-types";
+import { NON_INDEXABLE_ROUTES } from "../src/data/canonicalRoutes.ts";
 import { createSitemapResponse } from "../src/data/sitemap.ts";
 import {
   getSocialPreviewImageUrl,
@@ -186,6 +187,13 @@ function rewriteDocumentHead(response: PagesResponse, requestUrl: string) {
     headers.set(name, value);
   });
   applyHtmlHeaders(headers);
+
+  // Item 1.7: a server-level signal, so a crawler that does not run JS still
+  // sees it. The page keeps its self-referencing canonical; `noindex, follow`
+  // plus a canonical is coherent. `follow` keeps its links crawlable.
+  if (NON_INDEXABLE_ROUTES.has(url.pathname)) {
+    headers.set("X-Robots-Tag", "noindex, follow");
+  }
 
   return new Response(transformed.body as unknown as BodyInit | null, {
     status: transformed.status,
