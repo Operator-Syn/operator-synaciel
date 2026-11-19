@@ -73,5 +73,7 @@ The normal repository editing workflow remains valid when the desktop CLI is
 unavailable. Do not claim live CLI verification unless the new vault appears
 in `obsidian vaults` and a read-only command succeeds.
 
-Personal workspace, theme, cache, and appearance state is not part of the
-repository documentation contract.
+`docs/PRODUCT.md` and `docs/DESIGN.md` remain intentional vault-root files
+because the bundled Impeccable fallback discovers them there. The root and
+`docs/` `.obsidian/` directories are ignored in full, including core plugin
+settings. Open `docs/` as a vault and configure Obsidian locally.
