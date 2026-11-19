@@ -103,9 +103,9 @@ factual answer.
 - Agent: `workers/portfolio-agent/src/evidence.ts`,
   `workers/portfolio-agent/src/agent.ts`, and
   `workers/portfolio-agent/src/limits.ts`
-- Tests: `tests/portfolio-mcp/protocol.test.ts`,
-  `tests/portfolio-agent/evidence.test.ts`, and
-  `tests/portfolio-agent/limits.test.ts`
+- Tests: `workers/portfolio-mcp/tests/protocol.test.ts`,
+  `workers/portfolio-agent/tests/evidence.test.ts`, and
+  `workers/portfolio-agent/tests/limits.test.ts`
 - Canonical explanations: [[architecture/portfolio-mcp|Public Portfolio MCP
   architecture]] and [[architecture/portfolio-agent|Portfolio Assistant Agent
   architecture]]
