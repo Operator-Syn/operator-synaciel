@@ -18,9 +18,8 @@ related:
 
 # Repository Map
 
-This map records the current adapter seams confirmed by a narrow Graphify query
-and direct source inspection. It is a source index, not a claim that every
-helper is public.
+This map records the adapter seams confirmed by direct source inspection. It is
+a source index, not a claim that every helper is public.
 
 ## Boundary seams
 
@@ -36,11 +35,11 @@ helper is public.
 | `workers/portfolio-agent/src/agent.ts` | hibernating stateful runtime, SQLite identity, `onStart`, `onConnect`, lazy upstream | runtime and hibernation |
 | `workers/portfolio-agent/src/mcp.ts` | bounded upstream discovery/recovery and diagnostics | runtime and observability |
 | `workers/portfolio-agent/src/diagnostics.ts` | allowlisted lifecycle event normalization | observability |
-| `tests/portfolio-public-auth/agent-gateway.test.ts` | preparation, origin/session/ownership, forwarding, header stripping, failure mapping | gateway tests |
-| `tests/portfolio-agent/internal-websocket.test.ts` | internal key, upgrade, path, and retired public route | handoff tests |
-| `tests/portfolio-agent/identity.test.ts` | handoff parsing, thread binding, hibernation/startup seam | runtime tests |
-| `tests/portfolio-web/playwright-observability.ts` | URL redaction, JWT detection, premature-close and browser error detection | browser audit |
-| `tests/portfolio-web/google-authenticated.spec.ts` | saved-auth session, WebSocket audit, and responsive matrix checks | browser audit |
+| `workers/portfolio-public-auth/tests/agent-gateway.test.ts` | preparation, origin/session/ownership, forwarding, header stripping, failure mapping | gateway tests |
+| `workers/portfolio-agent/tests/internal-websocket.test.ts` | internal key, upgrade, path, and retired public route | handoff tests |
+| `workers/portfolio-agent/tests/identity.test.ts` | handoff parsing, thread binding, hibernation/startup seam | runtime tests |
+| `apps/portfolio-web/tests/playwright-observability.ts` | URL redaction, JWT detection, premature-close and browser error detection | browser audit |
+| `apps/portfolio-web/tests/google-authenticated.spec.ts` | saved-auth session, WebSocket audit, and responsive matrix checks | browser audit |
 
 ## Confirmed relationships
 
@@ -54,16 +53,6 @@ Browser
   -> PortfolioAgent Durable Object
   -> lazy MCP/provider work
 ```
-
-Graphify query used for reconnaissance:
-
-```bash
-pipenv run graphify query "public-auth portfolio-agent WebSocket identity"
-```
-
-The query was limited to shallow call/field context, then each relevant source
-path above was read directly. Graphify output is navigation evidence; source and
-tests remain authoritative when they disagree.
 
 ## Maintenance rule
 
