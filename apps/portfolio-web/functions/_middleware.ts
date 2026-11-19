@@ -59,6 +59,73 @@ function isHtmlResponse(response: PagesResponse) {
   );
 }
 
+// Origins below are read from index.html, src/, and the production VITE_* values
+// in the repository-root .env.
+const HTML_CSP_REPORT_ONLY = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  // Only the hashed same-origin bundle and the Turnstile script
+  // (challenges.cloudflare.com/turnstile/v0/api.js, loaded in
+  // PortfolioAssistantFab.tsx:717) execute. The inline application/ld+json
+  // block is a data block and is not governed by script-src.
+  "script-src 'self' https://challenges.cloudflare.com",
+  // index.html:28 loads Google Fonts CSS; Tailwind emits an external stylesheet.
+  // React writes inline style attributes (theme CSS variables, syntax
+  // highlighter), so style attributes stay allowed without allowing <style>.
+  "style-src 'self' https://fonts.googleapis.com",
+  "style-src-attr 'unsafe-inline'",
+  // Google Fonts CSS points at fonts.gstatic.com; Cloudflare Fonts rewrites the
+  // same request to the same-origin /cf-fonts path, covered by 'self'.
+  "font-src 'self' https://fonts.gstatic.com",
+  // Profile image and project/gallery media come from the R2 CDN
+  // (VITE_CDN_URL / personal-portfolio-bucket.syn-forge.com); placehold.co is
+  // the archive fallback in Projects.tsx:50 and Certificates.tsx:50. Google
+  // avatar URLs (*.googleusercontent.com) are allowed by
+  // safeGoogleProfilePictureUrl in PortfolioAssistantFab.tsx:153. data:/blob:
+  // cover assistant image attachments and downloaded/object-URL previews.
+  "img-src 'self' data: blob: https://personal-portfolio-bucket.syn-forge.com https://placehold.co https://*.googleusercontent.com",
+  "media-src 'self' blob: https://personal-portfolio-bucket.syn-forge.com",
+  // blob: is the PDF preview iframe (SnippetDocument.tsx:324); Turnstile
+  // renders its widget in a challenges.cloudflare.com frame.
+  "frame-src 'self' blob: https://challenges.cloudflare.com",
+  // VITE_API_URL (personal-portfolio.syn-forge.com/api) serves the portfolio
+  // data; public-auth.syn-forge.com serves assistant fetches and the agent
+  // websocket (useAgent host, PortfolioAssistantFab.tsx:1877); Turnstile
+  // reports back to challenges.cloudflare.com.
+  "connect-src 'self' https://personal-portfolio.syn-forge.com https://public-auth.syn-forge.com wss://public-auth.syn-forge.com https://challenges.cloudflare.com",
+].join("; ");
+
+// Permissions-Policy: camera, microphone, geolocation, and payment were each
+// checked for a source use (getUserMedia, navigator.geolocation,
+// PaymentRequest) and none exists. clipboard-write is deliberately not denied:
+// navigator.clipboard.writeText is used in SnippetMarkdown.tsx and Ai.tsx.
+const HTML_PERMISSIONS_POLICY = "camera=(), microphone=(), geolocation=(), payment=()";
+
+const HTML_HEADERS_TO_DROP = [
+  // Deprecated; modern browsers only react negatively to a non-zero value.
+  "X-XSS-Protection",
+  // Obsolete: certificate transparency is enforced without this header.
+  "Expect-CT",
+  // The asset layer stamps this on everything; HTML must not be readable
+  // cross-origin, and no HTML consumer needs it.
+  "Access-Control-Allow-Origin",
+  // The head rewrite changes the body, so origin validators and length no
+  // longer describe the response we send.
+  "Content-Length",
+  "Content-Encoding",
+  "ETag",
+];
+
+function applyHtmlHeaders(headers: Headers) {
+  for (const name of HTML_HEADERS_TO_DROP) headers.delete(name);
+  headers.set("Strict-Transport-Security", "max-age=31536000");
+  headers.set("Content-Security-Policy-Report-Only", HTML_CSP_REPORT_ONLY);
+  headers.set("Permissions-Policy", HTML_PERMISSIONS_POLICY);
+}
+
 function rewriteDocumentHead(response: PagesResponse, requestUrl: string) {
   const url = new URL(requestUrl);
   const metadata = getSocialPreviewMetadata(url.pathname);
@@ -107,7 +174,24 @@ function rewriteDocumentHead(response: PagesResponse, requestUrl: string) {
     });
   }
 
-  return rewriter.transform(response as unknown as Response) as unknown as PagesResponse;
+  const transformed = rewriter.transform(
+    response as unknown as Response,
+  ) as unknown as PagesResponse;
+
+  // HTMLRewriter.transform preserves the incoming response headers, including
+  // the immutable asset-layer guard. Copy them into a mutable Headers object and
+  // build a new Response so the drops actually take effect on the wire.
+  const headers = new Headers();
+  transformed.headers.forEach((value, name) => {
+    headers.set(name, value);
+  });
+  applyHtmlHeaders(headers);
+
+  return new Response(transformed.body as unknown as BodyInit | null, {
+    status: transformed.status,
+    statusText: transformed.statusText,
+    headers,
+  }) as unknown as PagesResponse;
 }
 
 type PagesEnv = {
@@ -124,6 +208,7 @@ async function serveNotFound(
   headers.set("Content-Type", "text/html; charset=utf-8");
   headers.set("Cache-Control", "no-store");
   headers.set("X-Robots-Tag", "noindex");
+  applyHtmlHeaders(headers);
   return new Response(notFound.body as unknown as BodyInit | null, {
     status: 404,
     headers,
