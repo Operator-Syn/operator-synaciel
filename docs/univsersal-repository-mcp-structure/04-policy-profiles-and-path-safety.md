@@ -8,7 +8,7 @@ tags:
   - security
   - paths
 role: reference
-status: verified-repository
+status: historical
 last_verified: 2026-09-03
 source_scope: "revision 6f4112b3fc5801e3298c80876c43cbbf0af8428e"
 related:
