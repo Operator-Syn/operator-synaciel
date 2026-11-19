@@ -1,26 +1,23 @@
-# Commit Workflow Reference
+# Local Commit Workflow
 
-## Bounded change
+## Reviewed change
 
-1. Inspect status and identify the exact target files.
-2. Prepare complete file contents with expected hashes.
-3. Review the returned paths, hashes, diff, limits, and verification profile.
-4. Apply with the exact one-time credential and explicit approval.
-5. Run verification and resolve failures before committing.
-6. Prepare, edit, and review one subject per applied file.
-7. Commit the exact applied set through the local adapter.
+1. Inspect status, including untracked paths.
+2. Identify the exact target paths and review their full diff.
+3. Run the narrowest fixed verification that covers the change.
+4. Stage only the reviewed paths.
+5. Write a clear sentence-style commit subject.
+6. Commit with the hooks active; do not bypass them.
+7. Report the commit ID, hook status, verification results, and any partial
+   progress.
 
-## Complete dirty tree
+## Dirty tree
 
 1. Inspect status including every untracked path.
-2. Prepare the complete working-tree snapshot.
-3. If restricted paths require consent, show only the returned metadata and
-   retry with the exact one-time token after explicit approval.
-4. Reprepare if the snapshot changes.
-5. Run the narrowest verification profile.
-6. Provide one reviewed subject for each reviewed path.
-7. Commit sequentially and report partial progress if a hook or Git operation
-   fails.
+2. Separate the requested paths from unrelated dirty work; never sweep
+   unrelated changes into the commit.
+3. Review the diffs and run verification for the requested change.
+4. Stage and commit only the reviewed paths.
 
-If the adapter is unavailable, report the missing capability. Use native Git
-only when repository policy and explicit user authorization allow it.
+If a check or hook fails, stop and report it. Do not amend published history,
+force a push, or bypass a hook to get past the failure.
