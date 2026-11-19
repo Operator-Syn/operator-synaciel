@@ -109,17 +109,13 @@ test("document metadata keeps the snippets route and image mapping", () => {
   );
 });
 
-test("keeps static structured data valid JSON", async () => {
+test("keeps structured data out of the static shell", async () => {
   const index = await readFile(resolve(repositoryRoot, "index.html"), "utf8");
   const blocks = extractJsonLdBlocks(index);
 
-  assert.equal(blocks.length, 1);
-  const person = blocks[0] as Record<string, unknown>;
-  assert.equal(person["@context"], "https://schema.org");
-  assert.equal(person["@type"], "Person");
-  assert.ok(Array.isArray(person.alternateName));
-  assert.ok((person.alternateName as string[]).includes("SynForge"));
-  assert.ok(Array.isArray(person.sameAs));
+  // The graph is injected per route by functions/_middleware.ts. A static
+  // block here would stack on top of it.
+  assert.equal(blocks.length, 0);
 });
 
 test("keeps the homepage description aligned with the SERP target", async () => {
