@@ -16,13 +16,41 @@
 /** Why a fetch produced no usable body and no usable cache entry. */
 export type ContentFetchFailureReason = "timeout" | "http" | "network";
 
+/** An origin response with a non-200 status, carrying the status it returned. */
+export type ContentFetchHttpFailure = {
+  readonly ok: false;
+  readonly reason: "http";
+  readonly status: number;
+};
+
 /**
  * `fromCache` marks either a fresh cache hit or a stale fallback; `stale`
  * distinguishes the two. A stale result only appears after the origin failed.
+ *
+ * The `"http"` failure carries the origin status so callers can tell a 404
+ * ("this document does not exist") from a 5xx ("the API is broken"). They are
+ * not interchangeable for an existence check.
  */
 export type ContentFetchResult =
   | { ok: true; body: string; fromCache: boolean; stale: boolean }
-  | { ok: false; reason: ContentFetchFailureReason };
+  | ContentFetchHttpFailure
+  | { ok: false; reason: "timeout" | "network" };
+
+/**
+ * Classifies a result for a document existence check.
+ *
+ * Only an explicit 404 from the origin proves the document is missing.
+ * Everything else is "unknown" — a timeout, a network error, a 5xx, and also
+ * an unexpected 4xx. Callers must keep serving the page on "unknown"; turning
+ * a broken or misconfigured API into a 404 would take working deep links down.
+ */
+export type ContentExistence = "present" | "missing" | "unknown";
+
+export function classifyContentExistence(result: ContentFetchResult): ContentExistence {
+  if (result.ok) return "present";
+  if (result.reason === "http" && result.status === 404) return "missing";
+  return "unknown";
+}
 
 /**
  * The slice of the Cache API this helper needs. Declared locally so the
@@ -128,7 +156,10 @@ export async function fetchContentText(
     return { ok: true, body: fresh, fromCache: true, stale: false };
   }
 
-  let reason: ContentFetchFailureReason = "network";
+  let failure: ContentFetchHttpFailure | { ok: false; reason: "timeout" | "network" } = {
+    ok: false,
+    reason: "network",
+  };
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -141,9 +172,12 @@ export async function fetchContentText(
       await writeCachedBody(cache, key, body, response, cacheTtlSeconds);
       return { ok: true, body, fromCache: false, stale: false };
     }
-    reason = "http";
+    failure = { ok: false, reason: "http", status: response.status };
   } catch (error) {
-    reason = controller.signal.aborted || isAbortError(error) ? "timeout" : "network";
+    failure = {
+      ok: false,
+      reason: controller.signal.aborted || isAbortError(error) ? "timeout" : "network",
+    };
   } finally {
     clearTimeout(timer);
   }
@@ -155,5 +189,5 @@ export async function fetchContentText(
     return { ok: true, body: stale, fromCache: true, stale: true };
   }
 
-  return { ok: false, reason };
+  return failure;
 }
