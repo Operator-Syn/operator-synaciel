@@ -78,7 +78,7 @@ unverified.
 - Agent: `workers/portfolio-agent/src/evidence.ts`,
   `workers/portfolio-agent/src/agent.ts`, and
   `workers/portfolio-agent/src/limits.ts`
-- Tests: `tests/portfolio-agent/evidence.test.ts` and
-  `tests/portfolio-agent/limits.test.ts`
+- Tests: `workers/portfolio-agent/tests/evidence.test.ts` and
+  `workers/portfolio-agent/tests/limits.test.ts`
 - Architecture: [[architecture/portfolio-agent|Portfolio Assistant Agent
   architecture]]
