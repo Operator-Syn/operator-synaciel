@@ -1,9 +1,6 @@
 import StaticAppPage, { type StaticAppPageConfig } from "../staticAppPage/StaticAppPage";
 
 const netbirdPageConfig: StaticAppPageConfig = {
-  title: "NetBird",
-  description:
-    "NetBird access homepage for Syn-Forge infrastructure and Google project verification.",
   url: "https://syn-forge.com/netbird",
   kicker: "Syn-Forge private access",
   heading: "NetBird",
