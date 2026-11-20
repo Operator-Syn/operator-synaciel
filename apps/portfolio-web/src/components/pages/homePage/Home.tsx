@@ -133,7 +133,6 @@ export default function Home() {
   return (
     <>
       <GlobalHeadManager
-        description={HOME_PAGE_DESCRIPTION}
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "WebSite",
@@ -142,7 +141,6 @@ export default function Home() {
           name: "Syn-Forge",
           url: "https://syn-forge.com/",
         }}
-        title="Software Developer Portfolio"
         url="https://syn-forge.com/"
       />
 
