@@ -110,6 +110,9 @@ function SnippetDocumentLoadingShell() {
   );
 }
 
+const SNIPPET_NOT_FOUND_DESCRIPTION =
+  "This snippet document is no longer available. Open the snippets archive to browse the current notes.";
+
 export default function SnippetDocument() {
   const { id: routeId } = useParams();
   const navigate = useNavigate();
@@ -197,11 +200,6 @@ export default function SnippetDocument() {
     });
   }, [canonicalUrl, metadata, readingTimeMinutes]);
 
-  const pageTitle = metadata?.name || "Snippet document";
-  const pageDescription = metadata
-    ? `Read ${metadata.name} from the Syn-Forge code snippets archive.`
-    : "Read a Syn-Forge code snippet document.";
-
   const markdownHeadings = useMemo(
     () => (metadata?.format === "md" && content !== null ? extractMarkdownHeadings(content) : []),
     [content, metadata?.format],
@@ -237,8 +235,10 @@ export default function SnippetDocument() {
   return (
     <>
       <GlobalHeadManager
-        title={pageTitle}
-        description={pageDescription}
+        // A missing document is the second page the map cannot describe: it
+        // would advertise the archive or a document that does not exist.
+        description={isNotFound ? SNIPPET_NOT_FOUND_DESCRIPTION : undefined}
+        title={isNotFound ? "Snippet not found" : undefined}
         url={canonicalUrl}
         robots={isNotFound ? "noindex, nofollow" : "index, follow"}
         jsonLd={structuredData}
