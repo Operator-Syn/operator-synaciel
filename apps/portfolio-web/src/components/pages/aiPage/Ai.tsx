@@ -84,7 +84,6 @@ export default function Ai() {
   return (
     <>
       <GlobalHeadManager
-        description={PORTFOLIO_MCP_DESCRIPTION}
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "WebPage",
@@ -98,7 +97,6 @@ export default function Ai() {
             url: PORTFOLIO_MCP_ENDPOINT,
           },
         }}
-        title="AI and MCP Access"
         url={AI_PAGE_URL}
       />
 
