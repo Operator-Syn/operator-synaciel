@@ -17,6 +17,9 @@ if (!existsSync(authStatePath)) {
 export default defineConfig({
   testDir: resolve(appRoot, "tests"),
   testMatch: "**/*.spec.ts",
+  // The Pages-runtime spec needs `wrangler pages dev` (the Function owns the head), so it runs
+  // under `playwright.pages.config.ts` and must not be collected against the Vite dev server.
+  testIgnore: "**/*.pages.spec.ts",
   outputDir: resolve(playwrightStateRoot, ".artifacts"),
   reporter: "line",
   workers: 1,
