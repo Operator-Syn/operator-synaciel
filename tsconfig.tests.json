@@ -25,6 +25,7 @@
     "apps/portfolio-web/functions/canonicalRedirect.ts",
     "apps/portfolio-web/functions/contentFetch.ts",
     "apps/portfolio-web/functions/routePolicy.ts",
+    "apps/portfolio-web/functions/snippetDocumentDates.ts",
     "apps/portfolio-web/functions/snippetFolderProbe.ts",
     "apps/portfolio-web/functions/snippetFolders.ts",
     "apps/portfolio-web/tests/**/*.ts",
