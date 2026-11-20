@@ -106,7 +106,8 @@ test("middleware consults the folder existence check", async () => {
 
   assert.match(middleware, /parseSnippetFolderSegments\(pathname\)/);
   assert.match(middleware, /lookupSnippetFolders\(context\.env\.VITE_API_URL\)/);
-  assert.match(middleware, /decideSnippetFolderRoute\(pathname, folderSegments, folders\)/);
+  assert.match(middleware, /resolveSnippetFolderRoute\(\s*pathname,\s*folderSegments,/);
+  assert.match(middleware, /probeSnippetFolder\(context\.env\.SNIPPET_DB, segments\)/);
   assert.match(middleware, /decision\.action === "not-found"/);
   assert.match(middleware, /decision\.action === "redirect"/);
 });
