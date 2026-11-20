@@ -512,8 +512,15 @@ middleware only reads.
 Without the binding, or when D1 cannot answer, the existing API check applies.
 Its one-hour cache can temporarily hide new folders or still serve deleted ones.
 There is no application timeout on the D1 check: a stalled read delays the
-response and fallback. To disable the direct check, remove the binding and
-redeploy Pages.
+response and fallback, and the same applies to the publication-date read on
+document routes. To disable the direct check, remove the binding and redeploy
+Pages.
+
+The same binding supplies `article:published_time` for snippet documents: a
+snippet is public once uploaded, so its row's `created_at` is the publication
+event and `article:modified_time` keeps coming from the API's `modified` value.
+Without the binding the page is still served and the publication tag is simply
+omitted; it is never filled from the modification date.
 
 `VITE_TURNSTILE_SITE_KEY` is safe to expose in the browser bundle because it is
 the public widget identifier. Keep the paired `TURNSTILE_SECRET_KEY` only as a
