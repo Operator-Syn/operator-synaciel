@@ -18,8 +18,6 @@ export type StaticAppSection = {
 };
 
 export type StaticAppPageConfig = {
-  title: string;
-  description: string;
   url: string;
   kicker: string;
   heading: string;
@@ -43,12 +41,7 @@ export default function StaticAppPage({ config }: StaticAppPageProps) {
 
   return (
     <>
-      <GlobalHeadManager
-        description={config.description}
-        jsonLd={config.jsonLd}
-        title={config.title}
-        url={config.url}
-      />
+      <GlobalHeadManager jsonLd={config.jsonLd} url={config.url} />
 
       <CookingArea>
         <main aria-labelledby="static-app-page-title" className="static-app-page">
