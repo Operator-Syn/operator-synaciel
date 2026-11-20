@@ -358,12 +358,7 @@ export default function PrivacyPolicy() {
 
   return (
     <>
-      <GlobalHeadManager
-        title="Privacy Policy"
-        description="Privacy Policy for Syn-Forge, Operator-Syn, and related personal applications hosted under syn-forge.com."
-        url="https://syn-forge.com/privacy-policy"
-        jsonLd={breadcrumbSchema}
-      />
+      <GlobalHeadManager url="https://syn-forge.com/privacy-policy" jsonLd={breadcrumbSchema} />
 
       <CookingArea>
         <main className="privacy-policy-page legal-policy-page" ref={pageRef}>
