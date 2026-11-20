@@ -49,47 +49,48 @@ export const SOCIAL_PREVIEW_ROUTES = [
     route: "home",
     pathname: "/",
     label: "Home",
-    title: "Software Developer Portfolio",
+    title: "Software Developer Portfolio — Operator-Syn",
     description: HOME_PAGE_DESCRIPTION,
   },
   {
     route: "projects",
     pathname: "/projects",
     label: "Projects",
-    title: "Projects",
-    description: "Browse software projects by Operator-Syn.",
+    title: "Projects & Case Studies — Software Developer",
+    description:
+      "Selected software projects with the problem, the stack and the outcome, plus build notes on the architecture behind each one.",
   },
   {
     route: "certificates",
     pathname: "/certificates",
     label: "Certificates",
-    title: "Training and Credentials",
+    title: "Certifications & Training — Developer Skills",
     description:
-      "Explore certificates and training credentials covering software development and related learning.",
+      "Training and credentials in full-stack development, cloud and data, listed with issuer, date and what each course covered.",
   },
   {
     route: "snippets",
     pathname: "/snippets",
     label: "Snippets",
-    title: "Code Snippets",
+    title: "Code Snippets & Notes — Database Migrations",
     description:
-      "Browse code snippets, developer notes, and reference files from the Syn-Forge portfolio.",
+      "Code snippets and developer notes on database migrations, schema changes and deployment practices, written up as short walkthroughs.",
   },
   {
     route: "privacy",
     pathname: "/privacy-policy",
     label: "Privacy",
-    title: "Privacy Policy",
+    title: "Privacy Policy — Data Handling on syn-forge.com",
     description:
-      "Privacy Policy for Syn-Forge, Operator-Syn, and related personal applications hosted under syn-forge.com.",
+      "How syn-forge.com and the portfolio assistant handle your data: what is stored, what is not, and how to request deletion.",
   },
   {
     route: "terms",
     pathname: "/terms-and-conditions",
     label: "Terms",
-    title: "Terms and Conditions",
+    title: "Terms & Conditions — Using syn-forge.com",
     description:
-      "Terms and Conditions for Syn-Forge, Operator-Syn, and related personal applications hosted under syn-forge.com.",
+      "The terms for using syn-forge.com: acceptable use, intellectual property, availability and the limits of the demo features.",
   },
   {
     route: "netbird",
@@ -111,7 +112,7 @@ export const SOCIAL_PREVIEW_ROUTES = [
     route: "ai",
     pathname: "/ai",
     label: "AI and MCP",
-    title: "AI and MCP Access",
+    title: "AI & MCP Access — Agent-Readable Portfolio",
     description:
       "Connect AI agents to Syn-Forge's public portfolio MCP for grounded profile, project, certificate, public snippet, and bounded GitHub project information.",
   },
