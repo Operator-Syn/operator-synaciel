@@ -16,10 +16,11 @@ import {
   fetchContentText,
 } from "./contentFetch.ts";
 import { isKnownRoute } from "./routePolicy.ts";
+import { probeSnippetFolder, type SnippetDatabase } from "./snippetFolderProbe.ts";
 import {
   collectSnippetFolderPaths,
-  decideSnippetFolderRoute,
   parseSnippetFolderSegments,
+  resolveSnippetFolderRoute,
 } from "./snippetFolders.ts";
 
 type ArticleDates = {
@@ -259,6 +260,7 @@ function rewriteDocumentHead(
 
 type PagesEnv = {
   VITE_API_URL?: string;
+  SNIPPET_DB?: SnippetDatabase;
   ASSETS: { fetch(resource: URL): Promise<PagesResponse> };
 };
 
@@ -389,10 +391,12 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     articleDates = lookup.articleDates;
   } else {
     const folderSegments = parseSnippetFolderSegments(pathname);
-    const folders = folderSegments
-      ? await lookupSnippetFolders(context.env.VITE_API_URL)
-      : undefined;
-    const decision = decideSnippetFolderRoute(pathname, folderSegments, folders);
+    const decision = await resolveSnippetFolderRoute(
+      pathname,
+      folderSegments,
+      (segments) => probeSnippetFolder(context.env.SNIPPET_DB, segments),
+      () => lookupSnippetFolders(context.env.VITE_API_URL),
+    );
 
     if (decision.action === "not-found") {
       return serveNotFound(context.env.ASSETS, requestUrl);
