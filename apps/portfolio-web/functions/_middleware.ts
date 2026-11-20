@@ -16,6 +16,7 @@ import {
   fetchContentText,
 } from "./contentFetch.ts";
 import { isKnownRoute } from "./routePolicy.ts";
+import { parseSnippetTimestamp, readSnippetPublishedAt } from "./snippetDocumentDates.ts";
 import { probeSnippetFolder, type SnippetDatabase } from "./snippetFolderProbe.ts";
 import {
   collectSnippetFolderPaths,
@@ -280,28 +281,17 @@ async function serveNotFound(
   }) as unknown as PagesResponse;
 }
 
-function parseApiDate(value: unknown): string | undefined {
-  if (typeof value !== "string") return undefined;
-  // D1's datetime('now') is UTC without a timezone suffix.
-  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)
-    ? `${value.replace(" ", "T")}Z`
-    : value;
-  const timestamp = Date.parse(normalized);
-  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : undefined;
-}
-
 function readArticleDates(body: string): ArticleDates | undefined {
   try {
     const payload = JSON.parse(body) as { data?: unknown };
     if (!payload || typeof payload !== "object" || !payload.data) return undefined;
     const data = payload.data as Record<string, unknown>;
-    const modified = parseApiDate(data.modified);
+    const modified = parseSnippetTimestamp(data.modified);
     if (!modified) return undefined;
 
-    // `/v2/snippets/:id` exposes only a modification timestamp. Emitting that
-    // value as `article:published_time` would assert a publication event the
-    // origin never reported, so only the modification tag is emitted. Populate
-    // `published` here once the API returns a real creation date.
+    // `/v2/snippets/:id` exposes only a modification timestamp, so the date tags
+    // are assembled by the caller: `modified` from this payload, `published`
+    // from the row's `created_at` in D1 (see `readSnippetPublishedAt`).
     return { modified };
   } catch {
     return undefined;
@@ -318,21 +308,39 @@ type SnippetDocumentLookup = {
  * `classifyContentExistence` in `contentFetch.ts`, kept pure and unit tested:
  * only an explicit 404 is "missing"; timeout, network, 5xx, and other statuses
  * are "unknown" and the page is still served.
+ *
+ * The publication date is optional metadata, so its D1 read starts together with
+ * the API fetch rather than ahead of it: the two never serialize, and a tag that
+ * cannot be read is simply omitted.
  */
 async function lookupSnippetDocument(
   id: number,
   apiUrl: string | undefined,
+  db: SnippetDatabase | undefined,
 ): Promise<SnippetDocumentLookup> {
-  if (!apiUrl) return { existence: "unknown" };
+  if (!apiUrl) {
+    const published = await readSnippetPublishedAt(db, id);
+    return { existence: "unknown", articleDates: published ? { published } : undefined };
+  }
 
-  const result = await fetchContentText(`${apiUrl.replace(/\/+$/, "")}/v2/snippets/${id}`, {
-    timeoutMs: 4000,
-    cacheTtlSeconds: 3600,
-  });
+  const [published, result] = await Promise.all([
+    readSnippetPublishedAt(db, id),
+    fetchContentText(`${apiUrl.replace(/\/+$/, "")}/v2/snippets/${id}`, {
+      timeoutMs: 4000,
+      cacheTtlSeconds: 3600,
+    }),
+  ]);
   const existence = classifyContentExistence(result);
-  if (!result.ok) return { existence };
+  if (!result.ok) {
+    return { existence, articleDates: published ? { published } : undefined };
+  }
 
-  return { existence, articleDates: readArticleDates(result.body) };
+  const modified = readArticleDates(result.body)?.modified;
+  const articleDates: ArticleDates = { published, modified };
+  return {
+    existence,
+    articleDates: published || modified ? articleDates : undefined,
+  };
 }
 
 /**
@@ -384,7 +392,11 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const snippetDocument = parseSnippetDocumentPath(pathname);
   let articleDates: ArticleDates | undefined;
   if (snippetDocument) {
-    const lookup = await lookupSnippetDocument(snippetDocument.id, context.env.VITE_API_URL);
+    const lookup = await lookupSnippetDocument(
+      snippetDocument.id,
+      context.env.VITE_API_URL,
+      context.env.SNIPPET_DB,
+    );
     if (lookup.existence === "missing") {
       return serveNotFound(context.env.ASSETS, requestUrl);
     }
