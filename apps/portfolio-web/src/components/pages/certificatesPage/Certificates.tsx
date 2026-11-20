@@ -190,11 +190,7 @@ export default function Certifications() {
 
   return (
     <>
-      <GlobalHeadManager
-        title="Training and Credentials"
-        description="Explore certificates and training credentials covering software development and related learning."
-        url="https://syn-forge.com/certificates"
-      />
+      <GlobalHeadManager url="https://syn-forge.com/certificates" />
       <main aria-labelledby="certificates-page-title">
         <CookingArea>
           <div aria-busy={certsQuery.isFetching} className="certificate-archive-shell">
