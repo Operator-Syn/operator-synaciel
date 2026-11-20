@@ -16,8 +16,17 @@ type SocialPreviewCardProps = {
   metadata: SocialPreviewMetadata;
 };
 
-function Box({ children, style }: { children?: React.ReactNode; style: CSSProperties }) {
-  return React.createElement("div", { style }, children);
+function Box({
+  children,
+  style,
+  part,
+}: {
+  children?: React.ReactNode;
+  style: CSSProperties;
+  /** Stable selector hook for the generator's layout assertions. */
+  part?: string;
+}) {
+  return React.createElement("div", { "data-card-part": part, style }, children);
 }
 
 function Label({ children, style }: { children?: React.ReactNode; style: CSSProperties }) {
@@ -251,6 +260,7 @@ export function SocialPreviewCard({ metadata }: SocialPreviewCardProps) {
       }}
     >
       <Box
+        part="column"
         style={{
           display: "flex",
           width: 700,
@@ -274,6 +284,7 @@ export function SocialPreviewCard({ metadata }: SocialPreviewCardProps) {
           Public archive / {metadata.label}
         </Label>
         <Box
+          part="title"
           style={{
             display: "flex",
             maxWidth: 700,
@@ -290,6 +301,7 @@ export function SocialPreviewCard({ metadata }: SocialPreviewCardProps) {
           {metadata.title}
         </Box>
         <Box
+          part="description"
           style={{
             display: "flex",
             maxWidth: 620,
@@ -336,6 +348,7 @@ export function SocialPreviewCard({ metadata }: SocialPreviewCardProps) {
 
   const footer = (
     <Box
+      part="footer"
       style={{
         display: "flex",
         alignItems: "center",
