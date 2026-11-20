@@ -43,6 +43,11 @@ export default function NotFound() {
 
   return (
     <>
+      {/*
+        The one page that passes its own head copy. The metadata map resolves an
+        unknown path to the home entry, so defaulting here would advertise the
+        home page on every 404.
+      */}
       <GlobalHeadManager
         description={NOT_FOUND_DESCRIPTION}
         robots="noindex, nofollow"
