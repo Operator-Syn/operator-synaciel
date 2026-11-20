@@ -1,3 +1,5 @@
+import type { ProbeResult } from "./snippetFolderProbe.ts";
+
 const SNIPPET_DOCUMENT_ROUTE = /^\/snippets\/document\/\d+\/[^/]+$/;
 const FOLDER_KEY_SEPARATOR = "\u0000";
 
@@ -106,4 +108,22 @@ export function decideSnippetFolderRoute(
   if (!hasSnippetFolder(folders, segments)) return { action: "not-found" };
   if (!pathname.endsWith("/")) return { action: "serve" };
   return { action: "redirect", pathname: pathname.replace(/\/+$/, "") };
+}
+
+/** Resolve a folder route without HTTP when D1 gives a definitive answer. */
+export async function resolveSnippetFolderRoute(
+  pathname: string,
+  segments: readonly string[] | null,
+  probe: (path: readonly string[]) => Promise<ProbeResult>,
+  loadApiFolders: () => Promise<ReadonlySet<string> | undefined>,
+): Promise<SnippetFolderRouteDecision> {
+  // Skip non-folder routes. For folder routes, translate a definite answer
+  // into membership in a set; only uncertainty uses the existing API lookup.
+  if (!segments) return { action: "serve" };
+  const result = await probe(segments);
+  const folders =
+    result === "unknown"
+      ? await loadApiFolders()
+      : new Set(result === "yes" ? [folderKey(segments)] : []);
+  return decideSnippetFolderRoute(pathname, segments, folders);
 }
