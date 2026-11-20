@@ -6,8 +6,6 @@ import {
 import StaticAppPage, { type StaticAppPageConfig } from "../staticAppPage/StaticAppPage";
 
 const agentPageConfig: StaticAppPageConfig = {
-  title: "Feilhann Agent",
-  description: "Feilhann Agent homepage for Syn-Forge and Google project verification.",
   url: "https://syn-forge.com/agent",
   kicker: "Syn-Forge authenticated assistant",
   heading: "Feilhann Agent",
