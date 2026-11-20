@@ -340,8 +340,6 @@ export default function TermsAndConditions() {
   return (
     <>
       <GlobalHeadManager
-        title="Terms and Conditions"
-        description="Terms and Conditions for Syn-Forge, Operator-Syn, and related personal applications hosted under syn-forge.com."
         url="https://syn-forge.com/terms-and-conditions"
         jsonLd={breadcrumbSchema}
       />
