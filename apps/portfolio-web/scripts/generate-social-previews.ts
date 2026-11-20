@@ -55,6 +55,85 @@ function formatGenerationError(error: unknown) {
   return error instanceof Error ? (error.stack ?? error.message) : String(error);
 }
 
+/**
+ * Fail the generation when the card content no longer fits its 1200x630 frame.
+ *
+ * Titles and descriptions come from the metadata map, so a copy change can
+ * silently overflow the layout. The card clips with `overflow: hidden`, which
+ * means an over-long title does not raise an error, it just gets cut off — the
+ * failure this check exists to catch. A pure `scrollHeight` comparison is not
+ * enough: the flex column shrinks instead of overflowing, so the boxes are
+ * measured against the footer's top edge instead.
+ */
+async function assertCardFits(page: import("playwright").Page, pathname: string) {
+  // The callback is a string: esbuild's `tsx` transform injects a `__name`
+  // helper into function expressions, which `page.evaluate` then cannot resolve
+  // in the browser context.
+  const layout = (await page.evaluate(`(() => {
+    const rect = (part) => {
+      const element = document.querySelector('[data-card-part="' + part + '"]');
+      if (!element) return null;
+      const box = element.getBoundingClientRect();
+      return {
+        top: box.top,
+        bottom: box.bottom,
+        scrollHeight: element.scrollHeight,
+        clientHeight: element.clientHeight,
+      };
+    };
+    return {
+      column: rect("column"),
+      title: rect("title"),
+      description: rect("description"),
+      footer: rect("footer"),
+    };
+  })()`)) as {
+    title: { top: number; bottom: number; scrollHeight: number; clientHeight: number } | null;
+    column: { top: number; bottom: number; scrollHeight: number; clientHeight: number } | null;
+    description: { top: number; bottom: number; scrollHeight: number; clientHeight: number } | null;
+    footer: { top: number; bottom: number; scrollHeight: number; clientHeight: number } | null;
+  };
+
+  if (!layout.column || !layout.title || !layout.description || !layout.footer) {
+    throw new Error(`Social preview card parts missing for ${pathname}.`);
+  }
+
+  // Sub-pixel line-height rounding reports a couple of pixels of "scroll"
+  // height on a box that is fully painted; anything beyond that is real.
+  const ROUNDING_TOLERANCE_PX = 4;
+  const problems: string[] = [];
+  if (layout.title.scrollHeight > layout.title.clientHeight + ROUNDING_TOLERANCE_PX) {
+    problems.push(
+      `title clipped (${layout.title.scrollHeight}px > ${layout.title.clientHeight}px)`,
+    );
+  }
+  if (layout.description.scrollHeight > layout.description.clientHeight + ROUNDING_TOLERANCE_PX) {
+    problems.push(
+      `description clipped (${layout.description.scrollHeight}px > ${layout.description.clientHeight}px)`,
+    );
+  }
+  if (layout.column.bottom > layout.footer.top + ROUNDING_TOLERANCE_PX) {
+    problems.push(
+      `column overlaps the footer (${Math.round(layout.column.bottom)}px > ${Math.round(layout.footer.top)}px)`,
+    );
+  }
+  if (layout.title.bottom > layout.footer.top + ROUNDING_TOLERANCE_PX) {
+    problems.push(
+      `title overlaps the footer (${Math.round(layout.title.bottom)}px > ${Math.round(layout.footer.top)}px)`,
+    );
+  }
+  if (layout.description.bottom > layout.footer.top + ROUNDING_TOLERANCE_PX) {
+    problems.push(
+      `description overlaps the footer (${Math.round(layout.description.bottom)}px > ${Math.round(layout.footer.top)}px)`,
+    );
+  }
+  if (problems.length) {
+    throw new Error(
+      `Social preview card does not fit for ${pathname}: ${problems.join("; ")}. Shorten the title or description.`,
+    );
+  }
+}
+
 async function generateSocialPreviews() {
   const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
   const browser = await chromium.launch(executablePath ? { executablePath } : undefined);
@@ -83,6 +162,8 @@ async function generateSocialPreviews() {
         if (!imagesLoaded) {
           throw new Error(`Social preview avatar failed to load for ${route.pathname}.`);
         }
+
+        await assertCardFits(page, route.pathname);
 
         const outputPath = getOutputPath(getSocialPreviewImagePath(route.pathname));
         await mkdir(dirname(outputPath), { recursive: true });
