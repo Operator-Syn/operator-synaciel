@@ -437,12 +437,7 @@ export default function Snippets() {
 
   return (
     <>
-      <GlobalHeadManager
-        title="Code Snippets"
-        description="Browse code snippets, developer notes, and reference files from the Syn-Forge portfolio."
-        url={canonicalUrl}
-        jsonLd={breadcrumbSchema}
-      />
+      <GlobalHeadManager url={canonicalUrl} jsonLd={breadcrumbSchema} />
 
       <main aria-labelledby="snippets-page-title">
         <CookingArea>
