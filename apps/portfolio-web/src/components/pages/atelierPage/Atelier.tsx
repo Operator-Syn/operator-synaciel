@@ -1,9 +1,6 @@
 import StaticAppPage, { type StaticAppPageConfig } from "../staticAppPage/StaticAppPage";
 
 const atelierPageConfig: StaticAppPageConfig = {
-  title: "Atelier",
-  description:
-    "Atelier dashboard homepage for Syn-Forge portfolio administration and application verification.",
   url: "https://syn-forge.com/atelier",
   kicker: "Syn-Forge portfolio dashboard",
   heading: "Atelier",
