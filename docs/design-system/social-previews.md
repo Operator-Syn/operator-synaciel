@@ -23,9 +23,23 @@ consumes the semantic palette in [[design-system/tokens|Design Tokens]].
 ## Source and output contract
 
 - `apps/portfolio-web/src/data/socialPreview.ts` owns the route metadata, route fallback, image
-  dimensions, colors, avatar source, and existing public image-path contract.
+  dimensions, colors, avatar source, and existing public image-path contract. It is the **single
+  owner of each route's title and description**: `GlobalHeadManager` defaults to it when a page
+  passes no `title`/`description`, and the Pages middleware renders the same strings. A page only
+  passes those props when the map cannot describe it, and there are exactly two such states:
+  the 404 route (an unknown path resolves to the home entry) and a snippet document that is missing
+  (the map would advertise the archive or a document that no longer exists). Both are `noindex`.
+- Titles are budgeted at 50-60 characters **including** the ` | Syn-Forge` suffix the middleware and
+  `GlobalHeadManager` append, and descriptions at 120-155. `tests/route-metadata.test.ts` asserts
+  both, plus the terms each measured route already ranks for.
+- `npm run verify:pages` runs the Pages runtime (`wrangler pages dev` over a built `dist`) with
+  `playwright.pages.config.ts`. That is where the Function's head rewrite, the single description
+  tag after hydration, and the client's in-app re-derivation are verified; the authenticated
+  `playwright.config.ts` deliberately ignores `*.pages.spec.ts`, because the Vite dev server does
+  not run the Function.
 - `apps/portfolio-web/src/components/socialPreview/SocialPreviewCard.tsx` owns the pure React TSX
-  composition and accepts `SocialPreviewMetadata`.
+  composition and accepts `SocialPreviewMetadata`. Its title, description and footer boxes carry
+  `data-card-part` attributes so the generator can measure them.
 - `SOCIAL_PREVIEW_AVATAR_URL` points at the profile image used by the site's
   identity surface; the avatar is baked into each PNG at generation time.
 - `apps/portfolio-web/scripts/generate-social-previews.ts` renders the component with
