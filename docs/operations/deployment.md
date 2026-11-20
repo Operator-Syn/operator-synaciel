@@ -502,6 +502,19 @@ Preview environment too. The Vite configuration loads environment values from
 the repository root and the frontend requests routes beneath VITE_API_URL. Do
 not set this to the MCP endpoint.
 
+For the direct snippet-folder existence check, add a D1 binding named `SNIPPET_DB`
+in the Production settings of the Pages project serving `syn-forge.com`. Use the
+same `my-personal-portfolio` database ID as the API Worker Wrangler config. Check
+the project, environment, database ID, and unchanged environment variables before
+redeploying. Leave Preview unbound: the binding allows writes even though the
+middleware only reads.
+
+Without the binding, or when D1 cannot answer, the existing API check applies.
+Its one-hour cache can temporarily hide new folders or still serve deleted ones.
+There is no application timeout on the D1 check: a stalled read delays the
+response and fallback. To disable the direct check, remove the binding and
+redeploy Pages.
+
 `VITE_TURNSTILE_SITE_KEY` is safe to expose in the browser bundle because it is
 the public widget identifier. Keep the paired `TURNSTILE_SECRET_KEY` only as a
 secret binding on the `portfolio-public-auth` Worker; never put that secret in
