@@ -11,8 +11,8 @@ function normalizePathForMatch(pathname: string) {
  * Decides whether the Pages Function may serve the app shell for a path.
  *
  * Every path under `/snippets/` is accepted here so real folder URLs can be
- * served. Existence is decided in `_middleware.ts` against the cached snippet
- * tree: missing folders 404, unknown folder state still serves. This allowlist
+ * served. The middleware checks D1 first and uses the cached API tree when D1
+ * cannot answer. Missing folders 404; unknown folder state still serves. This allowlist
  * only decides whether the Function runs.
  */
 export function isKnownRoute(pathname: string) {
