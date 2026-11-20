@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
   getSocialPreviewImageUrl,
   getSocialPreviewMetadata,
@@ -25,27 +26,42 @@ type HeadProps = {
 };
 
 export default function GlobalHeadManager({ title, description, image, url, robots }: HeadProps) {
+  // The router location is the trigger for in-place URL changes (for example a
+  // snippet document canonicalising its slug), so the head re-resolves even
+  // when a call site does not pass `url`.
+  const location = useLocation();
+
   useEffect(() => {
-    const pageUrl = url || window.location.href;
+    // `location.pathname` is the re-run trigger below, so an in-place route
+    // change re-derives the head. Search/hash are appended only to keep the URL
+    // shape identical to `window.location.href`; they do not trigger the effect.
+    const pageUrl =
+      url ||
+      `${window.location.origin}${location.pathname}${window.location.search}${window.location.hash}`;
     const pagePath = new URL(pageUrl, window.location.href).pathname;
     const routeMetadata = getSocialPreviewMetadata(pagePath);
     const socialImage = image || getSocialPreviewImageUrl(pagePath);
+    // The metadata map is the single owner. A page only needs to pass these
+    // props when the map cannot describe it (the 404 route, which must not
+    // inherit the home route's metadata).
+    const resolvedTitle = title ?? routeMetadata.title;
+    const resolvedDescription = description ?? routeMetadata.description;
 
     // Document title
-    if (title) document.title = `${title} | Syn-Forge`;
+    document.title = `${resolvedTitle} | Syn-Forge`;
 
-    // Meta description
-    if (description) {
-      let meta = document.getElementById("meta-description") as HTMLMetaElement | null;
-      if (meta) meta.content = description;
-      else {
-        meta = document.createElement("meta");
-        meta.id = "meta-description";
-        meta.name = "description";
-        meta.content = description;
-        document.head.appendChild(meta);
-      }
+    // Meta description: the middleware writes one without an id, so it is
+    // found by selector and updated in place. Appending unconditionally left
+    // served pages with two description tags.
+    let descriptionTag = document.querySelector(
+      'meta[name="description"]',
+    ) as HTMLMetaElement | null;
+    if (!descriptionTag) {
+      descriptionTag = document.createElement("meta");
+      descriptionTag.name = "description";
+      document.head.appendChild(descriptionTag);
     }
+    descriptionTag.content = resolvedDescription;
 
     // OpenGraph tags
     const setMetaProperty = (property: string, content?: string) => {
@@ -59,8 +75,8 @@ export default function GlobalHeadManager({ title, description, image, url, robo
       tag.content = content;
     };
 
-    setMetaProperty("og:title", title ? `${title} | Syn-Forge` : undefined);
-    setMetaProperty("og:description", description);
+    setMetaProperty("og:title", `${resolvedTitle} | Syn-Forge`);
+    setMetaProperty("og:description", resolvedDescription);
     setMetaProperty("og:image", socialImage);
     setMetaProperty("og:image:secure_url", socialImage);
     setMetaProperty("og:image:type", SOCIAL_PREVIEW_CONTENT_TYPE);
@@ -89,8 +105,8 @@ export default function GlobalHeadManager({ title, description, image, url, robo
       tag.content = content;
     };
 
-    setMetaName("twitter:title", title ? `${title} | Syn-Forge` : undefined);
-    setMetaName("twitter:description", description);
+    setMetaName("twitter:title", `${resolvedTitle} | Syn-Forge`);
+    setMetaName("twitter:description", resolvedDescription);
     setMetaName("twitter:image", socialImage);
     setMetaName("twitter:card", "summary_large_image");
     if (robots) {
@@ -99,7 +115,7 @@ export default function GlobalHeadManager({ title, description, image, url, robo
       const robotsTag = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
       if (robotsTag) robotsTag.content = "index, follow";
     }
-  }, [title, description, image, url, robots]);
+  }, [title, description, image, url, robots, location.pathname]);
 
   return null;
 }
