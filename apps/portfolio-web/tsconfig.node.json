@@ -25,6 +25,7 @@
   "include": [
     "vite.config.ts",
     "playwright.config.ts",
+    "playwright.pages.config.ts",
     "scripts/generate-social-previews.ts",
     "src/components/socialPreview/SocialPreviewCard.tsx",
     "src/data/socialPreview.ts"
