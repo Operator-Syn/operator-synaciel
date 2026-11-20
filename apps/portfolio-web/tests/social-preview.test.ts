@@ -128,8 +128,14 @@ test("keeps the homepage description aligned with the SERP target", async () => 
   ]);
 
   assert.equal(index.split(HOME_PAGE_DESCRIPTION).length - 1, 3);
-  assert.match(home, /description=\{HOME_PAGE_DESCRIPTION\}/);
-  assert.match(home, /description: HOME_PAGE_DESCRIPTION/);
+  // The head is owned by the metadata map now: Home no longer passes a
+  // description prop, so the resolved value can only come from the map.
+  assert.doesNotMatch(home, /\bdescription=\{HOME_PAGE_DESCRIPTION\}/);
+  assert.match(home, /<GlobalHeadManager\b(?:(?!\/>)[\s\S])*?\/>/);
+  assert.doesNotMatch(
+    home.match(/<GlobalHeadManager\b[\s\S]*?\/>/)?.[0] ?? "",
+    /\b(title|description)\s*=/,
+  );
   assert.equal(getSocialPreviewMetadata("/").description, HOME_PAGE_DESCRIPTION);
 });
 
