@@ -611,7 +611,7 @@ test("keeps the reader's position across a reload instead of pinning the bottom"
   expect(after).toBeLessThan(reloadedMax - 8);
 });
 
-test("a reader who left at the very bottom comes back to the top", async ({ page }) => {
+test("a reader who left at the very bottom stays at the bottom after reload", async ({ page }) => {
   await stubApi(page, { projects: buildProjects(12) });
   await page.goto("/projects", { waitUntil: "networkidle" });
   await page.waitForTimeout(600);
@@ -620,8 +620,10 @@ test("a reader who left at the very bottom comes back to the top", async ({ page
   await page.waitForTimeout(400);
   expect(await page.evaluate(() => Math.round(window.scrollY))).toBeGreaterThan(400);
 
+  const beforeReload = await page.evaluate(() => Math.round(window.scrollY));
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(800);
 
-  expect(await page.evaluate(() => Math.round(window.scrollY))).toBe(0);
+  const afterReload = await page.evaluate(() => Math.round(window.scrollY));
+  expect(Math.abs(afterReload - beforeReload)).toBeLessThanOrEqual(8);
 });
