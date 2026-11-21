@@ -19,7 +19,13 @@
         gap: 0.75rem 2rem;
         margin-top: clamp(2.5rem, 5vw, 4rem);
         border-top: 1px solid var(--color-line);
-        padding: 1.5rem 0 2rem;
+        /*
+         * The legal pages park a fixed section control in the bottom-right corner, and the
+         * floating dock can sit there too. At full scroll that corner is exactly where the
+         * footer's legal links land, so the page ends a control-height clear of it rather
+         * than letting the control cover "Privacy" and "Terms".
+         */
+        padding: 1.5rem 0 calc(var(--floating-control-block-end, 1.5rem) + 4rem);
     }
 
     .site-footer-meta {
