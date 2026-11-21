@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { SNIPPETS_REFETCH_INTERVAL_MS, SNIPPETS_STALE_TIME_MS } from "../../../data/cacheSettings";
+import { SNIPPETS_HEADING, SNIPPETS_LEAD } from "../../../data/prerenderRoutes";
 import CookingArea from "../../cookingArea/CookingArea";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
 import { LoadingBlock, LoadingRegion } from "../../loadingState/LoadingState";
@@ -23,23 +24,18 @@ import TransitionLink from "../../pageTransition/TransitionLink";
 import usePageNavigate from "../../pageTransition/usePageNavigate";
 import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
 import SnippetMarkdown from "./SnippetMarkdown";
+import { collectSnippetDocuments, type SnippetNode } from "./snippetDocuments";
 import { getSnippetDocumentRoute, SNIPPETS_ROOT_PATH } from "./snippetRoutes";
 import "./Snippets.css";
 
 const INTERNAL_ROOT_PATH = SNIPPETS_ROOT_PATH;
 const apiUrl = import.meta.env.VITE_API_URL;
 
-type FileNode = {
-  id: number;
-  name: string;
-  type: "dir" | "file";
-  modified: string;
-  size?: number;
-  format?: "pdf" | "md";
-  path?: string | null;
-  children?: FileNode[];
-};
-
+/**
+ * A snippet tree node. The shape is owned by `snippetDocuments.ts`; the page keeps
+ * the local name so its existing helpers stay readable.
+ */
+type FileNode = SnippetNode;
 const formatBytes = (bytes?: number) => {
   if (!bytes) return "—";
 
@@ -214,6 +210,13 @@ export default function Snippets() {
 
   const fileIndex = useMemo(
     () => (rootFileSystem ? generateFileIndex(rootFileSystem) : {}),
+    [rootFileSystem],
+  );
+
+  // Every document in the tree, so the index links to them directly instead of
+  // hiding them behind folder navigation.
+  const documents = useMemo(
+    () => (rootFileSystem ? collectSnippetDocuments(rootFileSystem) : []),
     [rootFileSystem],
   );
 
@@ -470,8 +473,8 @@ export default function Snippets() {
                     ))}
                   </nav>
 
-                  <h1 className="sr-only" id="snippets-page-title">
-                    Code snippets index
+                  <h1 className="snippets-index-title" id="snippets-page-title">
+                    {SNIPPETS_HEADING}
                   </h1>
 
                   {isLoading && <SnippetIndexLoading />}
@@ -584,6 +587,29 @@ export default function Snippets() {
                           )}
                         </tbody>
                       </table>
+
+                      {documents.length > 0 && (
+                        <section
+                          aria-labelledby="snippets-documents-title"
+                          className="snippets-documents"
+                        >
+                          <h2 className="snippets-documents-title" id="snippets-documents-title">
+                            All documents
+                          </h2>
+                          <ul className="snippets-documents-list">
+                            {documents.map((document) => (
+                              <li key={document.id}>
+                                <TransitionLink
+                                  className="snippets-documents-link"
+                                  to={getSnippetDocumentRoute(document.id, document.name)}
+                                >
+                                  {document.path}
+                                </TransitionLink>
+                              </li>
+                            ))}
+                          </ul>
+                        </section>
+                      )}
                     </>
                   )}
                 </div>
@@ -591,7 +617,7 @@ export default function Snippets() {
                 <footer className="snippets-index-note">
                   <Info aria-hidden="true" size={18} />
                   <div>
-                    <p>Folders open to /snippets/&lt;name&gt;. Markdown and PDF previews.</p>
+                    <p>{SNIPPETS_LEAD}</p>
                   </div>
                 </footer>
               </section>
