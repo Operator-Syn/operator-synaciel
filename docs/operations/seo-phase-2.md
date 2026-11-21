@@ -14,7 +14,16 @@ local audit directory, which is git-ignored on purpose.
 
 ## Status
 
-Everything in this phase is implemented and gated. None of this phase's application-code changes is deployed — that is a separate, authorised step — while the 2.3 snippet-data cleanup below already changed production data and is live. The remaining 2.1 check is visual: inspect the fragment-to-route transition in a throttled browser and measure CLS.
+Everything in this phase is implemented, gated and **deployed to production on 2026-11-21** (Pages
+`operator-synaciel`, main at `850424ba`). The one check still outstanding is visual: inspect the
+fragment-to-route transition in a throttled browser and measure CLS.
+
+Verified live after the release: all seven public routes return the `<main class="prerender-body">` fragment
+with its own `h1`; `/prerender/projects.html` is `404`; `/fonts/ibm-plex-sans-var.woff2` is `200` (45 712
+bytes); `/netbird` still carries `x-robots-tag: noindex, follow`; `/projects` shows `[ 8 projects ]` with a
+five-link footer, six transformed project images and no leftover fragment after hydration; `/certificates`
+shows `[ 9 certifications ]` with every certificate image on the `768×569,fit=pad,background=transparent`
+canvas except the `placehold.co` placeholder card, which is correctly left alone.
 
 | Item | State |
 |---|---|
