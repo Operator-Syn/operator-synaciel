@@ -8,6 +8,7 @@ import NavBar from "./components/navBar/NavBar";
 import PageTransition from "./components/pageTransition/PageTransition";
 import PortfolioAssistantFab from "./components/portfolioAssistant/PortfolioAssistantEntry";
 import QuickNavigation from "./components/quickNavigation/QuickNavigation";
+import SiteFooter from "./components/siteFooter/SiteFooter";
 import { brandName, navLinks as NavLinks, routes } from "./data/NavLinks.types";
 
 const NotFound = lazy(() => import("./components/pages/notFoundPage/NotFound"));
@@ -70,6 +71,12 @@ export default function App() {
               <QuickNavigation />
             </FloatingControlsDock>
           </Suspense>
+
+          {/* Outside the Suspense boundary so the footer does not unmount while a
+              lazy route resolves. */}
+          <div className="page-frame">
+            <SiteFooter />
+          </div>
         </div>
       </PageTransition>
     </FloatingControlsProvider>
