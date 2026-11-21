@@ -24,9 +24,10 @@ export default function MediaCard({ project, index, onClick }: MediaCardProps) {
         type="button"
       >
         <MediaRenderer
+          alt=""
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           type={project.type}
           url={project.url}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
         />
       </button>
 
