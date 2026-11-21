@@ -13,6 +13,7 @@ import MediaModal from "../../mediaModal/MediaModal";
 import CursorPaginationControls from "../../pagination/CursorPaginationControls";
 import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
 import { shouldShowArchivePagination } from "../archivePagination";
+import useArchiveScrollRestoration from "../useArchiveScrollRestoration";
 import CertificateArchive from "./CertificateArchive";
 
 interface ApiCertificateItem {
@@ -143,6 +144,8 @@ export default function Certifications() {
   });
 
   const archive = certsQuery.data;
+
+  useArchiveScrollRestoration("/certificates", Boolean(archive));
   const apiCertifications = archive?.data.map(toMediaItem) ?? [];
   // See the projects page: `formatArchiveCount` adds the future-certification slot, so the header takes the
   // raw API total and the grid/pagination take the card count.
