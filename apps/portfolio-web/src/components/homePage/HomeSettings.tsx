@@ -62,6 +62,17 @@ function HomeSettingsPanel() {
   } = useSitePreferences();
   const { activePanel, closePanel, openPanel } = useFloatingControls();
   const isOpen = activePanel === "settings";
+  // The panel's copy is ~160 words that a crawler would otherwise read as page
+  // content on every route. It renders on first open and stays mounted afterwards,
+  // so closing still has a body to animate. Deriving this from `isOpen` rather than
+  // from the trigger handler covers the compact dock, which opens the panel through
+  // the floating-controls provider without touching the trigger.
+  const [hasOpened, setHasOpened] = useState(false);
+  const renderPanelBody = isOpen || hasOpened;
+
+  useEffect(() => {
+    if (isOpen) setHasOpened(true);
+  }, [isOpen]);
   const [announcement, setAnnouncement] = useState("");
   const panelRef = useRef<HTMLDivElement>(null);
   const panelScrollRef = useRef<HTMLElement>(null);
@@ -230,196 +241,204 @@ function HomeSettingsPanel() {
         inert={!isOpen}
         ref={panelScrollRef}
       >
-        <div className="home-settings-header">
-          <div>
-            <h2 id="home-settings-title">Appearance</h2>
-          </div>
-          <button
-            aria-label="Close settings"
-            className="home-settings-close"
-            data-settings-close="true"
-            onClick={closeSettings}
-            type="button"
-          >
-            <X aria-hidden="true" size={17} />
-          </button>
-        </div>
-
-        <fieldset className="home-settings-fieldset">
-          <legend>Color scheme</legend>
-          <div className="home-settings-options">
-            {themeChoices.map((choice) => (
-              <label
-                className={`home-settings-choice${theme === choice.value ? " is-selected" : ""}`}
-                key={choice.value}
+        {renderPanelBody && (
+          <>
+            <div className="home-settings-header">
+              <div>
+                <h2 id="home-settings-title">Appearance</h2>
+              </div>
+              <button
+                aria-label="Close settings"
+                className="home-settings-close"
+                data-settings-close="true"
+                onClick={closeSettings}
+                type="button"
               >
-                <input
-                  checked={theme === choice.value}
-                  name="site-theme"
-                  onChange={() => handleThemeChange(choice.value)}
-                  type="radio"
-                  value={choice.value}
-                />
-                <span>{choice.label}</span>
-                {theme === choice.value && (
-                  <span aria-hidden="true" className="home-settings-choice-state">
-                    Active
-                  </span>
-                )}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <fieldset className="home-settings-fieldset">
-          <legend>Motion</legend>
-          <div className="home-settings-options">
-            {motionChoices.map((choice) => (
-              <label
-                className={`home-settings-choice${motionPreference === choice.value ? " is-selected" : ""}`}
-                key={choice.value}
-              >
-                <input
-                  checked={motionPreference === choice.value}
-                  name="motion-preference"
-                  onChange={() => handleMotionChange(choice.value)}
-                  type="radio"
-                  value={choice.value}
-                />
-                <span className="home-settings-motion-copy">
-                  <span>{choice.label}</span>
-                  <small>{choice.description}</small>
-                </span>
-                {motionPreference === choice.value && (
-                  <span aria-hidden="true" className="home-settings-choice-state">
-                    Active
-                  </span>
-                )}
-              </label>
-            ))}
-          </div>
-          {motionPreference === "force" && systemReducedMotion ? (
-            <p className="home-settings-note">
-              Force motion overrides your device’s reduced-motion setting.
-            </p>
-          ) : effectiveReducedMotion ? (
-            <p className="home-settings-note">
-              Page transitions and animated feedback are limited. Static cursor cues remain
-              available.
-            </p>
-          ) : null}
-        </fieldset>
-
-        <fieldset className="home-settings-fieldset home-settings-custom-fieldset">
-          <legend>Custom theme</legend>
-          <p className="home-settings-custom-description">
-            Edit the colors and shadows in the JSON below. Invalid values cannot be applied.
-          </p>
-
-          <label className="home-settings-json-label" htmlFor="home-settings-custom-json">
-            <span>Theme JSON</span>
-            <textarea
-              aria-describedby={customFeedbackIds || undefined}
-              aria-invalid={customIssues.length > 0}
-              className="home-settings-json"
-              id="home-settings-custom-json"
-              onChange={(event) => updateCustomDraft(event.target.value)}
-              spellCheck={false}
-              value={customJson}
-            />
-          </label>
-
-          {customIssues.length > 0 && (
-            <div
-              aria-live="polite"
-              className="home-settings-validation"
-              id="home-settings-custom-errors"
-              role="alert"
-            >
-              <p>Theme document needs attention.</p>
-              <ul>
-                {customIssues.map((issue) => (
-                  <li key={`${issue.path}:${issue.message}`}>
-                    <strong>{issue.path}</strong>: {issue.message}
-                  </li>
-                ))}
-              </ul>
+                <X aria-hidden="true" size={17} />
+              </button>
             </div>
-          )}
 
-          {customSuggestions.length > 0 && (
-            <div
-              aria-live="polite"
-              className="home-settings-validation home-settings-suggestions"
-              id="home-settings-custom-suggestions"
-            >
-              <p>Optional readability suggestions.</p>
-              <ul>
-                {customSuggestions.map((suggestion) => (
-                  <li key={`${suggestion.path}:${suggestion.message}`}>
-                    <strong>{suggestion.path}</strong>: {suggestion.message}
-                  </li>
+            <fieldset className="home-settings-fieldset">
+              <legend>Color scheme</legend>
+              <div className="home-settings-options">
+                {themeChoices.map((choice) => (
+                  <label
+                    className={`home-settings-choice${theme === choice.value ? " is-selected" : ""}`}
+                    key={choice.value}
+                  >
+                    <input
+                      checked={theme === choice.value}
+                      name="site-theme"
+                      onChange={() => handleThemeChange(choice.value)}
+                      type="radio"
+                      value={choice.value}
+                    />
+                    <span>{choice.label}</span>
+                    {theme === choice.value && (
+                      <span aria-hidden="true" className="home-settings-choice-state">
+                        Active
+                      </span>
+                    )}
+                  </label>
                 ))}
-              </ul>
-              <p className="home-settings-suggestions-note">
-                These do not block applying your theme.
+              </div>
+            </fieldset>
+
+            <fieldset className="home-settings-fieldset">
+              <legend>Motion</legend>
+              <div className="home-settings-options">
+                {motionChoices.map((choice) => (
+                  <label
+                    className={`home-settings-choice${motionPreference === choice.value ? " is-selected" : ""}`}
+                    key={choice.value}
+                  >
+                    <input
+                      checked={motionPreference === choice.value}
+                      name="motion-preference"
+                      onChange={() => handleMotionChange(choice.value)}
+                      type="radio"
+                      value={choice.value}
+                    />
+                    <span className="home-settings-motion-copy">
+                      <span>{choice.label}</span>
+                      <small>{choice.description}</small>
+                    </span>
+                    {motionPreference === choice.value && (
+                      <span aria-hidden="true" className="home-settings-choice-state">
+                        Active
+                      </span>
+                    )}
+                  </label>
+                ))}
+              </div>
+              {motionPreference === "force" && systemReducedMotion ? (
+                <p className="home-settings-note">
+                  Force motion overrides your device’s reduced-motion setting.
+                </p>
+              ) : effectiveReducedMotion ? (
+                <p className="home-settings-note">
+                  Page transitions and animated feedback are limited. Static cursor cues remain
+                  available.
+                </p>
+              ) : null}
+            </fieldset>
+
+            <fieldset className="home-settings-fieldset home-settings-custom-fieldset">
+              <legend>Custom theme</legend>
+              <p className="home-settings-custom-description">
+                Edit the colors and shadows in the JSON below. Invalid values cannot be applied.
               </p>
-            </div>
-          )}
 
-          <div className="home-settings-custom-actions">
-            <label className="home-settings-action home-settings-upload">
-              <Upload aria-hidden="true" size={15} />
-              <span>Load JSON</span>
-              <input
-                ref={fileInputRef}
-                accept=".json,application/json"
-                className="home-settings-file-input"
-                onChange={handleCustomFileChange}
-                type="file"
-              />
-            </label>
-            <button className="home-settings-action" onClick={handleDownloadTemplate} type="button">
-              <Download aria-hidden="true" size={15} />
-              <span>Download template</span>
-            </button>
-          </div>
+              <label className="home-settings-json-label" htmlFor="home-settings-custom-json">
+                <span>Theme JSON</span>
+                <textarea
+                  aria-describedby={customFeedbackIds || undefined}
+                  aria-invalid={customIssues.length > 0}
+                  className="home-settings-json"
+                  id="home-settings-custom-json"
+                  onChange={(event) => updateCustomDraft(event.target.value)}
+                  spellCheck={false}
+                  value={customJson}
+                />
+              </label>
 
-          <div className="home-settings-custom-actions">
-            <button
-              className="home-settings-action home-settings-action-primary"
-              disabled={!customDraft}
-              onClick={handleApplyCustomTheme}
-              type="button"
-            >
-              Apply theme
-            </button>
-            {customTheme && (
-              <>
+              {customIssues.length > 0 && (
+                <div
+                  aria-live="polite"
+                  className="home-settings-validation"
+                  id="home-settings-custom-errors"
+                  role="alert"
+                >
+                  <p>Theme document needs attention.</p>
+                  <ul>
+                    {customIssues.map((issue) => (
+                      <li key={`${issue.path}:${issue.message}`}>
+                        <strong>{issue.path}</strong>: {issue.message}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {customSuggestions.length > 0 && (
+                <div
+                  aria-live="polite"
+                  className="home-settings-validation home-settings-suggestions"
+                  id="home-settings-custom-suggestions"
+                >
+                  <p>Optional readability suggestions.</p>
+                  <ul>
+                    {customSuggestions.map((suggestion) => (
+                      <li key={`${suggestion.path}:${suggestion.message}`}>
+                        <strong>{suggestion.path}</strong>: {suggestion.message}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="home-settings-suggestions-note">
+                    These do not block applying your theme.
+                  </p>
+                </div>
+              )}
+
+              <div className="home-settings-custom-actions">
+                <label className="home-settings-action home-settings-upload">
+                  <Upload aria-hidden="true" size={15} />
+                  <span>Load JSON</span>
+                  <input
+                    ref={fileInputRef}
+                    accept=".json,application/json"
+                    className="home-settings-file-input"
+                    onChange={handleCustomFileChange}
+                    type="file"
+                  />
+                </label>
                 <button
                   className="home-settings-action"
-                  onClick={handleExportCustomTheme}
+                  onClick={handleDownloadTemplate}
                   type="button"
                 >
                   <Download aria-hidden="true" size={15} />
-                  <span>Export theme</span>
+                  <span>Download template</span>
                 </button>
+              </div>
+
+              <div className="home-settings-custom-actions">
                 <button
-                  className="home-settings-action"
-                  onClick={handleResetCustomTheme}
+                  className="home-settings-action home-settings-action-primary"
+                  disabled={!customDraft}
+                  onClick={handleApplyCustomTheme}
                   type="button"
                 >
-                  <RotateCcw aria-hidden="true" size={15} />
-                  <span>Remove custom theme</span>
+                  Apply theme
                 </button>
-              </>
-            )}
-          </div>
-        </fieldset>
+                {customTheme && (
+                  <>
+                    <button
+                      className="home-settings-action"
+                      onClick={handleExportCustomTheme}
+                      type="button"
+                    >
+                      <Download aria-hidden="true" size={15} />
+                      <span>Export theme</span>
+                    </button>
+                    <button
+                      className="home-settings-action"
+                      onClick={handleResetCustomTheme}
+                      type="button"
+                    >
+                      <RotateCcw aria-hidden="true" size={15} />
+                      <span>Remove custom theme</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </fieldset>
 
-        <output aria-live="polite" className="sr-only">
-          {announcement}
-        </output>
+            <output aria-live="polite" className="sr-only">
+              {announcement}
+            </output>
+          </>
+        )}
       </section>
 
       <button
