@@ -1,7 +1,9 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import "../../../styles/certificate-archive.css";
 import { type ReactNode, useCallback, useState } from "react";
+import { formatArchiveCount } from "../../../data/archiveCount";
 import { PUBLIC_DATA_STALE_TIME_MS } from "../../../data/cacheSettings";
+import { CERTIFICATES_HEADING, CERTIFICATES_LEAD } from "../../../data/prerenderRoutes";
 import { isReducedMotionEnabled } from "../../../preferences/sitePreferences";
 import type { MediaItem } from "../../../types/MediaCardTypes";
 import CookingArea from "../../cookingArea/CookingArea";
@@ -10,6 +12,7 @@ import { LoadingBlock, LoadingRegion } from "../../loadingState/LoadingState";
 import MediaModal from "../../mediaModal/MediaModal";
 import CursorPaginationControls from "../../pagination/CursorPaginationControls";
 import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
+import { shouldShowArchivePagination } from "../archivePagination";
 import CertificateArchive from "./CertificateArchive";
 
 interface ApiCertificateItem {
@@ -55,7 +58,7 @@ const FUTURE_CERT_CARD: MediaItem = {
 };
 
 const apiUrl = import.meta.env.VITE_API_URL;
-const CERTIFICATES_PER_PAGE = 6;
+const CERTIFICATES_PER_PAGE = 12;
 
 async function fetchCertificateArchive(cursor: string | null, signal: AbortSignal) {
   const params = new URLSearchParams({ limit: String(CERTIFICATES_PER_PAGE) });
@@ -100,7 +103,6 @@ function CertificateArchiveLoading() {
   return (
     <LoadingRegion
       className="certificate-archive-grid certificate-archive-loading"
-      data-card-count="6"
       label="Preparing certificate archive"
     >
       {["one", "two", "three", "four", "five", "six"].map((key) => (
@@ -142,7 +144,10 @@ export default function Certifications() {
 
   const archive = certsQuery.data;
   const apiCertifications = archive?.data.map(toMediaItem) ?? [];
-  const totalCertificateCards = archive ? archive.pagination.total + 1 : null;
+  // See the projects page: `formatArchiveCount` adds the future-certification slot, so the header takes the
+  // raw API total and the grid/pagination take the card count.
+  const certificateTotal = archive ? archive.pagination.total : null;
+  const totalCertificateCards = certificateTotal === null ? null : certificateTotal + 1;
   const showFutureCertCard = Boolean(archive && !archive.pagination.has_more);
   const displayCerts = showFutureCertCard
     ? [...apiCertifications, FUTURE_CERT_CARD]
@@ -204,17 +209,14 @@ export default function Certifications() {
               <p className="eyebrow">03 / 04</p>
               <div className="certificate-archive-heading">
                 <div>
-                  <h1 id="certificates-page-title">Credentials / learning archive</h1>
-                  <p>
-                    Training completed through workshops, programs, and certifications that support
-                    continuous learning and professional growth.
-                  </p>
+                  <h1 id="certificates-page-title">{CERTIFICATES_HEADING}</h1>
+                  <p>{CERTIFICATES_LEAD}</p>
                 </div>
                 <p className="meta-label">
                   {totalCertificateCards === null ? (
                     <LoadingBlock className="loading-count" />
                   ) : (
-                    `[ ${totalCertificateCards} certifications ]`
+                    formatArchiveCount(certificateTotal ?? 0, "certifications")
                   )}
                 </p>
               </div>
@@ -256,18 +258,20 @@ export default function Certifications() {
                   onOpenCertificate={handleOpenCert}
                   startIndex={(currentPage - 1) * CERTIFICATES_PER_PAGE}
                 />
-                <CursorPaginationControls
-                  currentPage={currentPage}
-                  hasNextPage={archive.pagination.has_more}
-                  isFetching={certsQuery.isFetching}
-                  itemLabel="certifications"
-                  onNextPage={handleNextPage}
-                  onPreviousPage={handlePreviousPage}
-                  pageSize={CERTIFICATES_PER_PAGE}
-                  totalItems={totalCertificateCards ?? 0}
-                  variant="certificate"
-                  visibleItemCount={displayCerts.length}
-                />
+                {shouldShowArchivePagination(archive.pagination.has_more, currentPage) && (
+                  <CursorPaginationControls
+                    currentPage={currentPage}
+                    hasNextPage={archive.pagination.has_more}
+                    isFetching={certsQuery.isFetching}
+                    itemLabel="certifications"
+                    onNextPage={handleNextPage}
+                    onPreviousPage={handlePreviousPage}
+                    pageSize={CERTIFICATES_PER_PAGE}
+                    totalItems={totalCertificateCards ?? 0}
+                    variant="certificate"
+                    visibleItemCount={displayCerts.length}
+                  />
+                )}
               </>
             )}
 
