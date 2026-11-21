@@ -2,6 +2,17 @@ import { ArrowRight, Grid2X2 } from "lucide-react";
 import type { MediaItem } from "../../../types/MediaCardTypes";
 import MediaRenderer from "../../mediaRenderer/MediaRenderer";
 
+/**
+ * Project media is served from the R2 bucket through Cloudflare's image transform.
+ * The widest box the layout produces is 676 px, at a 800 px viewport while the row is
+ * still single-column; one pixel wider it drops to a ~248 px column. 1360 covers that
+ * widest case at DPR2, and the display ratio is 2.7 in every state — which is what the
+ * element attributes describe, not the source file's own proportions.
+ */
+const PROJECT_IMAGE_TRANSFORM_WIDTH = 1360;
+const PROJECT_IMAGE_WIDTH = 540;
+const PROJECT_IMAGE_HEIGHT = 200;
+
 interface ProjectArchiveProps {
   projects: MediaItem[];
   startIndex: number;
@@ -11,10 +22,13 @@ interface ProjectArchiveProps {
 
 function ProjectMedia({
   project,
+  position,
   onOpenProject,
   isInteractive,
 }: {
   project: MediaItem;
+  /** Index within the rendered page, so the first two cards are eager. */
+  position: number;
   onOpenProject: (project: MediaItem) => void;
   isInteractive: boolean;
 }) {
@@ -22,10 +36,16 @@ function ProjectMedia({
   const media = (
     <MediaRenderer
       alt={mediaLabel}
-      type={project.type}
-      url={project.url}
       className="project-archive-media-content"
       cursorState={project.type === "image" && isInteractive ? "zoom-in" : undefined}
+      image={{
+        transformWidth: PROJECT_IMAGE_TRANSFORM_WIDTH,
+        width: PROJECT_IMAGE_WIDTH,
+        height: PROJECT_IMAGE_HEIGHT,
+        loading: position < 2 ? "eager" : "lazy",
+      }}
+      type={project.type}
+      url={project.url}
     />
   );
 
@@ -49,11 +69,14 @@ function ProjectMedia({
 function ProjectArchiveRow({
   project,
   index,
+  pageIndex,
   onOpenProject,
   isInteractive,
 }: {
   project: MediaItem;
   index: number;
+  /** Position within the rendered page, which drives the eager/lazy hint. */
+  pageIndex: number;
   onOpenProject: (project: MediaItem) => void;
   isInteractive: boolean;
 }) {
@@ -94,7 +117,12 @@ function ProjectArchiveRow({
         <span className="meta-label project-archive-mobile-type">{project.type}</span>
       </div>
 
-      <ProjectMedia isInteractive={isInteractive} onOpenProject={onOpenProject} project={project} />
+      <ProjectMedia
+        isInteractive={isInteractive}
+        onOpenProject={onOpenProject}
+        position={pageIndex}
+        project={project}
+      />
 
       <div className="project-archive-copy">
         <h2 id={titleId}>{project.title}</h2>
@@ -148,6 +176,7 @@ export default function ProjectArchive({
       {projects.map((project, index) => (
         <ProjectArchiveRow
           index={startIndex + index}
+          pageIndex={index}
           key={project.id}
           isInteractive={isInteractive(project)}
           onOpenProject={onOpenProject}
