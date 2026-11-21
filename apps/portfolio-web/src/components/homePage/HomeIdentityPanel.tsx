@@ -19,10 +19,16 @@ export default function HomeIdentityPanel({
   profile,
   status,
 }: HomeIdentityPanelProps) {
+  // The API exposes the display name as a label/value pair; the portrait's
+  // alternative text reuses it so the image is described by who it shows.
+  const profileName = profile.find((item) => item.label === "Name")?.value?.trim();
+  const profileAlt = profileName ? `Portrait of ${profileName}` : "Profile";
+
   return (
     <section className="homepage-identity" aria-labelledby="homepage-identity-title">
       <div className="homepage-identity-main">
         <ProfileImageComponent
+          alt={profileAlt}
           figureClassName="homepage-profile-image"
           isLoading={isLoading}
           src={image}
