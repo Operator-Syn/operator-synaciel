@@ -277,7 +277,12 @@ test("gives every page a site footer except the home page", async ({ page }) => 
   const footer = page.locator("footer.site-footer");
   await expect(footer).toHaveCount(1);
   await expect(footer.getByRole("navigation", { name: "Site" })).toBeVisible();
-  await expect(footer.locator("a")).toHaveCount(5);
+  // Every public route, including the two legal pages: the footer is the site's
+  // own index of itself, not just a copy of the header navigation.
+  await expect(footer.locator("a")).toHaveCount(7);
+  // The identity block is what keeps this reading as a footer rather than a second
+  // navigation bar pinned under the content.
+  await expect(footer).toContainText("Operator-Syn");
 
   await page.goto("/");
   await expect(page.locator("footer.site-footer")).toHaveCount(0);
