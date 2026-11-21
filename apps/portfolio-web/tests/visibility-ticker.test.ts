@@ -15,8 +15,13 @@ interface FakeDocument extends Document {
 
 function createDocument(initialHidden = false) {
   const listeners = new Set<() => void>();
+  // `document.hidden` is read-only in the DOM types, so the fake exposes it through a getter over this
+  // mutable record rather than assigning to the property the type marks immutable.
+  const state = { hidden: initialHidden };
   const doc = {
-    hidden: initialHidden,
+    get hidden() {
+      return state.hidden;
+    },
     addEventListener: (type: string, listener: () => void) => {
       if (type === "visibilitychange") listeners.add(listener);
     },
@@ -24,7 +29,7 @@ function createDocument(initialHidden = false) {
       if (type === "visibilitychange") listeners.delete(listener);
     },
     fireVisibilityChange: (hidden: boolean) => {
-      doc.hidden = hidden;
+      state.hidden = hidden;
       for (const listener of [...listeners]) listener();
     },
   } as unknown as FakeDocument;
@@ -52,7 +57,7 @@ function withFakeTimers<T>(run: (state: TimerState) => T): T {
   globalThis.setInterval = (() => {
     state.intervals += 1;
     return state.intervals as unknown as ReturnType<typeof setInterval>;
-  }) as typeof setInterval;
+  }) as unknown as typeof setInterval;
   globalThis.clearInterval = ((id: number) => {
     state.cleared += 1;
     state.clearedIds.push(id);
