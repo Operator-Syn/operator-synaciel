@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Grid2X2 } from "lucide-react";
 import { HOMEPAGE_STALE_TIME_MS } from "../../../data/cacheSettings";
+import { getHeroCopy, HOME_HERO_BODY_FALLBACK } from "../../../data/homeHeroCopy";
 import { HOME_PAGE_DESCRIPTION } from "../../../data/socialPreview";
 import type { HomePageApiResponse, HomePageTypes } from "../../../types/HomePageTypes";
 import CookingArea from "../../cookingArea/CookingArea";
@@ -29,7 +30,6 @@ interface SectionApiRow {
 }
 
 const apiUrl = import.meta.env.VITE_API_URL;
-const HERO_BODY_FALLBACK = "A portfolio of projects, experiments, and the thinking behind them.";
 
 const fetchHomePage = async (): Promise<HomePageApiResponse> => {
   const response = await fetch(`${apiUrl}/home`);
@@ -94,24 +94,6 @@ function buildSections(rows: SectionApiRow[]): HomePageTypes["sections"] {
   return sections;
 }
 
-function getHeroCopy(site: HomePageTypes["site"]) {
-  const fallback = "Calm Interfaces, Seamless Experiences — Welcome Visitors!";
-  const phrase = site.headerPhrase?.trim() || fallback;
-  const separatorIndex = phrase.indexOf(" — ");
-
-  if (separatorIndex === -1) {
-    return {
-      kicker: site.mobileHeaderPhrase?.trim() || "Welcome Visitors!",
-      title: phrase,
-    };
-  }
-
-  return {
-    kicker: phrase.slice(separatorIndex + 3).trim() || "Welcome Visitors!",
-    title: `${phrase.slice(0, separatorIndex).trim()} —`,
-  };
-}
-
 export default function Home() {
   const { isMotionReady } = useHomepageMotion();
   const homeQuery = useQuery({
@@ -164,13 +146,7 @@ export default function Home() {
                   </span>
                 </div>
                 <h1 className="homepage-hero-title" id="homepage-hero-title">
-                  {isHeroLoading ? (
-                    <span aria-hidden="true" className="homepage-hero-title-placeholder">
-                      <LoadingBlock />
-                    </span>
-                  ) : (
-                    heroCopy.title
-                  )}
+                  {heroCopy.title}
                 </h1>
                 <p className="homepage-hero-kicker">
                   {isHeroLoading ? (
@@ -198,7 +174,7 @@ export default function Home() {
                     <p>
                       {homeQuery.isError
                         ? "Portfolio notes are temporarily unavailable."
-                        : HERO_BODY_FALLBACK}
+                        : HOME_HERO_BODY_FALLBACK}
                     </p>
                   )}
                 </div>
