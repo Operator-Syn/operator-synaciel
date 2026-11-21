@@ -27,6 +27,12 @@
     "playwright.config.ts",
     "playwright.pages.config.ts",
     "scripts/generate-social-previews.ts",
+    "scripts/prerender.ts",
+    "src/data/prerenderRoutes.ts",
+    "src/data/archiveCount.ts",
+    "src/components/pages/snippetsPage/snippetDocuments.ts",
+    "src/data/homeHeroCopy.ts",
+    "src/data/portfolioMcp.ts",
     "src/components/socialPreview/SocialPreviewCard.tsx",
     "src/data/socialPreview.ts"
   ]
