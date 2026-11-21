@@ -7,6 +7,9 @@
 - Update the existing focused canonical note before creating another one. If a
   rule needs durable detail, add it to the relevant vault note and link it
   here; keep this file to routing and non-obvious repository rules.
+- `docs/operations/seo-action-plan.md` is the source of truth for the SEO work.
+  Update it in the same change that alters an item's state, before reporting the
+  work as done, and treat a phase record that disagrees with it as a defect.
 - Use the [workspace map](docs/architecture/repository-layout.md) to find the
   owner of a change and [local development](docs/operations/local-development.md)
   for contributor commands. Tests live beside their owning workspace under
