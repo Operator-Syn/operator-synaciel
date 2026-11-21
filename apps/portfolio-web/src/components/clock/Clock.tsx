@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { startVisibilityAwareTicker } from "./visibilityTicker";
 
 function useClock() {
   const [time, setTime] = useState(new Date());
 
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  // The ticker owns the interval and the visibility listener and stops both from
+  // this effect's cleanup, so a background tab stops waking once a second.
+  useEffect(() => startVisibilityAwareTicker(() => setTime(new Date()), { document }).stop, []);
 
   return time;
 }
