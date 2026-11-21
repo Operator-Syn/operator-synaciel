@@ -3,7 +3,6 @@ import {
   parseSavedScroll,
   resolveScrollRestore,
   scrollStorageKey,
-  shouldRestoreOffset,
 } from "./archiveScrollRestoration";
 
 /**
@@ -26,8 +25,8 @@ const initialPathname = typeof window === "undefined" ? "" : window.location.pat
  *    once, and only when the document was served at this path. Restoring earlier is what
  *    caused the bug this exists for: the browser applied the offset against a skeleton
  *    several hundred pixels short, clamped it, and pinned the reader to the footer.
- * 3. A reader who left at the very end of the page was looking at the footer rather than the
- *    archive, so that position is not restored; the page starts at the top instead.
+ * 3. Preserve the exact saved offset, including the end of the page: the reader's position
+ *    belongs to them, and a refresh must not choose a different one.
  *
  * The browser's own restoration is turned off once, in `main.tsx`, before the load completes.
  *
@@ -72,7 +71,7 @@ export default function useArchiveScrollRestoration(path: string, ready: boolean
 
     const maxOffset = document.documentElement.scrollHeight - window.innerHeight;
     const target = resolveScrollRestore(String(saved.y), maxOffset);
-    if (target === null || !shouldRestoreOffset(target, saved.max)) return;
+    if (target === null) return;
 
     window.scrollTo({ top: target, behavior: "auto" });
   }, [path, ready]);
