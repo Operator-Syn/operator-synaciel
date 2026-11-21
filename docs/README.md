@@ -47,6 +47,7 @@ Topic notes live in focused folders.
 - [[operations/local-development|Local development]] - install, check, build,
   test-layout, hook, and database commands.
 - [[operations/deployment|Production deployment]] - production prerequisites, deployment order, smoke checks, and rollback.
+- [[operations/seo-phase-2|SEO phase 2]] - what the phase changed, the decisions behind it, and what remains.
 - [[plans/portfolio-agent/README|Portfolio agent reliability plan]] - staged audit and current sweep routing.
 - [[plans/portfolio-agent/implementation-sweeps/README|Portfolio agent implementation ledger]] - historical implementation evidence and rollout gates.
 - [[univsersal-repository-mcp-structure|Universal Repository MCP Structure blueprint]] - historical, repository-agnostic implementation stages; the local implementation it described has been retired.
