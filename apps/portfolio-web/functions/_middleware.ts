@@ -1,5 +1,6 @@
 import type { PagesFunction, Response as PagesResponse } from "@cloudflare/workers-types";
 import { NON_INDEXABLE_ROUTES } from "../src/data/canonicalRoutes.ts";
+import { prerenderSlugFor } from "../src/data/prerenderRoutes.ts";
 import { createSitemapResponse } from "../src/data/sitemap.ts";
 import {
   getSocialPreviewImageUrl,
@@ -164,6 +165,7 @@ function rewriteDocumentHead(
   response: PagesResponse,
   requestUrl: string,
   articleDates?: ArticleDates,
+  bodyFragment?: string,
 ) {
   const url = new URL(requestUrl);
   const metadata = getSocialPreviewMetadata(url.pathname);
@@ -184,6 +186,13 @@ function rewriteDocumentHead(
     .on("title", {
       element(element) {
         element.setInnerContent(`${metadata.title} | Syn-Forge`);
+      },
+    })
+    .on("div#root", {
+      element(element) {
+        // The shell ships an empty container. React's `createRoot` clears it on the first commit, so this
+        // markup serves crawlers and the pre-mount moment and is then discarded — never hydrated into.
+        if (bodyFragment) element.setInnerContent(bodyFragment, { html: true });
       },
     })
     .on("head", {
@@ -264,6 +273,40 @@ type PagesEnv = {
   SNIPPET_DB?: SnippetDatabase;
   ASSETS: { fetch(resource: URL): Promise<PagesResponse> };
 };
+
+/**
+ * Read the prerendered body fragment for a request path, if one exists.
+ *
+ * Algorithm:
+ * 1. Map the path to a fragment slug; return `undefined` when the route is not prerendered.
+ * 2. Fetch `/prerender/<slug>.html` through the static asset binding — a binding call, not a routed request,
+ *    so the Function is not re-entered.
+ * 3. Return the text only when the response is OK.
+ *
+ * A missing fragment is not an error: a build without the prerender step, or a deployment from an older
+ * commit, must serve the same shell it serves today.
+ *
+ * @param assets The Pages static asset binding.
+ * @param pathname The request path.
+ * @param requestUrl The absolute request URL, used to resolve the asset URL.
+ * @returns The fragment markup, or `undefined` when there is nothing to inject.
+ */
+async function fetchPrerenderFragment(
+  assets: PagesEnv["ASSETS"],
+  pathname: string,
+  requestUrl: string,
+): Promise<string | undefined> {
+  const slug = prerenderSlugFor(pathname);
+  if (!slug) return undefined;
+
+  try {
+    const response = await assets.fetch(new URL(`/prerender/${slug}.html`, requestUrl));
+    if (!response.ok) return undefined;
+    return await response.text();
+  } catch {
+    return undefined;
+  }
+}
 
 async function serveNotFound(
   assets: PagesEnv["ASSETS"],
@@ -430,5 +473,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     return serveNotFound(context.env.ASSETS, requestUrl);
   }
 
-  return rewriteDocumentHead(indexResponse, requestUrl, articleDates);
+  const bodyFragment = await fetchPrerenderFragment(context.env.ASSETS, pathname, requestUrl);
+
+  return rewriteDocumentHead(indexResponse, requestUrl, articleDates, bodyFragment);
 };
