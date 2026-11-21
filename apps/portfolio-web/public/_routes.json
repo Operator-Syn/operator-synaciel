@@ -6,6 +6,7 @@
   "exclude": [
     "/assets/*",
     "/cursors/*",
+    "/fonts/*",
     "/cf-fonts/*",
     "/cdn-cgi/*",
     "/.well-known/*",
