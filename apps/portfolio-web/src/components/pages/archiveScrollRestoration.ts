@@ -106,19 +106,3 @@ export function clampScrollOffset(offset: number, maxOffset: number): number {
 export function isAtDocumentEnd(offset: number, maxOffset: number): boolean {
   return maxOffset > 0 && offset >= maxOffset - BOTTOM_TOLERANCE_PX;
 }
-
-/**
- * Whether the saved position should be applied at all.
- *
- * A reader who left the page at the very bottom was looking at the footer, not at the
- * archive; restoring that position is what made a refresh look like a forced jump to the
- * bottom. In that case the page starts at the top instead.
- *
- * @param saved Resolved offset from {@link resolveScrollRestore}.
- * @param previousMaxOffset The document height at the time the offset was saved.
- * @returns `true` when the offset is worth reapplying.
- */
-export function shouldRestoreOffset(saved: number | null, previousMaxOffset: number): boolean {
-  if (saved === null) return false;
-  return !isAtDocumentEnd(saved, previousMaxOffset);
-}
