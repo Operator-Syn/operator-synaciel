@@ -1,7 +1,9 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import "../../../styles/project-archive.css";
 import { type ReactNode, useCallback, useState } from "react";
+import { formatArchiveCount } from "../../../data/archiveCount";
 import { PUBLIC_DATA_STALE_TIME_MS } from "../../../data/cacheSettings";
+import { PROJECTS_HEADING, PROJECTS_LEAD } from "../../../data/prerenderRoutes";
 import { isReducedMotionEnabled } from "../../../preferences/sitePreferences";
 import type { MediaItem } from "../../../types/MediaCardTypes";
 import CookingArea from "../../cookingArea/CookingArea";
@@ -10,6 +12,7 @@ import { LoadingBlock, LoadingRegion } from "../../loadingState/LoadingState";
 import MediaModal from "../../mediaModal/MediaModal";
 import CursorPaginationControls from "../../pagination/CursorPaginationControls";
 import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
+import { shouldShowArchivePagination } from "../archivePagination";
 import ProjectArchive from "./ProjectArchive";
 
 interface ApiGalleryItem {
@@ -55,7 +58,7 @@ const FUTURE_PROJECTS_CARD: MediaItem = {
 };
 
 const apiUrl = import.meta.env.VITE_API_URL;
-const PROJECTS_PER_PAGE = 4;
+const PROJECTS_PER_PAGE = 12;
 
 async function fetchProjectArchive(cursor: string | null, signal: AbortSignal) {
   const params = new URLSearchParams({ limit: String(PROJECTS_PER_PAGE) });
@@ -140,7 +143,11 @@ export default function Projects() {
 
   const archive = projectsQuery.data;
   const apiProjects = archive?.data.map(toMediaItem) ?? [];
-  const totalProjectCards = archive ? archive.pagination.total + 1 : null;
+  // The API's own total, and the card count it implies. The header shows the first through
+  // `formatArchiveCount`, which adds the future-project slot exactly once; `totalProjectCards` is the card
+  // count the archive grid and the pagination label already use, so it must not be incremented again.
+  const projectTotal = archive ? archive.pagination.total : null;
+  const totalProjectCards = projectTotal === null ? null : projectTotal + 1;
   const showFutureProjectCard = Boolean(archive && !archive.pagination.has_more);
   const projects = showFutureProjectCard ? [...apiProjects, FUTURE_PROJECTS_CARD] : apiProjects;
 
@@ -200,14 +207,14 @@ export default function Projects() {
               <p className="eyebrow">02 / 04</p>
               <div className="project-archive-heading">
                 <div>
-                  <h1 id="projects-page-title">Selected work / Project archive</h1>
-                  <p>A focused collection of light and purposeful projects I've been working on.</p>
+                  <h1 id="projects-page-title">{PROJECTS_HEADING}</h1>
+                  <p>{PROJECTS_LEAD}</p>
                 </div>
                 <p className="meta-label">
                   {totalProjectCards === null ? (
                     <LoadingBlock className="loading-count" />
                   ) : (
-                    `[ ${totalProjectCards} projects ]`
+                    formatArchiveCount(projectTotal ?? 0, "projects")
                   )}
                 </p>
               </div>
@@ -253,17 +260,19 @@ export default function Projects() {
                   projects={projects}
                   startIndex={(currentPage - 1) * PROJECTS_PER_PAGE}
                 />
-                <CursorPaginationControls
-                  currentPage={currentPage}
-                  hasNextPage={archive.pagination.has_more}
-                  isFetching={projectsQuery.isFetching}
-                  itemLabel="projects"
-                  onNextPage={handleNextPage}
-                  onPreviousPage={handlePreviousPage}
-                  pageSize={PROJECTS_PER_PAGE}
-                  totalItems={totalProjectCards ?? 0}
-                  visibleItemCount={projects.length}
-                />
+                {shouldShowArchivePagination(archive.pagination.has_more, currentPage) && (
+                  <CursorPaginationControls
+                    currentPage={currentPage}
+                    hasNextPage={archive.pagination.has_more}
+                    isFetching={projectsQuery.isFetching}
+                    itemLabel="projects"
+                    onNextPage={handleNextPage}
+                    onPreviousPage={handlePreviousPage}
+                    pageSize={PROJECTS_PER_PAGE}
+                    totalItems={totalProjectCards ?? 0}
+                    visibleItemCount={projects.length}
+                  />
+                )}
               </>
             )}
 
