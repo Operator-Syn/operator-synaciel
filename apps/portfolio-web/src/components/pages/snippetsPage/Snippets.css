@@ -1,4 +1,57 @@
 @layer components {
+    /*
+     * The index heading is visible: the page previously exposed its title only to
+     * assistive technology, which left the rendered page without an h1.
+     */
+    .snippets-index-title {
+        margin: 1.5rem 0 0;
+        padding: 0 0.75rem;
+        color: var(--color-text);
+        font-family: var(--font-display);
+        font-size: 1.6rem;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+        line-height: 1.2;
+    }
+
+    .snippets-documents {
+        margin-top: 2.25rem;
+        border-top: 1px solid var(--color-line);
+        padding: 1.5rem 0.75rem 0;
+    }
+
+    .snippets-documents-title {
+        margin: 0 0 0.9rem;
+        color: var(--color-text-muted);
+        font-family: var(--font-mono, ui-monospace, monospace);
+        font-size: 0.7rem;
+        font-weight: 500;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+
+    .snippets-documents-list {
+        display: grid;
+        margin: 0;
+        gap: 0.45rem;
+        padding: 0;
+        list-style: none;
+    }
+
+    .snippets-documents-link {
+        color: var(--color-text);
+        font-size: 0.95rem;
+        text-decoration: none;
+        text-underline-offset: 0.25em;
+        transition: color var(--motion-feedback-duration) var(--motion-ease);
+    }
+
+    .snippets-documents-link:hover,
+    .snippets-documents-link:focus-visible {
+        color: var(--color-signal);
+        text-decoration: underline;
+    }
+
     .snippets-shell {
         container: snippets / inline-size;
         margin-top: -1rem;
