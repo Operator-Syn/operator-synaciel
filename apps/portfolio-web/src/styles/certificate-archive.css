@@ -66,11 +66,6 @@
         border-top: 1px solid var(--color-line);
     }
 
-    .certificate-archive-grid[data-card-count="6"] {
-        grid-auto-flow: column;
-        grid-template-rows: repeat(3, minmax(0, auto));
-    }
-
     .certificate-archive-card {
         position: relative;
         display: grid;
@@ -84,8 +79,13 @@
         padding: 0.75rem 1rem 0.75rem 0;
     }
 
-    .certificate-archive-card:nth-child(-n + 3) {
+    .certificate-archive-card:nth-of-type(odd):not(:last-of-type) {
         border-right: 1px solid var(--color-line);
+    }
+
+    /* An odd trailing card takes the full width instead of leaving a hole. */
+    .certificate-archive-card:last-of-type:nth-of-type(odd) {
+        grid-column: 1 / -1;
     }
 
     .certificate-archive-card::before {
@@ -344,12 +344,7 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .certificate-archive-grid[data-card-count="6"] {
-        grid-auto-flow: row;
-        grid-template-rows: none;
-    }
-
-    .certificate-archive-card:nth-child(-n + 3) {
+    .certificate-archive-card:nth-of-type(odd) {
         border-right: 0;
     }
 
