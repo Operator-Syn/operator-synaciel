@@ -183,17 +183,6 @@
         animation: loading-signal-pulse 1.35s var(--motion-ease) infinite;
     }
 
-    .homepage-hero-title-placeholder {
-        display: block;
-        max-width: 52rem;
-        min-height: clamp(6.5rem, 12vw, 11rem);
-    }
-
-    .homepage-hero-title-placeholder .loading-block {
-        width: min(92%, 50rem);
-        height: 100%;
-    }
-
     .homepage-hero-kicker-placeholder {
         display: block;
         width: min(15rem, 70%);
