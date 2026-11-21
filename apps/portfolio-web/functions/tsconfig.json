@@ -23,6 +23,8 @@
     "../src/data/portfolioMcp.ts",
     "../src/data/sitemap.ts",
     "../src/data/canonicalRoutes.ts",
+    "../src/data/prerenderRoutes.ts",
+    "../src/data/homeHeroCopy.ts",
     "../src/data/contentDates.ts",
     "../src/data/structuredData.ts",
     "../src/components/pages/snippetsPage/snippetRoutes.ts"
