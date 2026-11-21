@@ -3,27 +3,33 @@ import "../../styles/siteFooter.css";
 import TransitionLink from "../pageTransition/TransitionLink";
 
 /**
- * The site footer that closes every page except the home page.
+ * The utility footer that closes every page except the home page.
  *
  * Algorithm:
  * 1. Read the current path.
  * 2. On `/`, render nothing: the home page already ends in its own closing section,
  *    and a second `contentinfo` landmark there would duplicate it for assistive technology.
- * 3. Otherwise render one footer: an identity block, a link per public route, and a
- *    copyright line.
+ * 3. Otherwise render one row: the copyright line, then a link per public route.
  *
- * The identity block is not decoration. Shipped as bare links, this footer read as a
- * second navigation bar rather than the end of the page — the block is what
- * distinguishes the two. Every public route is listed, including the two legal pages,
- * because this element is the site's own index of itself.
+ * This element is deliberately the quietest thing on the page. It speaks in the same
+ * register as the header navigation — IBM Plex Sans, sentence case, muted — instead of
+ * borrowing the display serif and mono labels that the archive content uses. An earlier
+ * version dressed it as a second masthead with a wordmark and a tagline, which read as
+ * editorial furniture rather than the end of a document. A footer only has to say where
+ * the page ends and what else exists.
  */
 
-const SITE_LINKS = [
+/** The product routes, in the same order the header presents them. */
+const ROUTE_LINKS = [
   { label: "Home", to: "/" },
   { label: "Projects", to: "/projects" },
   { label: "Certificates", to: "/certificates" },
   { label: "Snippets", to: "/snippets" },
   { label: "AI", to: "/ai" },
+] as const;
+
+/** The legal pages, which sit in their own group so they are not read as navigation. */
+const LEGAL_LINKS = [
   { label: "Privacy", to: "/privacy-policy" },
   { label: "Terms", to: "/terms-and-conditions" },
 ] as const;
@@ -35,20 +41,24 @@ export default function SiteFooter() {
 
   return (
     <footer className="site-footer">
-      <div className="site-footer-identity">
-        <p className="site-footer-name">Operator-Syn</p>
-        <p className="site-footer-note">Calm interfaces, built and maintained in the open.</p>
-      </div>
+      <p className="site-footer-meta">© {new Date().getFullYear()} Operator-Syn</p>
       <nav aria-label="Site" className="site-footer-nav">
-        {SITE_LINKS.map((link) => (
-          <TransitionLink className="site-footer-link" key={link.to} to={link.to}>
-            {link.label}
-          </TransitionLink>
-        ))}
+        <span className="site-footer-group">
+          {ROUTE_LINKS.map((link) => (
+            <TransitionLink className="site-footer-link" key={link.to} to={link.to}>
+              {link.label}
+            </TransitionLink>
+          ))}
+        </span>
+        <span aria-hidden="true" className="site-footer-divider" />
+        <span className="site-footer-group">
+          {LEGAL_LINKS.map((link) => (
+            <TransitionLink className="site-footer-link" key={link.to} to={link.to}>
+              {link.label}
+            </TransitionLink>
+          ))}
+        </span>
       </nav>
-      <p className="site-footer-meta">
-        © {new Date().getFullYear()} Operator-Syn — every page here is hand built.
-      </p>
     </footer>
   );
 }
