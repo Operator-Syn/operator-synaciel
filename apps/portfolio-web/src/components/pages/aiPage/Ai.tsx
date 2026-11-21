@@ -20,6 +20,7 @@ import {
   PORTFOLIO_MCP_TOOLS,
   PORTFOLIO_MCP_TRANSPORT,
 } from "../../../data/portfolioMcp";
+import { AI_HEADING, AI_LEAD } from "../../../data/prerenderRoutes";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
 import TransitionNavLink from "../../pageTransition/TransitionNavLink";
 import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
@@ -106,11 +107,8 @@ export default function Ai() {
         <header className="ai-page-hero">
           <div className="ai-page-hero-copy">
             <p className="ai-page-kicker">Public agent interface</p>
-            <h1 id="ai-page-title">Portfolio, readable by agents.</h1>
-            <p className="ai-page-lede">
-              {PORTFOLIO_MCP_DESCRIPTION} Start with a ready-to-paste request, then inspect the
-              server contract and the evidence it can return.
-            </p>
+            <h1 id="ai-page-title">{AI_HEADING}</h1>
+            <p className="ai-page-lede">{AI_LEAD}</p>
             <div className="ai-page-actions">
               <a aria-controls="ai-onboarding" className="ai-page-button" href="#ai-onboarding">
                 Connect to MCP <ArrowDown aria-hidden="true" size={16} />
