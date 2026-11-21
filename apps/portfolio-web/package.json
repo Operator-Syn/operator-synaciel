@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b --pretty false --noEmit && vite build",
+    "build": "tsc -b --pretty false --noEmit && npm run prerender && vite build",
+    "prerender": "tsx --tsconfig tsconfig.node.json scripts/prerender.ts",
     "preview": "npm run build && serve -s dist",
     "pages:dev": "wrangler pages dev dist",
     "generate:social-previews": "tsx --tsconfig tsconfig.node.json scripts/generate-social-previews.ts",
