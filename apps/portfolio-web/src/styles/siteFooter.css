@@ -1,88 +1,91 @@
 @layer components {
     /*
-     * Site footer: identity on one side, the site's own route index on the other,
-     * and a copyright line beneath.
+     * Utility footer: one line, the copyright on the left and the site's route index on
+     * the right.
      *
-     * The layout is what separates it from the header navigation. As a bare row of
-     * links it read as a second nav bar pinned to the bottom of the content, so the
-     * identity block sits beside the links on wide screens and above them on narrow
-     * ones, and the top border is pushed away from the page content.
+     * The register is the header navigation's, not the archive's: IBM Plex Sans at
+     * body-adjacent size, sentence case, muted. No display serif, no mono labels, no
+     * tagline — the earlier version used all three and read as a second masthead bolted
+     * under the content instead of the end of a document.
+     *
+     * Spacing does the separating: one rule, generous distance above it, a tighter gap
+     * below, so the footer sits clear of the archive rather than inside it.
      */
     .site-footer {
-        display: grid;
-        gap: 1.5rem;
-        margin-top: clamp(3rem, 6vw, 5rem);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 0.75rem 2rem;
+        margin-top: clamp(2.5rem, 5vw, 4rem);
         border-top: 1px solid var(--color-line);
-        padding: 2rem 0 2.5rem;
+        padding: 1.5rem 0 2rem;
     }
 
-    .site-footer-identity {
-        display: grid;
-        gap: 0.35rem;
-        align-content: start;
-    }
-
-    .site-footer-name {
+    .site-footer-meta {
         margin: 0;
-        font-family: var(--font-display, inherit);
-        font-size: 1.0625rem;
-        letter-spacing: 0.01em;
-        color: var(--color-text);
-    }
-
-    .site-footer-note {
-        margin: 0;
-        max-width: 34ch;
-        color: var(--color-text-muted);
-        font-size: 0.85rem;
-        line-height: 1.5;
+        color: var(--color-text-faint);
+        font-size: 0.8125rem;
+        line-height: 1.4;
+        font-variant-numeric: tabular-nums;
     }
 
     .site-footer-nav {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.5rem 1.5rem;
+        gap: 0.5rem 1rem;
         align-items: baseline;
-        align-content: start;
+    }
+
+    /*
+     * Two groups, not one run of links: the product routes and the legal pages. The
+     * divider is what keeps "AI Privacy Terms" from reading as three siblings.
+     */
+    .site-footer-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem 1.25rem;
+        align-items: baseline;
+    }
+
+    .site-footer-divider {
+        width: 1px;
+        height: 0.85em;
+        background: var(--color-line-strong, var(--color-line));
+        align-self: center;
     }
 
     .site-footer-link {
         color: var(--color-text-muted);
-        font-family: var(--font-mono, ui-monospace, monospace);
-        font-size: 0.72rem;
-        letter-spacing: 0.08em;
+        font-size: 0.8125rem;
+        line-height: 1.4;
         text-decoration: none;
-        text-transform: uppercase;
+        text-underline-offset: 0.28em;
         transition: color var(--motion-feedback-duration) var(--motion-ease);
     }
 
     .site-footer-link:hover,
     .site-footer-link:focus-visible {
-        color: var(--color-signal);
+        color: var(--color-text);
+        text-decoration: underline;
     }
 
-    .site-footer-meta {
-        margin: 0;
-        color: var(--color-text-muted);
-        font-family: var(--font-mono, ui-monospace, monospace);
-        font-size: 0.66rem;
-        letter-spacing: 0.06em;
-        opacity: 0.7;
-    }
-
-    @media (min-width: 52rem) {
+    @media (max-width: 40rem) {
         .site-footer {
-            grid-template-columns: minmax(0, 1fr) auto;
-            align-items: start;
+            justify-content: flex-start;
         }
 
+        /* The route index leads on narrow screens; the copyright closes the page. */
         .site-footer-nav {
-            justify-content: flex-end;
-            max-width: 32rem;
+            order: -1;
         }
 
-        .site-footer-meta {
-            grid-column: 1 / -1;
+        /*
+         * The divider marks the boundary between two groups on one line. Once the groups
+         * wrap onto separate rows it is an orphan stranded after "AI", so it goes.
+         */
+        .site-footer-divider {
+            display: none;
         }
     }
 }
