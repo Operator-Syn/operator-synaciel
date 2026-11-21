@@ -575,3 +575,53 @@ test("normalises every certificate image to one canvas", async ({ page }) => {
 
   assert.ok(transformed >= 8, "every API certificate is normalised");
 });
+
+/**
+ * Reloading the archive keeps the reader's position.
+ *
+ * The bug: the browser restored the offset against the loading skeleton, which is shorter
+ * than the finished page, so the offset clamped to the document maximum and the reader
+ * landed on the footer. The archive now owns restoration and applies it after its rows exist.
+ */
+test("keeps the reader's position across a reload instead of pinning the bottom", async ({
+  page,
+}) => {
+  await stubApi(page, { projects: buildProjects(12) });
+  await page.goto("/projects", { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+
+  const maxOffset = await page.evaluate(
+    () => document.documentElement.scrollHeight - window.innerHeight,
+  );
+  expect(maxOffset).toBeGreaterThan(600);
+
+  await page.evaluate(() => window.scrollTo(0, 500));
+  await page.waitForTimeout(400);
+  const before = await page.evaluate(() => Math.round(window.scrollY));
+  expect(before).toBe(500);
+
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+
+  const after = await page.evaluate(() => Math.round(window.scrollY));
+  const reloadedMax = await page.evaluate(
+    () => document.documentElement.scrollHeight - window.innerHeight,
+  );
+  expect(Math.abs(after - before)).toBeLessThanOrEqual(8);
+  expect(after).toBeLessThan(reloadedMax - 8);
+});
+
+test("a reader who left at the very bottom comes back to the top", async ({ page }) => {
+  await stubApi(page, { projects: buildProjects(12) });
+  await page.goto("/projects", { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
+
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => Math.round(window.scrollY))).toBeGreaterThan(400);
+
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(800);
+
+  expect(await page.evaluate(() => Math.round(window.scrollY))).toBe(0);
+});
