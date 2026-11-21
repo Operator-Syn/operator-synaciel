@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowUp, Home, ListTree, X } from "lucide-react";
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { TERMS_HEADING, TERMS_LEAD } from "../../../data/prerenderRoutes";
 import CookingArea from "../../cookingArea/CookingArea";
 import GlobalHeadManager from "../../globalHeadManager/GlobalHeadManager";
 import usePageNavigate from "../../pageTransition/usePageNavigate";
@@ -362,11 +363,8 @@ export default function TermsAndConditions() {
           <header className="privacy-policy-hero">
             <div className="privacy-policy-hero-copy">
               <p className="privacy-policy-kicker">Syn-Forge applications</p>
-              <h1>Terms and Conditions</h1>
-              <p className="privacy-policy-summary">
-                These terms define the rules for using syn-forge.com, Operator-Syn, and related
-                Syn-Forge applications that link to this page.
-              </p>
+              <h1>{TERMS_HEADING}</h1>
+              <p className="privacy-policy-summary">{TERMS_LEAD}</p>
               <p className="privacy-policy-summary">
                 Covered applications generally run on syn-forge.com or a subdomain of syn-forge.com,
                 unless a specific application provides separate terms.
