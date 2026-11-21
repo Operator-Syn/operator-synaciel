@@ -13,6 +13,7 @@ import MediaModal from "../../mediaModal/MediaModal";
 import CursorPaginationControls from "../../pagination/CursorPaginationControls";
 import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
 import { shouldShowArchivePagination } from "../archivePagination";
+import useArchiveScrollRestoration from "../useArchiveScrollRestoration";
 import ProjectArchive from "./ProjectArchive";
 
 interface ApiGalleryItem {
@@ -142,6 +143,8 @@ export default function Projects() {
   });
 
   const archive = projectsQuery.data;
+
+  useArchiveScrollRestoration("/projects", Boolean(archive));
   const apiProjects = archive?.data.map(toMediaItem) ?? [];
   // The API's own total, and the card count it implies. The header shows the first through
   // `formatArchiveCount`, which adds the future-project slot exactly once; `totalProjectCards` is the card
