@@ -2,6 +2,22 @@ import { ArrowRight, ExternalLink } from "lucide-react";
 import type { MediaItem } from "../../../types/MediaCardTypes";
 import MediaRenderer from "../../mediaRenderer/MediaRenderer";
 
+/**
+ * Certificate media is normalised rather than merely resized: certificates arrive at
+ * ratios from 0.71 (a portrait scan) to 1.41 (landscape badges), so a bare width left
+ * heights ranging 332–633 px. Padding to one canvas makes every card the same shape
+ * without discarding anything — the card itself shows the image with `object-fit:
+ * contain` — and the transparent fill lets each theme's surface show through.
+ *
+ * 768×569 is the measured widest card (726 px, full-width phone) at DPR1 with headroom,
+ * and 224 px is the desktop column, so the same asset also covers DPR3 there. The ratio
+ * 768/569 matches the 1.35 box the stylesheet draws; below the 760 px container query the
+ * box becomes 16/10 and the browser shows the padded image inside a wider frame, which is
+ * letterboxing rather than cropping, and is the state nobody has eyeballed.
+ */
+const CERTIFICATE_IMAGE_TRANSFORM_WIDTH = 768;
+const CERTIFICATE_IMAGE_TRANSFORM_HEIGHT = 569;
+
 interface CertificateArchiveProps {
   certificates: MediaItem[];
   startIndex: number;
@@ -24,6 +40,15 @@ function CertificateMedia({
       alt={mediaLabel}
       className="certificate-archive-media-content"
       cursorState={certificate.type === "image" && isInteractive ? "zoom-in" : undefined}
+      image={{
+        transformWidth: CERTIFICATE_IMAGE_TRANSFORM_WIDTH,
+        transformHeight: CERTIFICATE_IMAGE_TRANSFORM_HEIGHT,
+        fit: "pad",
+        background: "transparent",
+        width: CERTIFICATE_IMAGE_TRANSFORM_WIDTH,
+        height: CERTIFICATE_IMAGE_TRANSFORM_HEIGHT,
+        loading: "lazy",
+      }}
       type={certificate.type}
       url={certificate.url}
     />
@@ -147,11 +172,7 @@ export default function CertificateArchive({
   isInteractive,
 }: CertificateArchiveProps) {
   return (
-    <section
-      aria-label="Certificate archive"
-      className="certificate-archive-grid"
-      data-card-count={certificates.length}
-    >
+    <section aria-label="Certificate archive" className="certificate-archive-grid">
       {certificates.map((certificate, index) => (
         <CertificateArchiveCard
           certificate={certificate}
