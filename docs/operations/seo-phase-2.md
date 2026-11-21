@@ -106,4 +106,22 @@ The headings, leads and navigation do not require network access. Optional API e
 
 ## Remaining
 
-**2.1 visual/CLS check:** inspect the fragment → Suspense skeleton → route sequence in a throttled browser and measure cumulative layout shift. This has not been done; the two transitions and CLS remain unmeasured.
+**2.1 visual/CLS check — done 2026-11-21, and it changed the picture.**
+
+Measured on the live site with JavaScript disabled (CDP `setScriptExecutionDisabled`): all seven public
+routes render their own `h1`, the lead paragraph, seven internal links, and — on the archives — the enriched
+rows and count. `/projects` showed nine paragraphs and `[ 8 projects ]`, `/certificates` ten and
+`[ 9 certifications ]`. Screenshots of `/`, `/projects` and `/certificates` look like the styled site, not
+unstyled markup.
+
+Measured with JavaScript enabled, cache disabled, 4× CPU throttle and 500 kbit/s: first contentful paint at
+3 472 ms, and the fragment was **already gone at the first animation frame the tracker could observe**. The
+app's own first paint is therefore the first paint, and layout shift measured 0. The two-transition sequence
+described above does not happen in practice: the deferred module executes and `createRoot` replaces the
+fragment before the document paints. That is good for CLS and means there is no flash — and it also means the
+fragment is a crawler-only surface, not a perceived-speed improvement.
+
+Two cosmetic limits, recorded rather than fixed: the fragment's `<nav>` renders as undifferentiated inline
+text that wraps after `AI`, and a JavaScript-less home page carries no logo, footer or calls to action.
+
+**Still unverified:** the narrow 16/10 certificate card state.
