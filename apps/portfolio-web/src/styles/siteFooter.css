@@ -19,13 +19,19 @@
         gap: 0.75rem 2rem;
         margin-top: clamp(2.5rem, 5vw, 4rem);
         border-top: 1px solid var(--color-line);
-        /*
-         * The legal pages park a fixed section control in the bottom-right corner, and the
-         * floating dock can sit there too. At full scroll that corner is exactly where the
-         * footer's legal links land, so the page ends a control-height clear of it rather
-         * than letting the control cover "Privacy" and "Terms".
-         */
-        padding: 1.5rem 0 calc(var(--floating-control-block-end, 1.5rem) + 4rem);
+        padding-block: 1.5rem;
+    }
+
+    /*
+     * Clearance is only owed when something is actually pinned over that corner. The legal
+     * pages park a fixed section control bottom-right, and the floating dock falls back to a
+     * fixed position when no coordinate rail hosts it; at full scroll that corner is exactly
+     * where the footer's legal links land. Reserved unconditionally, the same padding became
+     * 90-odd pixels of dead space on every archive page, where no control is pinned at all.
+     */
+    body:has(.coordinate-rail-control-portal.is-floating-controls-fallback) .site-footer,
+    body:has(.privacy-policy-action-trigger) .site-footer {
+        padding-bottom: calc(var(--floating-control-block-end, 1.5rem) + 4rem);
     }
 
     .site-footer-meta {
