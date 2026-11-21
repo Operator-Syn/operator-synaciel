@@ -14,8 +14,15 @@ test("homepage uses one aggregate request and keeps critical fallback content", 
   assert.match(source, /retry: false/);
   assert.match(source, /HERO_BODY_FALLBACK/);
   assert.match(source, /LoadingBlock/);
-  assert.match(source, /homepage-hero-title-placeholder/);
   assert.match(source, /homepage-hero-body-placeholder/);
+  // The heading is the role line and renders before the API resolves, so its
+  // placeholder is gone. The string itself is owned by the hero-copy module.
+  assert.doesNotMatch(source, /homepage-hero-title-placeholder/);
+  assert.match(source, /getHeroCopy/);
+  assert.match(source, /\{heroCopy\.title\}/);
+
+  const heroCopySource = await readFile(resolve(appRoot, "src/data/homeHeroCopy.ts"), "utf8");
+  assert.match(heroCopySource, /Software developer/);
   assert.doesNotMatch(source, /sections\/\$\{section\.id\}\/items/);
   assert.doesNotMatch(source, /useQueries/);
 });
