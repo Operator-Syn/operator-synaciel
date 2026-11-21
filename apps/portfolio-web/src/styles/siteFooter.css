@@ -1,0 +1,32 @@
+@layer components {
+    /*
+     * Site footer: a single row of route links that closes every page except the
+     * home page, which already ends in its own social footer.
+     */
+    .site-footer {
+        border-top: 1px solid var(--color-line);
+        padding: 1.75rem 0 2.25rem;
+    }
+
+    .site-footer-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.5rem;
+        align-items: baseline;
+    }
+
+    .site-footer-link {
+        color: var(--color-text-muted);
+        font-family: var(--font-mono, ui-monospace, monospace);
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-decoration: none;
+        text-transform: uppercase;
+        transition: color var(--motion-feedback-duration) var(--motion-ease);
+    }
+
+    .site-footer-link:hover,
+    .site-footer-link:focus-visible {
+        color: var(--color-signal);
+    }
+}
