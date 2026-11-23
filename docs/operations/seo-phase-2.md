@@ -15,8 +15,9 @@ local audit directory, which is git-ignored on purpose.
 ## Status
 
 Everything in this phase is implemented, gated and **deployed to production on 2026-11-21** (Pages
-`operator-synaciel`, main at `850424ba`). The one check still outstanding is visual: inspect the
-fragment-to-route transition in a throttled browser and measure CLS.
+`operator-synaciel`, main at `850424ba`). The visual check that was outstanding — the fragment-to-route
+transition under throttling, and CLS — was performed on 2026-11-21 and is recorded under *Remaining*. One
+visual check remains unperformed: the narrow 16/10 certificate card state.
 
 Verified live after the release: all seven public routes return the `<main class="prerender-body">` fragment
 with its own `h1`; `/prerender/projects.html` is `404`; `/fonts/ibm-plex-sans-var.woff2` is `200` (45 712
@@ -76,11 +77,13 @@ failed transform falls back to the original object once per URL, and that path i
 excluded from the Pages Function and cached immutably; the Google Fonts stylesheet and its preconnects are
 gone, replaced by two preloads. The home clock stops ticking while the tab is hidden.
 
-**2.6 linking.** A site footer links five routes — Home, Projects, Certificates, Snippets and AI — on every
-React route except `/`, which keeps its own footer as the single `contentinfo`; the snippet index links every
-document leaf. The static 404 page (`public/404.html`) is served without the app and keeps its own recovery
-links. `/privacy-policy`, `/terms-and-conditions`, `/netbird`, `/atelier` and `/agent` stay unlinked from the
-footer, which is unchanged behaviour.
+**2.6 linking.** A site footer closes every React route except `/`, which keeps its own footer as the single
+`contentinfo`. It is one utility line: a copyright line and seven links — Home, Projects, Certificates,
+Snippets and AI, then Privacy and Terms grouped apart. It first shipped as five bare links with no identity,
+which read as a second navigation bar pinned under the content; the identity version that replaced it read as
+editorial furniture, so the final form is deliberately the quietest thing on the page. The snippet index links
+every document leaf. The static 404 page (`public/404.html`) is served without the app and keeps its own
+recovery links. `/netbird`, `/atelier` and `/agent` stay unlinked from the footer.
 
 ## 2.1 Pre-render implementation
 
