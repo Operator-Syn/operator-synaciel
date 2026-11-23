@@ -505,27 +505,36 @@ moves.
 metadata (2.7), archives/linking/headings (2.3 pagination, 2.6, 2.2 H1 and alt), types and assets (2.5 fonts,
 2.3 drawer, 2.2 home H1, clock visibility), images (2.4 project media and portrait), certificate normalisation
 (2.4), pre-render (2.1), and the production snippet cleanup (2.3 data). **No implementation item in this phase
-remains open.** Released to production the same day: 62 one-path commits pushed from `f3156ad7` to `34e30fe1`, Pages
+remains open.** Released to production the same day: 63 one-path commits pushed from `f3156ad7` to `34e30fe1`, Pages
 `operator-synaciel` redeployed, and the Worker deploy gate green. Live verification after the release — all
 seven public routes serve their fragment and `h1`; `/prerender/projects.html` is `404`; self-hosted fonts are
-`200`; `/netbird` keeps `x-robots-tag: noindex, follow`; `/projects` shows `[ 8 projects ]` with a five-link
-footer; `/certificates` shows `[ 9 certifications ]` with every certificate on the padded canvas except the
-`placehold.co` card. What remains is not implementation: two visual checks nobody has performed (the pre-render
-transition under throttling, and the narrow certificate card state).
+`200`; `/netbird` keeps `x-robots-tag: noindex, follow`; `/projects` shows `[ 8 projects ]` with the five-link
+footer that version shipped; `/certificates` shows `[ 9 certifications ]` with every certificate on the padded
+canvas except the `placehold.co` card.
+
+Two follow-up changes landed after that release and are committed and pushed at `b14e2f95`..`ffc13405`, without a
+live re-check: the footer became one utility line with its own copyright and both legal links (seven links total),
+and both archives now restore their saved scroll position after the rows render. The Pages spec covers both; the
+2026-11-21 live matrix above predates them.
+
+What remains is one visual check nobody has performed: the narrow certificate card state (2.4). The pre-render
+transition under throttling was measured on 2026-11-21 and closed — with JS disabled every route renders its own
+`h1`, lead and links; with JS at 4× CPU throttle and 500 kbit/s the fragment was gone before the first observable
+animation frame and CLS measured 0, so the two-transition sequence does not happen in practice.
 
 | Item | State | Evidence |
 |---|---|---|
-| 2.1 pre-render | **written, uncommitted — gated PASS 2026-11-21** | build-time body fragments, not SSR: `scripts/prerender.ts` empties `public/prerender/`, writes one fragment per public route from `src/data/prerenderRoutes.ts`, and exits non-zero unless all seven exist; `vite build` copies them into `dist/`. The middleware fetches the matching fragment through `ASSETS.fetch` and injects it into `div#root` with one more `HTMLRewriter` handler, and `createRoot` discards it on mount. No `_routes.json` change: a direct `/prerender/*` request 404s through `isKnownRoute`, and the binding does not re-enter the Function. Headings, leads and the seven nav links need no network — a build with `VITE_API_URL` pointed at a closed port still writes all seven — and archive rows/counts are optional enrichment under a 5s timeout that cannot fail the build. Verified: 259 unit tests, 30 Pages tests (raw HTML carries the H1, a >40-char lead and all seven links; after hydration one `h1` and no fragment; `/prerender/projects.html` 404; HSTS and `x-robots-tag` unchanged), typecheck, Biome, ESLint, `docs:check`, build. **Outstanding: the fragment → Suspense skeleton → route transition has never been viewed in a throttled browser, and CLS is unmeasured.** |
-| 2.2 titles/descriptions | **written, uncommitted** | `socialPreview.ts` titles are 38–48 map / 52–59 emitted, five descriptions raised to 121–132; `GlobalHeadManager` defaults from the map and updates one description tag instead of appending a second |
-| 2.2 H1s | **written, uncommitted** | `/snippets` renders a visible `h1` plus a `h2`-headed document list; the home `h1` is now the role line `Software developer building calm, dependable web systems` (`src/data/homeHeroCopy.ts`), rendered before the API resolves, with the owner's tagline moved to the kicker. Both D1 phrase fields stay in use |
-| 2.2 image alt | **written, uncommitted** | `MediaRenderer` requires `alt` and all four call sites pass it; the portrait's alt now derives from the API's `Name` entry, with `loading="eager"` and its existing test untouched |
-| 2.3 pagination | **deployed** | both archives fetch `12` per request (`PROJECTS_PER_PAGE`, `CERTIFICATES_PER_PAGE`), so the live 7 projects and 8 certificates render on one page; cursor controls are hidden only when there is nothing to page (`shouldShowArchivePagination`). Reload now preserves the archive's saved scroll position after the rows render, instead of letting the browser clamp it against the shorter loading skeleton and strand the reader at the bottom; a bottom position is preserved too. Above 12 records the API cap still applies — the cursor is not looped |
+| 2.1 pre-render | **deployed** | build-time body fragments, not SSR: `scripts/prerender.ts` empties `public/prerender/`, writes one fragment per public route from `src/data/prerenderRoutes.ts`, and exits non-zero unless all seven exist; `vite build` copies them into `dist/`. The middleware fetches the matching fragment through `ASSETS.fetch` and injects it into `div#root` with one more `HTMLRewriter` handler, and `createRoot` discards it on mount. No `_routes.json` change: a direct `/prerender/*` request 404s through `isKnownRoute`, and the binding does not re-enter the Function. Headings, leads and the seven nav links need no network — a build with `VITE_API_URL` pointed at a closed port still writes all seven — and archive rows/counts are optional enrichment under a 5s timeout that cannot fail the build. Verified: 259 unit tests, 30 Pages tests (raw HTML carries the H1, a >40-char lead and all seven links; after hydration one `h1` and no fragment; `/prerender/projects.html` 404; HSTS and `x-robots-tag` unchanged), typecheck, Biome, ESLint, `docs:check`, build. **Visual/CLS check done 2026-11-21 on the live site:** with JS disabled all seven routes render their own `h1`, lead and seven links, and the archives render their rows and count; with JS at 4× CPU throttle and 500 kbit/s FCP was 3 472 ms, the fragment was already gone at the first observable animation frame, and CLS measured 0 — the fragment is a crawler-only surface, not a perceived-speed win. |
+| 2.2 titles/descriptions | **deployed** | `socialPreview.ts` titles are 38–48 map / 52–59 emitted, five descriptions raised to 121–132; `GlobalHeadManager` defaults from the map and updates one description tag instead of appending a second |
+| 2.2 H1s | **deployed** | `/snippets` renders a visible `h1` plus a `h2`-headed document list; the home `h1` is now the role line `Software developer building calm, dependable web systems` (`src/data/homeHeroCopy.ts`), rendered before the API resolves, with the owner's tagline moved to the kicker. Both D1 phrase fields stay in use |
+| 2.2 image alt | **deployed** | `MediaRenderer` requires `alt` and all four call sites pass it; the portrait's alt now derives from the API's `Name` entry, with `loading="eager"` and its existing test untouched |
+| 2.3 pagination | **deployed** | both archives fetch `12` per request (`PROJECTS_PER_PAGE`, `CERTIFICATES_PER_PAGE`), so the live 7 projects and 8 certificates render on one page; cursor controls are hidden only when there is nothing to page (`shouldShowArchivePagination`). Reload now preserves the archive's saved scroll position after the rows render, instead of letting the browser clamp it against the shorter loading skeleton and strand the reader at the bottom; a bottom position is preserved too — that restoration landed after the 2026-11-21 release (`7bccecbe`..`ffc13405`), so it is committed and pushed but outside that release's live check. Above 12 records the API cap still applies — the cursor is not looped |
 | 2.3 Dummy Folder / `readme.md` | **done, 2026-11-20** | deleted from D1 `my-personal-portfolio`: `README.md` (id 3, the verbatim Vite template), `XQubit Handbook.pdf` (id 24, a 14-page third-party handbook — removed on the owner's instruction after judging it unsuitable snippet content, not because the file itself is poor), then the empty `Dummy Folder` (id 4). Their two R2 objects were deleted too. Verified: `/api/snippets` returns one folder with one document, `/snippets/document/22/database-migrations.md` is `200`, `/snippets/document/3/readme.md` and `/snippets/document/24/xqubit-handbook.pdf` are `404`, and `/sitemap.xml` lists only document 22. |
-| 2.3 settings drawer | **written, uncommitted** | the panel body mounts on first open and stays mounted (`isOpen \|\| hasOpened`, derived in an effect so the compact dock's `openPanel` path is covered), so ~160 words of theme labels left every page's crawlable DOM while closing still animates a real body |
-| 2.4 images / CLS | **written, uncommitted — all three surfaces** | project media `width=1360` and portrait `width=360` through `/cdn-cgi/image/…,format=auto,quality=78/` with `width`/`height`, `loading` by position, `fetchpriority="high"` on the portrait only, and a tested fallback to the original. Certificates are **normalised** rather than merely resized: `width=768,height=569,fit=pad,background=transparent` gives every card one canvas with nothing cropped, because the sources arrive at ratios from 0.71 to 1.41. Measured: projects 900 766 → 33 480 bytes, portrait 184 892 → 21 385, certificates 2 454 KB → 283 KB for eight. Outstanding: nobody has looked at the narrow 16/10 card state in a browser |
-| 2.5 fonts / main thread | **written, uncommitted** | five self-hosted WOFF2 files (148 120 bytes, OFL licences committed) under `/fonts/`, excluded from the Function with an immutable cache rule; Google Fonts stylesheet and both preconnects removed, two preloads added. `Clock` ticks through `startVisibilityAwareTicker`, which stops while the tab is hidden |
-| 2.6 internal linking | **deployed** | `SiteFooter` closes every page except `/` with the site identity, a link to all seven public routes and a copyright line; `/snippets` renders one `TransitionLink` per document, nested folders included, so the document URLs are reachable without JS-only folder navigation. Originally shipped as five bare links with no identity, which read as a second navigation bar pinned under the content and was corrected on 2026-11-21 |
-| 2.7 CTR titles/descriptions | **written, uncommitted** | as 2.2; `/`, `/projects`, `/certificates`, `/snippets`, `/ai`, `/privacy-policy`, `/terms-and-conditions` rebuilt around the queries that already have impressions |
+| 2.3 settings drawer | **deployed** | the panel body mounts on first open and stays mounted (`isOpen \|\| hasOpened`, derived in an effect so the compact dock's `openPanel` path is covered), so ~160 words of theme labels left every page's crawlable DOM while closing still animates a real body |
+| 2.4 images / CLS | **deployed — all three surfaces** | project media `width=1360` and portrait `width=360` through `/cdn-cgi/image/…,format=auto,quality=78/` with `width`/`height`, `loading` by position, `fetchpriority="high"` on the portrait only, and a tested fallback to the original. Certificates are **normalised** rather than merely resized: `width=768,height=569,fit=pad,background=transparent` gives every card one canvas with nothing cropped, because the sources arrive at ratios from 0.71 to 1.41. Measured: projects 900 766 → 33 480 bytes, portrait 184 892 → 21 385, certificates 2 454 KB → 283 KB for eight. Outstanding: nobody has looked at the narrow 16/10 card state in a browser |
+| 2.5 fonts / main thread | **deployed** | five self-hosted WOFF2 files (148 120 bytes, OFL licences committed) under `/fonts/`, excluded from the Function with an immutable cache rule; Google Fonts stylesheet and both preconnects removed, two preloads added. `Clock` ticks through `startVisibilityAwareTicker`, which stops while the tab is hidden |
+| 2.6 internal linking | **deployed** | `SiteFooter` closes every page except `/` with a copyright line and seven links — the five product routes plus Privacy and Terms, the legal pair grouped apart; `/snippets` renders one `TransitionLink` per document, nested folders included, so the document URLs are reachable without JS-only folder navigation. The footer needed two corrections on 2026-11-21: it first shipped as five bare links with no identity, then grew a masthead with a wordmark and tagline that read as editorial furniture; the final single utility line is `b14e2f95`..`72616cc8`, committed and pushed after the release, so the release's live check saw the earlier five-link version |
+| 2.7 CTR titles/descriptions | **deployed** | as 2.2; `/`, `/projects`, `/certificates`, `/snippets`, `/ai`, `/privacy-policy`, `/terms-and-conditions` rebuilt around the queries that already have impressions |
 
 **Why 2.1 is not SSR:** the preferred design failed seven times and the reasons survived contact with the
 current tree — `createRoot` rather than `hydrateRoot` (`src/main.tsx:3,21`), nine `lazy()` routes inside one
@@ -565,10 +574,14 @@ inspection — raw HTML for all seven routes carries the H1, a lead paragraph
 longer than 40 characters, and all seven internal navigation links inside
 `#root`.
 
-**Remaining:** the pre-mount moment is unverified visually. The real sequence is
-fragment → `RouteLoadingFallback` → route, so there are two transitions, and CLS
-has not been measured. Snippet-document bodies were already server-rendered by
-the middleware and are unchanged.
+**Remaining:** one visual check, and it is not in 2.1. The pre-mount moment was measured on the live site on
+2026-11-21 and the concern was closed: with JS disabled every route renders its own `h1`, lead, seven links and
+— on the archives — its rows and count; with JS enabled at 4× CPU throttle and 500 kbit/s the fragment was
+already gone at the first animation frame the tracker could observe, so the app's first paint is the first paint
+and CLS measured 0. The two-transition sequence does not happen in practice. Two cosmetic limits survive rather
+than get fixed: the fragment's `<nav>` renders as undifferentiated inline text that wraps after `AI`, and a
+JavaScript-less home page carries no logo, footer or calls to action. Snippet-document bodies were already
+server-rendered by the middleware and are unchanged.
 
 ### 2.2 On-page copy
 
@@ -640,13 +653,13 @@ those titles/descriptions first and re-measure CTR after 2–4 weeks:
 - `/certificates` — “Certifications & Training — Full-Stack Developer”.
 - Snippet documents — use the note headline, not the filename, and add the date.
 
-**Status (2026-11-20, written but uncommitted and undeployed):** titles now 52–59 emitted characters and
+**Status (deployed 2026-11-21):** titles are 52–59 emitted characters and
 the five short descriptions sit at 121–132; `/` and `/ai` keep their existing descriptions. The head is
 single-sourced: `GlobalHeadManager` defaults from `src/data/socialPreview.ts`, every page dropped its
 literal props, and the description tag is updated rather than duplicated. Both gate stages passed on the
 final diff; verified on the Pages runtime by `npm run verify:pages` (7 routes, one description after
-hydration, `/ai` meta vs MCP lede, the 404 keeps its own head) and by 211 unit tests. **Nothing is live
-until this is committed and Pages redeploys.** Remaining from this section: the snippet-document headline
+hydration, `/ai` meta vs MCP lede, the 404 keeps its own head) and by 211 unit tests, and shipped in the
+2026-11-21 release. Remaining from this section, and not implementation: the snippet-document headline
 is still slug-derived, and the social cards were regenerated from the same map.
 
 ---
