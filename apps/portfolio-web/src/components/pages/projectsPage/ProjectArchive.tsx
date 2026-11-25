@@ -1,6 +1,8 @@
 import { ArrowRight, Grid2X2 } from "lucide-react";
+import { projectPath } from "../../../data/projectRoutes";
 import type { MediaItem } from "../../../types/MediaCardTypes";
 import MediaRenderer from "../../mediaRenderer/MediaRenderer";
+import TransitionLink from "../../pageTransition/TransitionLink";
 
 /**
  * Project media is served from the R2 bucket through Cloudflare's image transform.
@@ -125,7 +127,15 @@ function ProjectArchiveRow({
       />
 
       <div className="project-archive-copy">
-        <h2 id={titleId}>{project.title}</h2>
+        <h2 id={titleId}>
+          {isInteractive ? (
+            <TransitionLink to={projectPath(project.id, project.title)}>
+              {project.title}
+            </TransitionLink>
+          ) : (
+            project.title
+          )}
+        </h2>
         <p>{project.shortDescription}</p>
       </div>
 
