@@ -27,6 +27,9 @@
     "../src/data/homeHeroCopy.ts",
     "../src/data/contentDates.ts",
     "../src/data/structuredData.ts",
+    "../src/data/projectRoutes.ts",
+    "../src/data/projectArchive.ts",
+    "../src/types/MediaCardTypes.ts",
     "../src/components/pages/snippetsPage/snippetRoutes.ts"
   ]
 }
