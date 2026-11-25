@@ -2,6 +2,8 @@ import { type ContentCache, defaultCache, fetchContentText } from "../../functio
 import { getSnippetDocumentRoute } from "../components/pages/snippetsPage/snippetRoutes.ts";
 import { SITEMAP_STATIC_ROUTES } from "./canonicalRoutes.ts";
 import { STATIC_ROUTE_LASTMOD } from "./contentDates.ts";
+import { collectAllProjects, createProjectPageFetcher } from "./projectArchive.ts";
+import { projectPath } from "./projectRoutes.ts";
 
 const SITE_ORIGIN = "https://syn-forge.com";
 
@@ -77,6 +79,37 @@ function snippetEntries(nodes: unknown): { entries: string[]; latestModified?: s
     entries,
     latestModified: latest ? new Date(latest).toISOString() : undefined,
   };
+}
+
+/**
+ * Build the sitemap entries for every project detail page.
+ *
+ * Read through the injected fetch and cache, so the suite can drive this path without the network. No
+ * `<lastmod>`: the table has no `updated_at`, and a creation date would misstate an edit as no change.
+ *
+ * Algorithm:
+ * 1. Enumerate the archive with `collectAllProjects`, which refuses to return a partial collection.
+ * 2. Map each project to its canonical detail path.
+ * 3. Throw when the enumeration cannot be completed, so the caller falls into its last-known-good branch
+ *    rather than publishing a sitemap that silently omits every project.
+ *
+ * @param apiUrl The API base.
+ * @param fetchContent Injected transport.
+ * @param cache Injected cache.
+ * @returns One `<url>` entry per project.
+ * @throws When the archive cannot be read completely.
+ */
+export async function projectSitemapEntries(
+  apiUrl: string,
+  fetchContent: typeof fetch,
+  cache: ContentCache | undefined,
+): Promise<string[]> {
+  const collection = await collectAllProjects(
+    createProjectPageFetcher({ base: apiUrl, fetchContent, cache }),
+  );
+  if (!collection.ok) throw new Error(`Project archive unavailable: ${collection.reason}`);
+
+  return collection.projects.map((project) => urlEntry(projectPath(project.id, project.title)));
 }
 
 function urlEntry(path: string, lastmod?: string) {
@@ -155,9 +188,11 @@ export async function createSitemapResponse(
     }
 
     const snippets = snippetEntries(payload.data);
+    const projects = await projectSitemapEntries(apiUrl, fetchContent, cache);
     const entries = [
       ...staticEntries(indexableRoutes, snippets.latestModified),
       ...snippets.entries,
+      ...projects,
     ];
     const xml = buildSitemapXml(entries);
 
