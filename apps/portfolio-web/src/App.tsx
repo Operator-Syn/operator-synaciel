@@ -12,6 +12,7 @@ import SiteFooter from "./components/siteFooter/SiteFooter";
 import { brandName, navLinks as NavLinks, routes } from "./data/NavLinks.types";
 
 const NotFound = lazy(() => import("./components/pages/notFoundPage/NotFound"));
+const ProjectDetail = lazy(() => import("./components/pages/projectsPage/ProjectDetail"));
 const SnippetDocument = lazy(() => import("./components/pages/snippetsPage/SnippetDocument"));
 
 function RouteLoadingFallback() {
@@ -52,6 +53,9 @@ export default function App() {
           <Suspense fallback={<RouteLoadingFallback />}>
             <Routes>
               <Route path="/snippets/document/:id/:slug" element={<SnippetDocument />} />
+              {/* A bare id and a stale slug both resolve to the canonical `/projects/<id>/<slug>`. */}
+              <Route path="/projects/:id" element={<ProjectDetail />} />
+              <Route path="/projects/:id/:slug" element={<ProjectDetail />} />
               {routes.map((link) => {
                 const Component = link.component;
                 return (
