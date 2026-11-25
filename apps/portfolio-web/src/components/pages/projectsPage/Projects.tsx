@@ -4,6 +4,11 @@ import { type ReactNode, useCallback, useState } from "react";
 import { formatArchiveCount } from "../../../data/archiveCount";
 import { PUBLIC_DATA_STALE_TIME_MS } from "../../../data/cacheSettings";
 import { PROJECTS_HEADING, PROJECTS_LEAD } from "../../../data/prerenderRoutes";
+import {
+  type ApiProject,
+  PROJECT_ARCHIVE_PAGE_SIZE,
+  toMediaItem,
+} from "../../../data/projectArchive";
 import { isReducedMotionEnabled } from "../../../preferences/sitePreferences";
 import type { MediaItem } from "../../../types/MediaCardTypes";
 import CookingArea from "../../cookingArea/CookingArea";
@@ -15,27 +20,6 @@ import PointerCoordinates from "../../pointerCoordinates/PointerCoordinates";
 import { shouldShowArchivePagination } from "../archivePagination";
 import useArchiveScrollRestoration from "../useArchiveScrollRestoration";
 import ProjectArchive from "./ProjectArchive";
-
-interface ApiGalleryItem {
-  id: number;
-  project_id: number;
-  type: "image" | "video";
-  url: string;
-  display_order: number;
-}
-
-interface ApiProject {
-  id: number;
-  title: string;
-  type: "video" | "image";
-  url: string;
-  short_description: string;
-  long_description: string;
-  project_link: string;
-  display_order: number;
-  created_at: string;
-  gallery: ApiGalleryItem[];
-}
 
 interface ProjectArchiveResponse {
   data: ApiProject[];
@@ -59,7 +43,7 @@ const FUTURE_PROJECTS_CARD: MediaItem = {
 };
 
 const apiUrl = import.meta.env.VITE_API_URL;
-const PROJECTS_PER_PAGE = 12;
+const PROJECTS_PER_PAGE = PROJECT_ARCHIVE_PAGE_SIZE;
 
 async function fetchProjectArchive(cursor: string | null, signal: AbortSignal) {
   const params = new URLSearchParams({ limit: String(PROJECTS_PER_PAGE) });
@@ -69,28 +53,6 @@ async function fetchProjectArchive(cursor: string | null, signal: AbortSignal) {
   if (!response.ok) throw new Error("Failed to fetch the project archive");
 
   return (await response.json()) as ProjectArchiveResponse;
-}
-
-function toMediaItem(project: ApiProject): MediaItem {
-  return {
-    id: project.id,
-    title: project.title,
-    type: project.type,
-    url: project.url,
-    shortDescription: project.short_description,
-    longDescription: project.long_description,
-    projectLink: project.project_link,
-    gallery: project.gallery.map((media) => ({
-      id: media.id,
-      title: project.title,
-      type: media.type,
-      url: media.url,
-      shortDescription: "",
-      longDescription: "",
-      projectLink: project.project_link,
-      gallery: [],
-    })),
-  };
 }
 
 function scrollToArchiveTop() {
