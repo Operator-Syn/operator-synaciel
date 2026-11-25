@@ -74,6 +74,94 @@ test("emits ProfilePage, Person, and WebSite on the homepage", () => {
   assert.deepEqual(website.publisher, { "@id": "https://syn-forge.com/#person" });
 });
 
+const PROJECT_GRAPH_PAGE = "/projects/8/bai-finance-website";
+const PROJECT_FACTS = {
+  title: "BAI Finance Website",
+  description: "A professional digital platform serving the Filipino-Australian community.",
+  keywords: ["next.js", "react", "fintech"],
+  image: "https://personal-portfolio-bucket.syn-forge.com/Projects/8.png",
+};
+
+test("emits TechArticle and BreadcrumbList for a resolved project page", () => {
+  const graph = buildStructuredData({
+    pathname: PROJECT_GRAPH_PAGE,
+    origin: ORIGIN,
+    metadata: getSocialPreviewMetadata(PROJECT_GRAPH_PAGE),
+    project: PROJECT_FACTS,
+    articleDates: { published: "2026-08-27T08:45:50.000Z" },
+  });
+
+  assert.deepEqual(types(graph), ["TechArticle", "BreadcrumbList"]);
+
+  const [article, breadcrumb] = nodes(graph);
+  assert.equal(article["@id"], `${ORIGIN}${PROJECT_GRAPH_PAGE}#techarticle`);
+  assert.equal(article.headline, "BAI Finance Website");
+  assert.equal(article.url, `${ORIGIN}${PROJECT_GRAPH_PAGE}`);
+  assert.equal(article.datePublished, "2026-08-27T08:45:50.000Z");
+  assert.equal(article.keywords, "next.js, react, fintech");
+  assert.equal(article.image, PROJECT_FACTS.image);
+  assert.deepEqual(article.author, { "@id": `${ORIGIN}/#person` });
+  assert.equal(article.about, undefined, "no invented about node");
+
+  const items = breadcrumb.itemListElement as Array<Record<string, unknown>>;
+  assert.deepEqual(
+    items.map((item) => [item.position, item.name, item.item]),
+    [
+      [1, "Home", `${ORIGIN}/`],
+      [2, "Projects", `${ORIGIN}/projects`],
+      [3, "BAI Finance Website", `${ORIGIN}${PROJECT_GRAPH_PAGE}`],
+    ],
+  );
+});
+
+test("omits datePublished when the project has no usable timestamp", () => {
+  const graph = buildStructuredData({
+    pathname: PROJECT_GRAPH_PAGE,
+    origin: ORIGIN,
+    metadata: getSocialPreviewMetadata(PROJECT_GRAPH_PAGE),
+    project: PROJECT_FACTS,
+  });
+
+  assert.equal(nodes(graph)[0].datePublished, undefined);
+});
+
+test("falls back to a WebPage for a project path whose project did not resolve", () => {
+  const graph = buildStructuredData({
+    pathname: PROJECT_GRAPH_PAGE,
+    origin: ORIGIN,
+    metadata: getSocialPreviewMetadata(PROJECT_GRAPH_PAGE),
+  });
+
+  assert.deepEqual(types(graph), ["WebPage"]);
+});
+
+test("publishes archive ItemList members only when the collection was read completely", () => {
+  const metadata = getSocialPreviewMetadata("/projects");
+
+  const empty = buildStructuredData({ pathname: "/projects", origin: ORIGIN, metadata });
+  const emptyList = nodes(empty)[1];
+  assert.equal(emptyList["@type"], "ItemList");
+  assert.equal(emptyList.itemListElement, undefined);
+  assert.equal(emptyList.numberOfItems, undefined);
+
+  const members = [
+    { name: "BAI Finance Website", url: `${ORIGIN}/projects/8/bai-finance-website` },
+    { name: "BAI HR", url: `${ORIGIN}/projects/9/bai-hr` },
+  ];
+  const filled = buildStructuredData({
+    pathname: "/projects",
+    origin: ORIGIN,
+    metadata,
+    listItems: members,
+  });
+  const filledList = nodes(filled)[1];
+  assert.equal(filledList.numberOfItems, 2);
+  assert.deepEqual(filledList.itemListElement, [
+    { "@type": "ListItem", position: 1, name: members[0].name, url: members[0].url },
+    { "@type": "ListItem", position: 2, name: members[1].name, url: members[1].url },
+  ]);
+});
+
 test("emits CollectionPage and ItemList for collection routes", () => {
   for (const pathname of ["/projects", "/certificates", "/snippets"]) {
     const graph = graphFor(pathname);
