@@ -179,7 +179,16 @@ function decodeSlug(slug: string) {
 
 const SNIPPET_DESCRIPTION_MAX_LENGTH = 155;
 
-function clampDescription(description: string) {
+/**
+ * Truncate a description on a word boundary so it fits the 155-character ceiling.
+ *
+ * Shared with the project detail pages, whose description is the project's own summary.
+ *
+ * @param description The raw description.
+ * @returns The description unchanged when it already fits, otherwise a word-boundary truncation
+ *   ending in an ellipsis.
+ */
+export function clampDescription(description: string) {
   if (description.length <= SNIPPET_DESCRIPTION_MAX_LENGTH) return description;
   const clipped = description.slice(0, SNIPPET_DESCRIPTION_MAX_LENGTH - 1);
   const lastSpace = clipped.lastIndexOf(" ");
