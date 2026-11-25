@@ -99,6 +99,18 @@ test("adds the count line and rows only when the caller supplies them", () => {
   assert.ok(enriched.includes("<p>A platform for the community.</p>"));
 });
 
+test("links an archive row only when the caller supplies an href", () => {
+  const plain = buildPrerenderFragment(PRERENDER_ROUTES[1], {
+    items: [{ title: "BAI Finance", description: "A platform for the community." }],
+  });
+  assert.ok(plain.includes("<h2>BAI Finance</h2>"));
+
+  const linked = buildPrerenderFragment(PRERENDER_ROUTES[1], {
+    items: [{ title: "BAI Finance", href: "/projects/8/bai-finance-website" }],
+  });
+  assert.ok(linked.includes('<h2><a href="/projects/8/bai-finance-website">BAI Finance</a></h2>'));
+});
+
 test("escapes API text rather than trusting it", () => {
   const fragment = buildPrerenderFragment(PRERENDER_ROUTES[1], {
     items: [{ title: "<script>alert(1)</script>", description: "Tom & Jerry" }],
@@ -107,4 +119,20 @@ test("escapes API text rather than trusting it", () => {
   assert.ok(!fragment.includes("<script>"));
   assert.ok(fragment.includes("&lt;script&gt;"));
   assert.ok(fragment.includes("Tom &amp; Jerry"));
+
+  const unsafeHref = buildPrerenderFragment(PRERENDER_ROUTES[1], {
+    items: [{ title: "Row", href: '/projects/8/a"b' }],
+  });
+  assert.ok(!unsafeHref.includes('href="/projects/8/a"b"'));
+  assert.ok(unsafeHref.includes("&quot;"));
+});
+
+test("drops a row destination that is not a same-origin path", () => {
+  for (const href of ["javascript:alert(1)", "//evil.test/x", "https://evil.test/x", "x"]) {
+    const fragment = buildPrerenderFragment(PRERENDER_ROUTES[1], {
+      items: [{ title: "Row", href }],
+    });
+    assert.ok(fragment.includes("<h2>Row</h2>"), href);
+    assert.ok(!fragment.includes("<h2><a "), href);
+  }
 });
