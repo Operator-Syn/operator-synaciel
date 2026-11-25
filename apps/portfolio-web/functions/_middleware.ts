@@ -1,6 +1,13 @@
 import type { PagesFunction, Response as PagesResponse } from "@cloudflare/workers-types";
 import { NON_INDEXABLE_ROUTES } from "../src/data/canonicalRoutes.ts";
 import { prerenderSlugFor } from "../src/data/prerenderRoutes.ts";
+import {
+  isCanonicalProjectPath,
+  parseProjectPath,
+  projectPageDescription,
+  projectPath,
+  projectPrerenderSlug,
+} from "../src/data/projectRoutes.ts";
 import { createSitemapResponse } from "../src/data/sitemap.ts";
 import {
   getSocialPreviewImageUrl,
@@ -9,13 +16,18 @@ import {
   SOCIAL_PREVIEW_HEIGHT,
   SOCIAL_PREVIEW_WIDTH,
 } from "../src/data/socialPreview.ts";
-import { buildStructuredDataScript } from "../src/data/structuredData.ts";
+import {
+  buildStructuredDataScript,
+  type StructuredDataListItem,
+  type StructuredDataProject,
+} from "../src/data/structuredData.ts";
 import { createCanonicalRouteRedirect } from "./canonicalRedirect.ts";
 import {
   type ContentExistence,
   classifyContentExistence,
   fetchContentText,
 } from "./contentFetch.ts";
+import { fetchCachedProjectList, lookupProject } from "./projectLookup.ts";
 import { isKnownRoute } from "./routePolicy.ts";
 import { parseSnippetTimestamp, readSnippetPublishedAt } from "./snippetDocumentDates.ts";
 import { probeSnippetFolder, type SnippetDatabase } from "./snippetFolderProbe.ts";
@@ -161,14 +173,35 @@ function applyHtmlHeaders(headers: Headers) {
   headers.set("Permissions-Policy", HTML_PERMISSIONS_POLICY);
 }
 
+/** Everything the head rewrite needs beyond the request itself. */
+type DocumentHeadOptions = {
+  articleDates?: ArticleDates;
+  bodyFragment?: string;
+  /** Per-project copy the route map cannot describe; the marketing suffix stays with the writers. */
+  metadataOverride?: { readonly title: string; readonly description: string };
+  /** Project facts, when the path is a resolved detail page. */
+  project?: StructuredDataProject;
+  /** Complete archive members, when the collection was read in full. */
+  listItems?: readonly StructuredDataListItem[];
+  /** Set when the route's existence could not be confirmed, so it must not be indexed. */
+  noindex?: boolean;
+};
+
 function rewriteDocumentHead(
   response: PagesResponse,
   requestUrl: string,
-  articleDates?: ArticleDates,
-  bodyFragment?: string,
+  options: DocumentHeadOptions = {},
 ) {
   const url = new URL(requestUrl);
-  const metadata = getSocialPreviewMetadata(url.pathname);
+  const baseMetadata = getSocialPreviewMetadata(url.pathname);
+  const metadata = options.metadataOverride
+    ? {
+        ...baseMetadata,
+        title: options.metadataOverride.title,
+        description: options.metadataOverride.description,
+        imageAlt: `${options.metadataOverride.title} — Syn-Forge social preview`,
+      }
+    : baseMetadata;
   const imageUrl = getSocialPreviewImageUrl(url.pathname, url.origin);
   url.search = "";
   url.hash = "";
@@ -179,7 +212,9 @@ function rewriteDocumentHead(
     pathname: url.pathname,
     origin: url.origin,
     metadata,
-    articleDates,
+    articleDates: options.articleDates,
+    project: options.project,
+    listItems: options.listItems,
   });
 
   let rewriter = new HTMLRewriter()
@@ -192,13 +227,19 @@ function rewriteDocumentHead(
       element(element) {
         // The shell ships an empty container. React's `createRoot` clears it on the first commit, so this
         // markup serves crawlers and the pre-mount moment and is then discarded — never hydrated into.
-        if (bodyFragment) element.setInnerContent(bodyFragment, { html: true });
+        if (options.bodyFragment) element.setInnerContent(options.bodyFragment, { html: true });
       },
     })
     .on("head", {
       element(element) {
         element.append(
-          buildManagedHead(metadata, url.href, imageUrl, structuredDataScript, articleDates),
+          buildManagedHead(
+            metadata,
+            url.href,
+            imageUrl,
+            structuredDataScript,
+            options.articleDates,
+          ),
           {
             html: true,
           },
@@ -257,7 +298,9 @@ function rewriteDocumentHead(
   // Item 1.7: a server-level signal, so a crawler that does not run JS still
   // sees it. The page keeps its self-referencing canonical; `noindex, follow`
   // plus a canonical is coherent. `follow` keeps its links crawlable.
-  if (NON_INDEXABLE_ROUTES.has(url.pathname)) {
+  // An unconfirmed project must not be indexed: serving the shell is safe, publishing a page whose
+  // existence the server could not verify is not.
+  if (options.noindex || NON_INDEXABLE_ROUTES.has(url.pathname)) {
     headers.set("X-Robots-Tag", "noindex, follow");
   }
 
@@ -278,25 +321,30 @@ type PagesEnv = {
  * Read the prerendered body fragment for a request path, if one exists.
  *
  * Algorithm:
- * 1. Map the path to a fragment slug; return `undefined` when the route is not prerendered.
+ * 1. Map the path to a fragment slug — a static route's, or a project detail path's id-derived stem.
+ *    Return `undefined` when neither applies.
  * 2. Fetch `/prerender/<slug>.html` through the static asset binding — a binding call, not a routed request,
  *    so the Function is not re-entered.
  * 3. Return the text only when the response is OK.
  *
- * A missing fragment is not an error: a build without the prerender step, or a deployment from an older
- * commit, must serve the same shell it serves today.
+ * A missing fragment is not an error: a build without the prerender step, a build with no API access (which
+ * writes no project fragment), or a deployment from an older commit must serve the same shell it serves today.
  *
  * @param assets The Pages static asset binding.
  * @param pathname The request path.
  * @param requestUrl The absolute request URL, used to resolve the asset URL.
+ * @param projectId The project id, when the path is a project detail path.
  * @returns The fragment markup, or `undefined` when there is nothing to inject.
  */
 async function fetchPrerenderFragment(
   assets: PagesEnv["ASSETS"],
   pathname: string,
   requestUrl: string,
+  projectId?: number,
 ): Promise<string | undefined> {
-  const slug = prerenderSlugFor(pathname);
+  const slug =
+    prerenderSlugFor(pathname) ??
+    (projectId === undefined ? null : projectPrerenderSlug(projectId));
   if (!slug) return undefined;
 
   try {
@@ -433,7 +481,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   // A snippet document is the only known route whose existence is not implied
   // by the allowlist. Only an explicit 404 from the API is grounds for a 404.
   const snippetDocument = parseSnippetDocumentPath(pathname);
-  let articleDates: ArticleDates | undefined;
+  const headOptions: DocumentHeadOptions = {};
   if (snippetDocument) {
     const lookup = await lookupSnippetDocument(
       snippetDocument.id,
@@ -443,7 +491,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     if (lookup.existence === "missing") {
       return serveNotFound(context.env.ASSETS, requestUrl);
     }
-    articleDates = lookup.articleDates;
+    headOptions.articleDates = lookup.articleDates;
   } else {
     const folderSegments = parseSnippetFolderSegments(pathname);
     const decision = await resolveSnippetFolderRoute(
@@ -467,13 +515,71 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     }
   }
 
+  // Project detail paths carry their own existence rule, head copy and graph. A proven absence is a
+  // real 404; an unconfirmed lookup serves the page with `noindex` rather than guessing either way.
+  const projectRoute = parseProjectPath(pathname);
+  if (projectRoute) {
+    const lookup = await lookupProject(context.env.VITE_API_URL, projectRoute.id);
+
+    if (lookup.status === "missing") {
+      return serveNotFound(context.env.ASSETS, requestUrl);
+    }
+
+    if (lookup.status === "found") {
+      // One canonical URL per project: a bare id, a zero-padded id or a stale slug redirects to the
+      // title-derived form.
+      if (!isCanonicalProjectPath(lookup.project, projectRoute)) {
+        const target = new URL(requestUrl);
+        target.pathname = projectPath(lookup.project.id, lookup.project.title);
+        return new Response(null, {
+          status: 308,
+          headers: { Location: target.href },
+        }) as unknown as PagesResponse;
+      }
+
+      const description = projectPageDescription(lookup.project);
+      headOptions.metadataOverride = { title: lookup.project.title, description };
+      headOptions.project = {
+        title: lookup.project.title,
+        description,
+        keywords: [...lookup.project.stack, ...lookup.project.categories],
+        // `TechArticle.image` expects an image; a video project's cover is a video file.
+        image: lookup.project.type === "image" ? lookup.project.url || undefined : undefined,
+      };
+
+      // `created_at` is a bare D1 timestamp; the normaliser emits ISO 8601 or nothing at all.
+      const published = parseSnippetTimestamp(lookup.project.created_at);
+      if (published) headOptions.articleDates = { published };
+    } else {
+      headOptions.noindex = true;
+    }
+  }
+
+  // The archive's ItemList members are optional enrichment: published only when the whole collection
+  // was read, omitted otherwise.
+  if (pathname === "/projects") {
+    const collection = await fetchCachedProjectList(context.env.VITE_API_URL);
+    if (collection.ok) {
+      const origin = new URL(requestUrl).origin;
+      headOptions.listItems = collection.projects.map((project) => ({
+        name: project.title,
+        url: `${origin}${projectPath(project.id, project.title)}`,
+      }));
+    }
+  }
+
   const indexResponse = await context.env.ASSETS.fetch(new URL("/index.html", requestUrl));
 
   if (!isHtmlResponse(indexResponse)) {
     return serveNotFound(context.env.ASSETS, requestUrl);
   }
 
-  const bodyFragment = await fetchPrerenderFragment(context.env.ASSETS, pathname, requestUrl);
+  const bodyFragment = await fetchPrerenderFragment(
+    context.env.ASSETS,
+    pathname,
+    requestUrl,
+    projectRoute?.id,
+  );
 
-  return rewriteDocumentHead(indexResponse, requestUrl, articleDates, bodyFragment);
+  return rewriteDocumentHead(indexResponse, requestUrl, { ...headOptions, bodyFragment });
 };
