@@ -16,7 +16,8 @@ This note is the source of truth for the SEO work. Update it in the same change
 that alters an item's state; [[operations/seo-phase-2|SEO phase 2]] carries the
 design rationale while this note carries the state.
 
-Status: **Phase 1 and Phase 2 deployed; Phase 3 item 3.1 merged to `main` (`50b6304d`) and awaiting a Pages redeploy.** Phase 2 shipped on 2026-11-21 in 63
+Status: **Phase 1, Phase 2 and Phase 3 item 3.1 deployed.** Item 3.1 went live on 2026-11-25 from `main`
+(`50b6304d`) in 38 one-path commits; Cloudflare Pages built it on push. Phase 2 shipped on 2026-11-21 in 63
 one-path commits, `f3156ad7`..`34e30fe1`; Pages `operator-synaciel` redeployed
 from `main` and the Worker deploy gate passed. Live verification after the
 release: all seven public routes serve their `prerender-body` fragment and `h1`;
@@ -668,8 +669,7 @@ is still slug-derived, and the social cards were regenerated from the same map.
 
 This is the real ranking ceiling: 13 URLs, none targeting a specific query.
 
-**Status 2026-11-25: item 3.1 is implemented, gated, and pushed to `main` (`50b6304d`, 38 one-path
-commits); it is not deployed yet.** 3.2–3.6 are untouched.
+**Status 2026-11-25: item 3.1 is implemented, gated, and deployed.** 3.2–3.6 are untouched.
 
 ### 3.1 Project detail pages (highest-value content addition)
 
@@ -684,11 +684,16 @@ The API already returns 7 projects with `long_description`, `categories`,
 This converts existing data into seven indexable pages that can rank for the
 project names and technologies.
 
-**Status — implemented, verified locally and merged; the Pages redeploy is pending.** Pushed to `main`
-as `50b6304d` in 38 one-path commits after three increment gates plus a fresh whole-diff closeout
-(`VERDICT: PASS` twice, no blockers). Two non-blocking residuals are recorded, not fixed: a total
-failure of the archive walk now leaves the build's `/projects` fragment with no rows or count, and the
-`TechArticle` video-cover guard has no test. Seven pages at
+**Status — deployed and verified live on 2026-11-25.** Pushed to `main` as `50b6304d` in 38 one-path
+commits after three increment gates plus a fresh whole-diff closeout (`VERDICT: PASS` twice, no
+blockers); Cloudflare Pages built it on push. Live checks after the deploy: all seven project URLs
+`200` with their own titles; `/projects/8`, `/projects/08/…`, `/projects/8/%62ai-…`, `/projects/8/bai%2d-…`
+and `/projects/8/bai%2D-…` each `308` in one hop to the canonical URL; `/projects/999999/nope` `404` with
+`x-robots-tag: noindex`; `/projects` links all seven and publishes `numberOfItems: 7`;
+`/prerender/project-8.html` `404`; `/snippets/document/22/caf%C3%A9` `200` with zero redirects (it
+looped before this work); `sitemap.xml` is 15 `<loc>`. Two non-blocking residuals are recorded, not
+fixed: a total failure of the archive walk now leaves the build's `/projects` fragment with no rows or
+count, and the `TechArticle` video-cover guard has no test. Seven pages at
 `/projects/:id/:slug`, not the literal `/projects/:slug`: there is no slug column, and a title-derived
 slug would 404 an indexed URL on a rename, so the id is the identity and a stale slug redirects. Each
 page carries a server-rendered head, a `TechArticle` + `BreadcrumbList` graph, a build-time body
@@ -697,9 +702,8 @@ members. Limits recorded rather than claimed closed: no project fragments on a b
 fragment lags an edit until the next deploy, a 120-project walk ceiling, no `<lastmod>` on project
 entries, and the snippet-document route's pre-existing any-slug duplicate. The `/projects/:slug`
 follow-up needs a slug column plus slug history and a production migration; it is not started.
-Design record: [[operations/seo-phase-3|SEO phase 3]]. Deployment is the remaining step: a Pages
-redeploy from `main`, then a live check of one detail URL's head, the 308 matrix and the 15-`<loc>`
-sitemap.
+Design record: [[operations/seo-phase-3|SEO phase 3]]. The remaining follow-up is the literal
+`/projects/:slug` shape, which needs a slug column, slug history and a production migration.
 
 ### 3.2 Certificate detail pages or richer listings
 
