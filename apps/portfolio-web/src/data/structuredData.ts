@@ -1,4 +1,5 @@
 import { PORTFOLIO_MCP_DESCRIPTION, PORTFOLIO_MCP_ENDPOINT } from "./portfolioMcp.ts";
+import { parseProjectPath } from "./projectRoutes.ts";
 import {
   normalizeSocialPreviewPath,
   parseSnippetDocumentPath,
@@ -55,6 +56,25 @@ export type StructuredDataArticleDates = {
   readonly modified?: string;
 };
 
+/**
+ * The project facts a detail page's graph carries.
+ *
+ * Sourced from the archive response, never composed: the title, the summary, and the facets the API
+ * already publishes.
+ */
+export type StructuredDataProject = {
+  readonly title: string;
+  readonly description: string;
+  readonly keywords: readonly string[];
+  readonly image?: string;
+};
+
+/** One member of an archive's `ItemList`. */
+export type StructuredDataListItem = {
+  readonly name: string;
+  readonly url: string;
+};
+
 export type StructuredDataInput = {
   /** Raw request pathname; normalized internally. */
   readonly pathname: string;
@@ -63,6 +83,10 @@ export type StructuredDataInput = {
   /** The same metadata the head rewrite uses for title/description/canonical. */
   readonly metadata: SocialPreviewMetadata;
   readonly articleDates?: StructuredDataArticleDates;
+  /** Present only when a project detail page resolved its project. */
+  readonly project?: StructuredDataProject;
+  /** Present only when an archive's collection was read completely. */
+  readonly listItems?: readonly StructuredDataListItem[];
 };
 
 type JsonLdNode = Record<string, unknown>;
@@ -151,8 +175,24 @@ function buildDocumentGraph(
 function buildCollectionGraph(
   metadata: SocialPreviewMetadata,
   pageUrl: string,
+  listItems?: readonly StructuredDataListItem[],
 ): StructuredDataGraph {
   const itemListId = `${pageUrl}#itemlist`;
+
+  // Members are published only when the server read the whole collection. A partial list would
+  // claim a set the page cannot support, so an absent or empty list omits both `itemListElement`
+  // and `numberOfItems` rather than describing what happened to be readable.
+  const itemList: JsonLdNode = { "@type": "ItemList", "@id": itemListId, name: metadata.title };
+  if (listItems !== undefined && listItems.length > 0) {
+    itemList.itemListElement = listItems.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      url: item.url,
+    }));
+    itemList.numberOfItems = listItems.length;
+  }
+
   return {
     "@context": SCHEMA_CONTEXT,
     "@graph": [
@@ -164,13 +204,56 @@ function buildCollectionGraph(
         description: metadata.description,
         mainEntity: { "@id": itemListId },
       },
+      itemList,
+    ],
+  };
+}
+
+/**
+ * Graph for a project detail page.
+ *
+ * `TechArticle` rather than `SoftwareSourceCode`: these pages are written case studies, and only four
+ * of the seven records link to a repository at all. The article and the breadcrumb are the only nodes
+ * emitted — the `Person` entity stays an identifier reference to the node defined on `/`, so no second
+ * Person graph appears.
+ *
+ * @param pageUrl The canonical absolute URL of the page.
+ * @param origin The request origin, used for the breadcrumb's earlier entries.
+ * @param project The project facts.
+ * @param articleDates Already-normalised dates; an absent `published` emits no `datePublished`.
+ * @returns The single JSON-LD graph for the page.
+ */
+function buildProjectGraph(
+  pageUrl: string,
+  origin: string,
+  project: StructuredDataProject,
+  articleDates?: StructuredDataArticleDates,
+): StructuredDataGraph {
+  const article: JsonLdNode = {
+    "@type": "TechArticle",
+    "@id": `${pageUrl}#techarticle`,
+    headline: project.title,
+    description: project.description,
+    url: pageUrl,
+    author: { "@id": `${origin}/#person` },
+    keywords: project.keywords.join(", "),
+  };
+  if (project.image) article.image = project.image;
+  if (articleDates?.published) article.datePublished = articleDates.published;
+  if (articleDates?.modified) article.dateModified = articleDates.modified;
+
+  return {
+    "@context": SCHEMA_CONTEXT,
+    "@graph": [
+      article,
       {
-        // The list members are resolved by the SPA from the API, so the server
-        // cannot source `itemListElement` or `numberOfItems`. Omit both rather
-        // than invent an empty or partial list.
-        "@type": "ItemList",
-        "@id": itemListId,
-        name: metadata.title,
+        "@type": "BreadcrumbList",
+        "@id": `${pageUrl}#breadcrumb`,
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: `${origin}/` },
+          { "@type": "ListItem", position: 2, name: "Projects", item: `${origin}/projects` },
+          { "@type": "ListItem", position: 3, name: project.title, item: pageUrl },
+        ],
       },
     ],
   };
@@ -215,6 +298,12 @@ export function buildStructuredData(input: StructuredDataInput): StructuredDataG
     return buildDocumentGraph(metadata, pageUrl, origin, articleDates);
   }
 
+  // A project detail page only has a graph when its project resolved; an unresolved path falls
+  // through to the plain `WebPage` rather than publishing a graph it cannot support.
+  if (parseProjectPath(pathname) && input.project) {
+    return buildProjectGraph(pageUrl, origin, input.project, articleDates);
+  }
+
   if (pathname === "/") {
     return {
       "@context": SCHEMA_CONTEXT,
@@ -237,7 +326,7 @@ export function buildStructuredData(input: StructuredDataInput): StructuredDataG
   // Any path under `/snippets/` is a served folder view rendered by the same
   // SPA collection; snippet documents were handled above.
   if (COLLECTION_ROUTES.has(pathname) || pathname.startsWith("/snippets/")) {
-    return buildCollectionGraph(metadata, pageUrl);
+    return buildCollectionGraph(metadata, pageUrl, input.listItems);
   }
 
   if (pathname === "/ai") {
