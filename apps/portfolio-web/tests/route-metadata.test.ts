@@ -67,19 +67,23 @@ test("every advertised route resolves to its own metadata entry", () => {
 
 /**
  * The head has one owner. A page may only pass `title`/`description` when the
- * map cannot describe it. Two documented exceptions exist:
+ * map cannot describe it. Three documented, conditional exceptions exist:
  *
  *  - `NotFound` — `getSocialPreviewMetadata("/unknown")` falls back to the home
  *    entry, so defaulting would advertise the home page on a 404.
  *  - `SnippetDocument` — a missing document would otherwise advertise the
  *    archive or a document that does not exist; its props are conditional on
  *    `isNotFound`, which the test below enforces.
+ *  - `ProjectDetail` — the map has one entry per static route, so every project
+ *    URL would otherwise advertise the archive's title and description; its props
+ *    are conditional on the project having resolved, which the test below enforces.
  */
 const HEAD_COPY_EXCEPTIONS = new Set([
   "src/components/pages/notFoundPage/NotFound.tsx",
   "src/components/pages/snippetsPage/SnippetDocument.tsx",
+  "src/components/pages/projectsPage/ProjectDetail.tsx",
 ]);
-test("no page passes head copy except the two documented exceptions", async () => {
+test("no page passes head copy except the documented exceptions", async () => {
   const pagesRoot = resolve(appRoot, "src/components/pages");
   const files = (await readdir(pagesRoot, { recursive: true }))
     .filter((file) => file.endsWith(".tsx"))
@@ -118,6 +122,30 @@ test("the 404 route keeps its explicit non-indexable metadata", async () => {
 // A conditional exception must stay conditional: an unconditional literal in
 // the document component would reintroduce exactly the drift this increment
 // removed.
+// A project page may only pass head copy for a resolved project; an unconditional literal would give a
+// loading or failed page the archive's metadata.
+test("the project-detail exception applies only to the resolved state", async () => {
+  const source = await readFile(
+    resolve(appRoot, "src/components/pages/projectsPage/ProjectDetail.tsx"),
+    "utf8",
+  );
+  // The tag must sit inside the resolved-only branch, and its props must come from the project.
+  assert.match(source, /\{project && canonicalPath \? \(\s*<GlobalHeadManager\b/);
+  const tag = source.match(/<GlobalHeadManager\b[\s\S]*?\/>/)?.[0] ?? "";
+  assert.match(tag, /\btitle=\{project\.title\}/);
+  assert.match(tag, /\bdescription=\{projectPageDescription\(project\)\}/);
+});
+
+// The app root renders a head manager for every route; on a project path it must stand aside, or it
+// overwrites the server's per-project head with the archive's before the page has a title to supply.
+test("the root head manager leaves project paths to the page", async () => {
+  const source = await readFile(
+    resolve(appRoot, "src/components/globalHeadManager/GlobalHeadManager.tsx"),
+    "utf8",
+  );
+  assert.match(source, /if \(title === undefined && parseProjectPath\(pagePath\)\) return;/);
+});
+
 test("the snippet-document exception applies only to the not-found state", async () => {
   const source = await readFile(
     resolve(appRoot, "src/components/pages/snippetsPage/SnippetDocument.tsx"),
