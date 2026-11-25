@@ -1,0 +1,204 @@
+/* Project detail page: heading, hero media, facets, description and gallery. */
+@layer components {
+    .project-detail-shell {
+        container: project-detail / inline-size;
+        margin-top: -1rem;
+    }
+
+    .project-detail-coordinates {
+        border-bottom: 1px solid var(--color-line);
+    }
+
+    .project-detail-header {
+        padding: 1.5rem 0 1.1rem;
+        border-bottom: 1px solid var(--color-line);
+    }
+
+    .project-detail-header > .eyebrow {
+        margin-bottom: 1.45rem;
+    }
+
+    .project-detail-heading {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 2rem;
+    }
+
+    .project-detail-heading > div {
+        min-width: 0;
+    }
+
+    .project-detail-heading h1 {
+        max-width: 72rem;
+        color: var(--color-text);
+        font-family: var(--font-display);
+        font-size: clamp(2.4rem, 4vw, 4rem);
+        font-weight: 400;
+        letter-spacing: -0.025em;
+        line-height: 0.92;
+        text-wrap: balance;
+    }
+
+    .project-detail-summary {
+        max-width: 46rem;
+        margin-top: 0.7rem;
+        color: var(--color-text-muted);
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+
+    .project-detail-heading > .meta-label {
+        flex: 0 0 auto;
+        color: var(--color-text-muted);
+        padding-bottom: 0.25rem;
+        text-align: right;
+    }
+
+    .project-detail-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1.4rem;
+    }
+
+    .project-detail-media {
+        margin: 1.75rem 0 0;
+        overflow: hidden;
+        border: 1px solid var(--color-line);
+        background: var(--color-surface);
+    }
+
+    .project-detail-media-content {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+    }
+
+    .project-detail-facets {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 2rem;
+        padding: 1.75rem 0;
+        border-bottom: 1px solid var(--color-line);
+    }
+
+    .project-detail-facet h2 {
+        color: var(--color-text-faint);
+        font-family: var(--font-mono, monospace);
+        font-size: 0.72rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+    }
+
+    .project-detail-facet ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 0.65rem;
+        margin-top: 0.85rem;
+        list-style: none;
+        padding: 0;
+    }
+
+    .project-detail-facet li {
+        padding: 0.28rem 0.62rem;
+        border: 1px solid var(--color-line);
+        border-radius: 999px;
+        color: var(--color-text-muted);
+        font-size: 0.84rem;
+        line-height: 1.2;
+    }
+
+    .project-detail-description {
+        display: grid;
+        gap: 1rem;
+        max-width: 46rem;
+        padding: 1.9rem 0;
+        color: var(--color-text-muted);
+        font-size: 1rem;
+        line-height: 1.65;
+    }
+
+    .project-detail-description ul {
+        display: grid;
+        gap: 0.45rem;
+        margin: 0;
+        padding-left: 1.15rem;
+        list-style: disc;
+    }
+
+    .project-detail-gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+        gap: 1rem;
+        padding-bottom: 2rem;
+    }
+
+    .project-detail-gallery-item {
+        margin: 0;
+        overflow: hidden;
+        border: 1px solid var(--color-line);
+        background: var(--color-surface);
+    }
+
+    .project-detail-state {
+        display: grid;
+        gap: 0.9rem;
+        justify-items: start;
+        padding: 3rem 0;
+    }
+
+    .project-detail-state h1 {
+        color: var(--color-text);
+        font-family: var(--font-display);
+        font-size: clamp(1.9rem, 3vw, 2.6rem);
+        font-weight: 400;
+        letter-spacing: -0.02em;
+    }
+
+    .project-detail-state p {
+        color: var(--color-text-muted);
+    }
+
+    .project-detail-loading {
+        display: grid;
+        gap: 1rem;
+        padding: 2.5rem 0;
+    }
+
+    .project-detail-loading-eyebrow {
+        width: 6rem;
+    }
+
+    .project-detail-loading-title {
+        width: min(34rem, 80%);
+        height: 3rem;
+    }
+
+    .project-detail-loading-line {
+        width: min(42rem, 92%);
+    }
+
+    .project-detail-loading-media {
+        height: min(28rem, 46vw);
+    }
+
+    @container project-detail (max-width: 60rem) {
+        .project-detail-heading {
+            flex-direction: column;
+            align-items: start;
+            gap: 1rem;
+        }
+
+        .project-detail-heading > .meta-label {
+            text-align: left;
+        }
+
+        .project-detail-facets {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 1.5rem;
+        }
+    }
+}
