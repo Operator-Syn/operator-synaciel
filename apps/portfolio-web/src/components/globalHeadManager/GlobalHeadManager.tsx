@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import { parseProjectPath } from "../../data/projectRoutes";
 import {
   getSocialPreviewImageUrl,
   getSocialPreviewMetadata,
@@ -12,6 +13,8 @@ type HeadProps = {
   title?: string;
   description?: string;
   image?: string;
+  /** Alt text for the social image, when the route map's generic copy does not describe the page. */
+  imageAlt?: string;
   url?: string;
   /**
    * Accepted for call-site compatibility and deliberately not emitted.
@@ -25,7 +28,14 @@ type HeadProps = {
   robots?: string;
 };
 
-export default function GlobalHeadManager({ title, description, image, url, robots }: HeadProps) {
+export default function GlobalHeadManager({
+  title,
+  description,
+  image,
+  imageAlt,
+  url,
+  robots,
+}: HeadProps) {
   // The router location is the trigger for in-place URL changes (for example a
   // snippet document canonicalising its slug), so the head re-resolves even
   // when a call site does not pass `url`.
@@ -39,6 +49,12 @@ export default function GlobalHeadManager({ title, description, image, url, robo
       url ||
       `${window.location.origin}${location.pathname}${window.location.search}${window.location.hash}`;
     const pagePath = new URL(pageUrl, window.location.href).pathname;
+
+    // A project detail page's copy belongs to the project, and only the page itself can supply it. The
+    // map has just the archive's entry, so writing it here would replace the server's per-project head
+    // with the archive's while the page is still loading, or forever if the fetch fails.
+    if (title === undefined && parseProjectPath(pagePath)) return;
+
     const routeMetadata = getSocialPreviewMetadata(pagePath);
     const socialImage = image || getSocialPreviewImageUrl(pagePath);
     // The metadata map is the single owner. A page only needs to pass these
@@ -82,7 +98,7 @@ export default function GlobalHeadManager({ title, description, image, url, robo
     setMetaProperty("og:image:type", SOCIAL_PREVIEW_CONTENT_TYPE);
     setMetaProperty("og:image:width", String(SOCIAL_PREVIEW_WIDTH));
     setMetaProperty("og:image:height", String(SOCIAL_PREVIEW_HEIGHT));
-    setMetaProperty("og:image:alt", routeMetadata.imageAlt);
+    setMetaProperty("og:image:alt", imageAlt ?? routeMetadata.imageAlt);
     setMetaProperty("og:url", pageUrl);
 
     let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
@@ -115,7 +131,7 @@ export default function GlobalHeadManager({ title, description, image, url, robo
       const robotsTag = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
       if (robotsTag) robotsTag.content = "index, follow";
     }
-  }, [title, description, image, url, robots, location.pathname]);
+  }, [title, description, image, imageAlt, url, robots, location.pathname]);
 
   return null;
 }
