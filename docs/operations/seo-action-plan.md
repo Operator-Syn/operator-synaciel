@@ -16,7 +16,7 @@ This note is the source of truth for the SEO work. Update it in the same change
 that alters an item's state; [[operations/seo-phase-2|SEO phase 2]] carries the
 design rationale while this note carries the state.
 
-Status: **Phase 1 and Phase 2 deployed.** Phase 2 shipped on 2026-11-21 in 63
+Status: **Phase 1 and Phase 2 deployed; Phase 3 item 3.1 implemented locally and not deployed.** Phase 2 shipped on 2026-11-21 in 63
 one-path commits, `f3156ad7`..`34e30fe1`; Pages `operator-synaciel` redeployed
 from `main` and the Worker deploy gate passed. Live verification after the
 release: all seven public routes serve their `prerender-body` fragment and `h1`;
@@ -59,9 +59,9 @@ local changes.
 | 1.3 Snippet metadata / existence | ✅ Deployed | Doc 22 → `Database Migrations — Code Snippets \| Syn-Forge`; live HTML carries `article:published_time` (`2026-06-11T14:28:59.000Z`, from D1 `created_at`), `article:modified_time` (`2026-06-11T14:46:14.000Z`) and JSON-LD `datePublished`; `/snippets/document/999999/…` → 404. Omitted, never back-filled from `modified`, when the binding or read fails. Deployed at `8ff55f79` on 2026-11-20. |
 | 1.4 Server-rendered JSON-LD | ✅ Complete | Home `ProfilePage`+`Person`+`WebSite`; archives `CollectionPage`+`ItemList`; docs `TechArticle`+`BreadcrumbList`; static shell has 0 blocks |
 | 1.5 Headers / caching / sourcemaps | ✅ Complete | Immutable assets, `sourcemap: false`, HSTS, CSP-Report-Only, Permissions-Policy. Cloudflare Transform Rule removes `X-XSS-Protection`/`Expect-CT` on HTML; bucket has immutable `Cache-Control` + a Cache Rule; GET is `cf-cache-status: HIT` |
-| 1.6a Sitemap cache + utility exclusion | ✅ Deployed | Live sitemap is 10 `<loc>`, excludes `/netbird`, `/atelier`, `/agent`, and returns the 1.6 `Cache-Control` |
-| 1.6b Static `<lastmod>` + last-known-good | ✅ Deployed | Live: `curl -s https://syn-forge.com/sitemap.xml | grep -o '<lastmod>' | wc -l` → `10` (7 static + 3 documents), with 10 `<loc>`. Cold edge returns `503` + `Retry-After: 60`. The last-known-good branch now defaults to `caches.default`, so a warm edge serves the cached copy; it is only observable during an API failure, so its behaviour is proven by the stubbed test rather than by a live request. |
-| 1.7 Utility noindex | ✅ Complete | `X-Robots-Tag: noindex, follow` on `/netbird`, `/atelier`, `/agent`; sitemap is 10 URLs and excludes them; `/ai` stays indexable |
+| 1.6a Sitemap cache + utility exclusion | ✅ Deployed | Live sitemap is 10 `<loc>`, excludes `/netbird`, `/atelier`, `/agent`, and returns the 1.6 `Cache-Control`. **Correction 2026-11-25:** the live count is now 8 `<loc>` — the Phase 2 data cleanup left one snippet document, not three — and item 3.1 takes it to 15 once deployed. |
+| 1.6b Static `<lastmod>` + last-known-good | ✅ Deployed | Live: `curl -s https://syn-forge.com/sitemap.xml | grep -o '<lastmod>' | wc -l` → `10` (7 static + 3 documents; **8 today**, 7 static + 1 document, and 15 `<loc>` once item 3.1 deploys), with 10 `<loc>`. Cold edge returns `503` + `Retry-After: 60`. The last-known-good branch now defaults to `caches.default`, so a warm edge serves the cached copy; it is only observable during an API failure, so its behaviour is proven by the stubbed test rather than by a live request. |
+| 1.7 Utility noindex | ✅ Complete | `X-Robots-Tag: noindex, follow` on `/netbird`, `/atelier`, `/agent`; the sitemap excludes them — 10 URLs when this was written, **8 today** (7 static + 1 snippet document) and 15 once item 3.1 deploys; `/ai` stays indexable |
 | 1.8 Sitemap resubmit + baseline | ✅ Complete | GSC sitemap resubmitted 2026-11-19T07:01Z, 10 URLs, 0 warnings, 0 errors; drift baseline captured |
 | 1.9 Spam link review | ✅ Reviewed | Moz list reviewed; no disavow applied (recommended: monitor, don’t buy links) |
 
@@ -668,6 +668,9 @@ is still slug-derived, and the social cards were regenerated from the same map.
 
 This is the real ranking ceiling: 13 URLs, none targeting a specific query.
 
+**Status 2026-11-25: item 3.1 is implemented and verified locally; nothing in this phase is deployed.**
+3.2–3.6 are untouched.
+
 ### 3.1 Project detail pages (highest-value content addition)
 
 The API already returns 7 projects with `long_description`, `categories`,
@@ -680,6 +683,17 @@ The API already returns 7 projects with `long_description`, `categories`,
 
 This converts existing data into seven indexable pages that can rank for the
 project names and technologies.
+
+**Status — implemented and verified locally, not deployed.** Seven pages at
+`/projects/:id/:slug`, not the literal `/projects/:slug`: there is no slug column, and a title-derived
+slug would 404 an indexed URL on a rename, so the id is the identity and a stale slug redirects. Each
+page carries a server-rendered head, a `TechArticle` + `BreadcrumbList` graph, a build-time body
+fragment, a sitemap entry and an archive link; the archive's `ItemList` now publishes its seven
+members. Limits recorded rather than claimed closed: no project fragments on a build with no API, a
+fragment lags an edit until the next deploy, a 120-project walk ceiling, no `<lastmod>` on project
+entries, and the snippet-document route's pre-existing any-slug duplicate. The `/projects/:slug`
+follow-up needs a slug column plus slug history and a production migration; it is not started.
+Design record: [[operations/seo-phase-3|SEO phase 3]].
 
 ### 3.2 Certificate detail pages or richer listings
 
