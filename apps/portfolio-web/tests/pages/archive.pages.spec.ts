@@ -255,6 +255,26 @@ test("renders every record the archive returns, without cursor controls on a sin
   await expect(page.locator(".project-archive-pagination")).toHaveCount(0);
 });
 
+test("links every archive row to its detail page but leaves the future card as text", async ({
+  page,
+}) => {
+  const projects = buildProjects(3);
+  await stubApi(page, { projects });
+
+  await page.goto("/projects");
+
+  for (const project of projects) {
+    const heading = page.getByRole("heading", { name: project.title, exact: true });
+    await expect(heading.locator("a")).toHaveCount(1);
+    await expect(heading.locator("a")).toHaveAttribute("href", /^\/projects\/\d+\//);
+  }
+
+  // The "still cooking" placeholder is not a project, so it must not publish a detail URL.
+  const future = page.getByRole("heading", { name: "Still cooking", exact: true });
+  await expect(future.locator("a")).toHaveCount(0);
+  await expect(page.locator('a[href^="/projects/999999/"]')).toHaveCount(0);
+});
+
 test("links every snippet document in the tree, folders included", async ({ page }) => {
   await stubApi(page);
 
