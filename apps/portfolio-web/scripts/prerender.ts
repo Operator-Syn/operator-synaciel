@@ -22,6 +22,8 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadEnv } from "vite";
+import { NO_CACHE } from "../functions/projectLookup";
+import { parseProjectDescription } from "../src/components/pages/projectsPage/projectDescription";
 import {
   collectSnippetDocuments,
   type SnippetNode,
@@ -33,6 +35,13 @@ import {
   PRERENDER_ROUTES,
   type PrerenderEnrichment,
 } from "../src/data/prerenderRoutes";
+import {
+  type ApiProject,
+  collectAllProjects,
+  createProjectPageFetcher,
+} from "../src/data/projectArchive";
+import { buildProjectFragment } from "../src/data/projectPrerender";
+import { projectPath, projectPrerenderSlug } from "../src/data/projectRoutes";
 
 const appRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const repositoryRoot = resolve(appRoot, "../..");
@@ -92,16 +101,20 @@ function readString(value: unknown, key: string): string | undefined {
  * @param descriptionKey Key holding the description.
  * @returns Rows in response order.
  */
-function toItems(body: unknown, descriptionKey: string): { title: string; description?: string }[] {
+function toItems(
+  body: unknown,
+  descriptionKey: string,
+  hrefFor?: (entry: unknown) => string | undefined,
+): { title: string; description?: string; href?: string }[] {
   if (typeof body !== "object" || body === null) return [];
   const data = (body as Record<string, unknown>).data;
   if (!Array.isArray(data)) return [];
 
-  const items: { title: string; description?: string }[] = [];
+  const items: { title: string; description?: string; href?: string }[] = [];
   for (const entry of data) {
     const title = readString(entry, "title");
     if (!title) continue;
-    items.push({ title, description: readString(entry, descriptionKey) });
+    items.push({ title, description: readString(entry, descriptionKey), href: hrefFor?.(entry) });
   }
   return items;
 }
@@ -145,9 +158,10 @@ function isSnippetNode(value: unknown): value is SnippetNode {
  */
 async function collectEnrichmentSafely(
   apiBase: string,
+  projects: readonly ApiProject[],
 ): Promise<Record<string, PrerenderEnrichment>> {
   try {
-    return await collectEnrichment(apiBase);
+    return await collectEnrichment(apiBase, projects);
   } catch (error) {
     console.warn(`[prerender] enrichment unavailable: ${String(error)}`);
     return {};
@@ -157,19 +171,29 @@ async function collectEnrichmentSafely(
 /**
  * Build the per-route enrichment from the API.
  *
+ * The archive rows come from the same complete walk that produced the project fragments, so the
+ * crawler-visible archive cannot link fewer projects than the sitemap and the `ItemList` list.
+ *
  * @param apiBase The API base URL.
+ * @param projects The complete project collection, empty when the archive was unreadable.
  * @returns A partial map from route path to enrichment; absent keys mean "static fragment only".
  */
-async function collectEnrichment(apiBase: string): Promise<Record<string, PrerenderEnrichment>> {
+async function collectEnrichment(
+  apiBase: string,
+  projects: readonly ApiProject[],
+): Promise<Record<string, PrerenderEnrichment>> {
   const result: Record<string, PrerenderEnrichment> = {};
 
-  const projects = await fetchJson(`${apiBase}/v2/projects/archive?limit=${ARCHIVE_LIMIT}`);
-  const projectsTotal = readTotal(projects);
-  if (projectsTotal !== undefined) {
+  if (projects.length > 0) {
     // The page counts one extra card for the "future project" slot, so the fragment must add it too.
     result["/projects"] = {
-      count: formatArchiveCount(projectsTotal, "projects"),
-      items: toItems(projects, "short_description"),
+      count: formatArchiveCount(projects.length, "projects"),
+      // Each row links to its detail page, so a crawler can reach every project from the archive.
+      items: projects.map((project) => ({
+        title: project.title,
+        description: project.short_description,
+        href: projectPath(project.id, project.title),
+      })),
     };
   }
 
@@ -187,6 +211,67 @@ async function collectEnrichment(apiBase: string): Promise<Record<string, Preren
   if (snippetRows.length > 0) result["/snippets"] = { items: snippetRows };
 
   return result;
+}
+
+/** One written project fragment, kept so the build can verify what it produced. */
+type ProjectFragment = {
+  readonly slug: string;
+  readonly title: string;
+  readonly markup: string;
+};
+
+/** The archive read, and the fragments built from it. */
+type ProjectData = {
+  readonly projects: readonly ApiProject[];
+  readonly fragments: readonly ProjectFragment[];
+};
+
+/**
+ * Read the archive once and build every project's fragment from that read.
+ *
+ * The walk is bounded and proof-carrying (see `collectAllProjects`), so a truncated read is an error here
+ * rather than a silently short set of files. Caching is off: a build must not emit a fragment from a
+ * stale body.
+ *
+ * @param apiBase The API base URL.
+ * @returns The complete collection and one fragment per project, in archive order.
+ * @throws When the archive cannot be read completely.
+ */
+async function collectProjectData(apiBase: string): Promise<ProjectData> {
+  const fetcher = createProjectPageFetcher({
+    base: apiBase,
+    timeoutMs: ENRICHMENT_TIMEOUT_MS,
+    cache: NO_CACHE,
+  });
+  const collection = await collectAllProjects(fetcher);
+  if (!collection.ok) throw new Error(collection.reason);
+
+  return {
+    projects: collection.projects,
+    fragments: collection.projects.map((project: ApiProject) => ({
+      slug: projectPrerenderSlug(project.id),
+      title: project.title,
+      markup: buildProjectFragment(project, parseProjectDescription(project.long_description)),
+    })),
+  };
+}
+
+/**
+ * Read the archive and build the fragments, treating any failure as "no project data".
+ *
+ * The contract is that a build without API access still delivers the static fragments, so an archive
+ * failure logs one line and leaves those pages on the shell rather than failing the build.
+ *
+ * @param apiBase The API base URL.
+ * @returns What could be read; empty when the archive was unusable.
+ */
+async function collectProjectDataSafely(apiBase: string): Promise<ProjectData> {
+  try {
+    return await collectProjectData(apiBase);
+  } catch (error) {
+    console.warn(`[prerender] project fragments unavailable: ${String(error)}`);
+    return { projects: [], fragments: [] };
+  }
 }
 
 /** Read `pagination.total` from an archive response, or `undefined` when it is not a number. */
@@ -208,7 +293,11 @@ async function main(): Promise<void> {
   await rm(outputDirectory, { recursive: true, force: true });
   await mkdir(outputDirectory, { recursive: true });
 
-  const enrichment = apiBase ? await collectEnrichmentSafely(apiBase) : {};
+  // One archive read feeds the archive rows and the project fragments, so the two cannot disagree.
+  const projectData = apiBase
+    ? await collectProjectDataSafely(apiBase)
+    : { projects: [], fragments: [] };
+  const enrichment = apiBase ? await collectEnrichmentSafely(apiBase, projectData.projects) : {};
   if (!apiBase) {
     console.warn("[prerender] no VITE_API_URL; writing static fragments without archive rows");
   }
@@ -216,6 +305,11 @@ async function main(): Promise<void> {
   for (const route of PRERENDER_ROUTES) {
     const fragment = buildPrerenderFragment(route, enrichment[route.path] ?? {});
     await writeFile(resolve(outputDirectory, `${route.slug}.html`), fragment, "utf8");
+  }
+
+  const projectFragments = projectData.fragments;
+  for (const fragment of projectFragments) {
+    await writeFile(resolve(outputDirectory, `${fragment.slug}.html`), fragment.markup, "utf8");
   }
 
   // Verify rather than trust: a build that wrote nothing would otherwise pass silently.
@@ -230,7 +324,28 @@ async function main(): Promise<void> {
 
   if (missing.length > 0)
     throw new Error(`[prerender] fragments missing or empty: ${missing.join(", ")}`);
-  console.log(`[prerender] wrote ${PRERENDER_ROUTES.length} fragments to public/prerender`);
+
+  // The project fragments are optional, but the ones this build claims to have written must exist and
+  // carry their heading; a silently empty file would ship an empty body and look successful.
+  const missingProjects: string[] = [];
+  for (const fragment of projectFragments) {
+    const contents = await readFile(
+      resolve(outputDirectory, `${fragment.slug}.html`),
+      "utf8",
+    ).catch(() => undefined);
+    if (!contents || !contents.includes(`<h1>${escapeHtml(fragment.title)}</h1>`)) {
+      missingProjects.push(fragment.slug);
+    }
+  }
+  if (missingProjects.length > 0) {
+    throw new Error(
+      `[prerender] project fragments missing or empty: ${missingProjects.join(", ")}`,
+    );
+  }
+
+  console.log(
+    `[prerender] wrote ${PRERENDER_ROUTES.length} fragments and ${projectFragments.length} project fragments to public/prerender`,
+  );
 }
 
 await main();
