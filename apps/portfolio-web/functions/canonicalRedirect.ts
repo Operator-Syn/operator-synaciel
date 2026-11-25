@@ -1,4 +1,5 @@
 import { SERVED_STATIC_ROUTES } from "../src/data/canonicalRoutes.ts";
+import { matchesProjectPath } from "../src/data/projectRoutes.ts";
 
 const KNOWN_STATIC_ROUTES = new Set<string>(["/", ...SERVED_STATIC_ROUTES]);
 const SNIPPET_DOCUMENT_ROUTE = /^\/snippets\/document\/\d+\/[^/]+$/;
@@ -22,7 +23,9 @@ export function createCanonicalRouteRedirect(requestUrl: string): Response | nul
   const normalizedPath = normalizePathname(source.pathname);
   const canonicalPath = normalizedPath === LEGACY_SNIPPET_INDEX ? SNIPPET_INDEX : normalizedPath;
   const isKnownRoute =
-    KNOWN_STATIC_ROUTES.has(canonicalPath) || SNIPPET_DOCUMENT_ROUTE.test(canonicalPath);
+    KNOWN_STATIC_ROUTES.has(canonicalPath) ||
+    SNIPPET_DOCUMENT_ROUTE.test(canonicalPath) ||
+    matchesProjectPath(canonicalPath);
 
   if (!isKnownRoute || source.pathname === canonicalPath) {
     return null;
@@ -36,7 +39,15 @@ export function createCanonicalRouteRedirect(requestUrl: string): Response | nul
   });
 }
 
+/** A percent-encoded octet, e.g. `%2D` or `%C3`. */
+const ESCAPE = /%[0-9a-f]{2}/g;
+
 function normalizePathname(pathname: string) {
   const collapsed = pathname.toLowerCase().replace(/\/+/g, "/");
-  return collapsed === "/" ? collapsed : collapsed.replace(/\/+$/, "");
+  // Lowercasing whole paths also lowercases percent-escape hex digits, and the runtime normalises
+  // them back to uppercase before the Function sees them. A lowercased escape therefore differs from
+  // every subsequent request for the same URL, which redirected forever. Escape hex is case-
+  // insignificant, so it is restored to uppercase after the case fold and never counts as a change.
+  const stable = collapsed.replace(ESCAPE, (sequence) => sequence.toUpperCase());
+  return stable === "/" ? stable : stable.replace(/\/+$/, "");
 }
