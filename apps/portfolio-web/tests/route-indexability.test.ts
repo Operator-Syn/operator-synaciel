@@ -39,7 +39,17 @@ const EXPECTED_NON_INDEXABLE_ROUTES = ["/netbird", "/atelier", "/agent"];
 
 const request = new Request("https://preview.example/sitemap.xml");
 const apiUrl = "https://api.example/api";
-const emptySnippets: typeof fetch = async () => Response.json({ data: [] });
+/** Answers both endpoints the sitemap reads; an empty project archive is a valid, complete list. */
+const emptySnippets: typeof fetch = async (input) => {
+  const url = String(input);
+  if (url.startsWith(`${apiUrl}/v2/projects/archive`)) {
+    return Response.json({
+      data: [],
+      pagination: { limit: 12, total: 0, has_more: false, next_cursor: null },
+    });
+  }
+  return Response.json({ data: [] });
+};
 
 function loc(route: string) {
   return new RegExp(`<loc>https://syn-forge\\.com${route}</loc>`);
@@ -89,9 +99,13 @@ test("corrects the middleware so the noindex header is server-level and scoped",
   );
 
   // The decision is derived from the same set that drives the sitemap, not a
-  // second literal list in the middleware.
+  // second literal list in the middleware. The same branch also carries the
+  // unconfirmed-project case, which is why it is no longer the whole condition.
   assert.match(middleware, /import \{ NON_INDEXABLE_ROUTES \}/);
-  assert.match(middleware, /if \(NON_INDEXABLE_ROUTES\.has\(url\.pathname\)\) \{/);
+  assert.match(
+    middleware,
+    /if \(options\.noindex \|\| NON_INDEXABLE_ROUTES\.has\(url\.pathname\)\) \{/,
+  );
   assert.match(middleware, /headers\.set\("X-Robots-Tag", "noindex, follow"\)/);
 
   // The 404 path keeps exactly the bare `noindex` value, and the served-path
