@@ -135,6 +135,19 @@ export function escapeHtml(value: string): string {
 export interface PrerenderItem {
   readonly title: string;
   readonly description?: string;
+  /**
+   * Where the row links, when the row is a real page rather than a placeholder.
+   *
+   * Restricted to a same-origin path: a row is produced from API data, so an absolute or scheme-bearing
+   * value here would put a clickable `javascript:` link into crawler-visible markup. External links go
+   * through `safeExternalHref` in the project fragment instead.
+   */
+  readonly href?: string;
+}
+
+/** Whether a row destination is a same-origin path the fragment may link to. */
+function isInternalPath(href: string): boolean {
+  return href.startsWith("/") && !href.startsWith("//");
 }
 
 /** Optional data a route's fragment can carry when the build could reach the API. */
@@ -168,23 +181,39 @@ export function buildPrerenderFragment(
   route: PrerenderRoute,
   enrichment: PrerenderEnrichment = {},
 ): string {
-  const nav = PRERENDER_NAV_LINKS.map(
-    (link) => `<li><a href="${escapeHtml(link.href)}">${escapeHtml(link.label)}</a></li>`,
-  ).join("");
   const count =
     enrichment.count === undefined
       ? ""
       : `<p class="prerender-count">${escapeHtml(enrichment.count)}</p>`;
   const items = enrichment.items?.length
     ? `<ul class="prerender-items">${enrichment.items
-        .map(
-          (item) =>
-            `<li><h2>${escapeHtml(item.title)}</h2>${
-              item.description ? `<p>${escapeHtml(item.description)}</p>` : ""
-            }</li>`,
-        )
+        .map((item) => {
+          const label = escapeHtml(item.title);
+          const heading =
+            item.href && isInternalPath(item.href)
+              ? `<a href="${escapeHtml(item.href)}">${label}</a>`
+              : label;
+          return `<li><h2>${heading}</h2>${
+            item.description ? `<p>${escapeHtml(item.description)}</p>` : ""
+          }</li>`;
+        })
         .join("")}</ul>`
     : "";
 
-  return `<main class="prerender-body" id="prerender-body"><h1>${escapeHtml(route.heading)}</h1><p class="prerender-lead">${escapeHtml(route.lead)}</p>${count}<nav aria-label="Site sections"><ul>${nav}</ul></nav>${items}</main>`;
+  return `<main class="prerender-body" id="prerender-body"><h1>${escapeHtml(route.heading)}</h1><p class="prerender-lead">${escapeHtml(route.lead)}</p>${count}${renderPrerenderNav()}${items}</main>`;
+}
+
+/**
+ * Render the site-section navigation every fragment carries.
+ *
+ * Shared so the static routes' fragments and the project fragments cannot disagree about the links a
+ * crawler can reach from any page.
+ *
+ * @returns The `<nav>` element as markup, with every link escaped.
+ */
+export function renderPrerenderNav(): string {
+  const links = PRERENDER_NAV_LINKS.map(
+    (link) => `<li><a href="${escapeHtml(link.href)}">${escapeHtml(link.label)}</a></li>`,
+  ).join("");
+  return `<nav aria-label="Site sections"><ul>${links}</ul></nav>`;
 }
