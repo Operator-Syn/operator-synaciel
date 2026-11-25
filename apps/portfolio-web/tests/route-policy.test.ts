@@ -28,6 +28,33 @@ test("accepts snippet folder and document paths the app generates", () => {
   }
 });
 
+test("accepts the two project detail forms the app generates", () => {
+  const pathnames = [
+    "/projects/8",
+    "/projects/8/",
+    "/projects/8/bai-finance-website",
+    "/projects/8/bai-finance-website/",
+  ];
+
+  for (const pathname of pathnames) {
+    assert.equal(isKnownRoute(pathname), true, pathname);
+  }
+});
+
+test("rejects paths under /projects/ that are not detail paths", () => {
+  const pathnames = [
+    "/projects/garbage",
+    "/projects/garbage/",
+    "/projects/garbage/x",
+    "/projects/8/x/y",
+    "/projects/0/slug",
+  ];
+
+  for (const pathname of pathnames) {
+    assert.equal(isKnownRoute(pathname), false, pathname);
+  }
+});
+
 test("rejects paths outside the allowlist", () => {
   const pathnames = [
     "/nope-garbage",
